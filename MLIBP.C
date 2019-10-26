@@ -18,9 +18,9 @@
 ****************************************************************************/
 /* compile: tcx file -cp0rv */
 
-#include        "c:\trans\lsc\89\include\conc.h"
-#include        "c:\trans\lsc\89\include\string.h"
-#include        "c:\trans\lsc\89\include\stdlib.h"
+#include        "D:\include\conc.h"
+#include        "D:\include\string.h"
+#include        "D:\include\stdlib.h"
 
 /* This function takes as array of channel pointer and return an index of
   the channel  that is ready for communication . */

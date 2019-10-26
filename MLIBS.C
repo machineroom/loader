@@ -18,9 +18,9 @@
 
 /* compile: tcx file -cp0rv */
 
-#include        "c:\trans\lsc\89\include\conc.h"
-#include        "c:\trans\lsc\89\include\string.h"
-#include        "c:\trans\lsc\89\include\stdlib.h"
+#include        "d:\include\conc.h"
+#include        "d:\include\string.h"
+#include        "d:\include\stdlib.h"
 
 /*{{{  PROC PriAltList(...)*/
 int

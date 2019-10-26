@@ -1056,13 +1056,13 @@ void boot_mandel(void)
 
     rst_adpt(TRUE);
     if (verbose) printf("Resetting Transputers...");
-    if (!load_buf(sreset,sizeof(sreset))) exit(1);
+    if (!load_buf(SRESET,sizeof(SRESET))) exit(1);
     if (verbose) printf("Booting...");
-    if (!load_buf(flboot,sizeof(flboot))) exit(1);
+    if (!load_buf(FLBOOT,sizeof(FLBOOT))) exit(1);
     if (verbose) printf("Loading...");      
-    if (!load_buf(flload,sizeof(flload))) exit(1);
+    if (!load_buf(FLLOAD,sizeof(FLLOAD))) exit(1);
     if (verbose) printf("ID'ing...\n");
-    if (!load_buf(ident,sizeof(ident))) exit(1);
+    if (!load_buf(IDENT,sizeof(IDENT))) exit(1);
     if (!tbyte_out(0))
    {
 	   printf(" -- timeout sending execute\n");
@@ -1086,7 +1086,7 @@ void boot_mandel(void)
     if (only_2k)
    {
    if (verbose) printf("Sending 2k mandel-code\n");
-   if (!load_buf(smallman,sizeof(smallman))) exit(1);
+   if (!load_buf(SMALLMAN,sizeof(SMALLMAN))) exit(1);
    if (!tbyte_out(0))
        {
        printf(" -- timeout sending execute\n");
@@ -1096,7 +1096,7 @@ void boot_mandel(void)
     else
    {
    if (verbose) printf("Sending mandel-code\n");	   
-   if (!load_buf(mandel,sizeof(mandel))) exit(1);
+   if (!load_buf(MANDEL,sizeof(MANDEL))) exit(1);
    if (!tbyte_out(0))
        {
        printf(" -- timeout sending execute\n");

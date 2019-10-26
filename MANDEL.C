@@ -20,7 +20,7 @@
 ****************************************************************************/
 /* compile: tcx file -cf1p0rv */
 
-#include "c:\trans\lsc\89\include\conc.h"
+#include "d:\include\conc.h"
 
 /*{{{  notes on compiling and linking*/
 /*
