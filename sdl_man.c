@@ -21,6 +21,7 @@
 #include <math.h>
 #include "LKIO.H"
 #include <stdint.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <SDL2/SDL.h>
 
@@ -51,7 +52,6 @@
 #define ENTR 0x0d
 
 #define INSM    0x200
-#define MAXPIX  64
 #define BUFSIZE 20
 #define REAL    double
 #define loop    for (;;)
@@ -101,6 +101,7 @@ static int D[2][2] = {
 };
 
 SDL_Renderer *sdl_renderer;
+SDL_Texture *sdl_texture; 
 
 int get_key(void)
 {
@@ -237,6 +238,8 @@ int main(int argc, char **argv) {
     }
     sdl_renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED) ;
 
+    sdl_texture = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, screen_w, screen_h);
+
     init_window();
 
     if (dc) dma_on();
@@ -274,30 +277,38 @@ BGR ega_palette[16] = {
     {255,255,255}
 };
 
+#define USE_TEX
+
 //x,y - start point
-//pixvec - number of pixels in vector
+//buf_size - number of pixels in buf
 //buf - array of pixel colour indices (range 0-15)
-void vect (int x, int y, int pixvec, unsigned char *buf) {
-    //this seems to be slow whatever using SDL
-#if 0
-    SDL_Texture *texture = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, pixvec, 1);
-    SDL_Rect src_rect = {0,0,pixvec,1};
-    SDL_Rect dst_rect = {x,y,pixvec,1};
-    uint8_t pixels[pixvec*3];
+void vect (int x, int y, int buf_size, unsigned char *buf, bool immediate) {
+#ifdef USE_TEX
+    SDL_Rect src_rect = {0,0,buf_size,1};
+    SDL_Rect dst_rect = {x,y,buf_size,1};
+    uint8_t pixels[buf_size*3];
     uint8_t *p = pixels;
-    for (int i=0; i < pixvec; i++) {
-        *p++ = ega_palette[buf[i]].r;
-        *p++ = ega_palette[buf[i]].g;
-        *p++ = ega_palette[buf[i]].b;
+    for (int i=0; i < buf_size; i++) {
+        BGR colour = ega_palette[buf[i]];
+        *p++ = colour.r;
+        *p++ = colour.g;
+        *p++ = colour.b;
     }
-    SDL_UpdateTexture(texture, NULL, pixels, pixvec*3);
-    SDL_RenderCopy(sdl_renderer, texture, NULL, &dst_rect);
-    SDL_DestroyTexture (texture);
+    SDL_UpdateTexture(sdl_texture, &dst_rect, pixels, buf_size*3);
 #else
-    for (int i=0; i < pixvec; i++) {
+    for (int i=0; i < buf_size; i++) {
         SDL_SetRenderDrawColor(sdl_renderer, ega_palette[buf[i]].r, ega_palette[buf[i]].g, ega_palette[buf[i]].b, 0xFF);
         SDL_RenderDrawPoint(sdl_renderer, x+i, y);
     }
+#endif
+    if (immediate) {
+        SDL_RenderPresent(sdl_renderer);
+    }
+}
+
+void render_screen(void) {
+#ifdef USE_TEX
+    SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
 #endif
     SDL_RenderPresent(sdl_renderer);
 }
@@ -381,20 +392,20 @@ void scan_tran(void) {
 	{
 		(*data_in)((char *)buf,len = (int)word_in());
 		if (len == 4) break;
-		vect((int)buf[1],(int)buf[2],len-3*4,(char *)&buf[3]);
+		vect((int)buf[1],(int)buf[2],len-3*4,(char *)&buf[3], true);
 	}
 }
 
 void scan_host(void) {
-    int i,pixvec;
-    int x,y,maxcnt,multiple;
+    int x,y,maxcnt;
     double xrange,yrange;
     double lo_r;
     double lo_i;
     double gapx;
     double gapy;
     REAL cx,cy;
-    unsigned char buf[MAXPIX];
+    unsigned char buf[screen_w];
+    bool immediate_render = false;
 
     xrange = scale_fac*(esw-1);
     yrange = scale_fac*(esh-1);
@@ -404,17 +415,16 @@ void scan_host(void) {
     gapx = xrange / (screen_w-1);
     gapy = yrange / (screen_h-1);
 
-    multiple = screen_w/MAXPIX*MAXPIX;
     for (y = 0; y < screen_h; y++) {
         cy = y*gapy+lo_i;
-        for (x = 0; x < screen_w; x+=MAXPIX) {
-            pixvec = (x < multiple) ? MAXPIX : screen_w-multiple;
-            for (i = 0; i < pixvec; i++) {
-                cx = (x+i)*gapx+lo_r;
-                buf[i] = iterate(cx,cy,maxcnt);
-            }
-            vect (x,y,pixvec,buf);
+        for (x = 0; x < screen_w; x++) {
+            cx = (x)*gapx+lo_r;
+            buf[x] = iterate(cx,cy,maxcnt);
         }
+        vect (0,y,sizeof(buf),buf,immediate_render);
+	}
+	if (!immediate_render) {
+	    render_screen();
 	}
 }
 
