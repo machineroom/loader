@@ -37,14 +37,6 @@
 #define TRUE 1
 #define FALSE 0
 
-#define F1   0x13b
-#define F2   0x13c
-#define F3   0x13d
-#define F4   0x13e
-#define F5   0x13f
-#define F6   0x140
-#define F7   0x141
-#define F8   0x142
 #define LARW 0x14b
 #define RARW 0x14d
 #define UARW 0x148
@@ -83,13 +75,9 @@ void init_window(void);
 void save_coord(void);
 void zoom(int *);
 void region(int *, int *, int *, int *, int *);
-int get_key(void);
-void waitsec(int);
 void draw_box(int,int,int,int);
 void boot_mandel(void);
 int load_buf(char *, int);
-int getch(void);
-int kbhit(void);
 
 static int autz;
 static int verbose;
@@ -112,14 +100,45 @@ static int D[2][2] = {
     {3,1}
 };
 
-int getch(void) {
-}
-
-int kbhit(void) {
-    SDL_Event test_event;
-}
-
 SDL_Renderer *sdl_renderer;
+
+int get_key(void)
+{
+    SDL_Event event;
+    SDL_KeyboardEvent key;
+    int ret = SDL_WaitEvent(&event);
+    if (ret==1) {
+        if (event.type == SDL_KEYUP) {
+            key = event.key;
+            switch (key.keysym.scancode) {
+                case SDL_SCANCODE_PAGEUP:
+                    return PGUP;
+                case SDL_SCANCODE_PAGEDOWN:
+                    return PGDN;
+                case SDL_SCANCODE_HOME:
+                    return HOME;
+                case SDL_SCANCODE_END:
+                    return END;
+                case SDL_SCANCODE_DOWN:
+                    return UARW;
+                case SDL_SCANCODE_UP:
+                    return DARW;
+                case SDL_SCANCODE_LEFT:
+                    return LARW;
+                case SDL_SCANCODE_RIGHT:
+                    return RARW;
+                case SDL_SCANCODE_INSERT:
+                    return INS;
+                case SDL_SCANCODE_DELETE:
+                    return DEL;
+                case SDL_SCANCODE_ESCAPE:
+                    return ESC;
+                case SDL_SCANCODE_RETURN:
+                    return ENTR;
+            }
+        }
+    }
+}
 
 int main(int argc, char **argv) {
     int i,aok = 1;
@@ -128,8 +147,7 @@ int main(int argc, char **argv) {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         return 1;
     }
-    
-   
+
     printf("CSA Mandelzoom Version 2.1 for PC\n");
     printf("(C) Copyright 1988 Computer System Architects Provo, Utah\n");
     printf("Enhanced by Axel Muhr (geekdot.com), 2009, 2015\n");
@@ -206,8 +224,6 @@ int main(int argc, char **argv) {
         printf("PgUp - reset to outermost frame\n");
         printf("PgDn - save coord. and iter. to file 'man.dat'\n");
         printf("End  - quit\n");
-        printf("\n -- Press a key to continue --\n"); 
-        getch();
     }
 	screen_w = 640; screen_h = 480;
 
@@ -224,7 +240,10 @@ int main(int argc, char **argv) {
     init_window();
 
     if (dc) dma_on();
-    if (autz) auto_loop(); else com_loop();
+    if (autz)
+        auto_loop();
+    else
+        com_loop();
     if (dc) dma_off();
 
     return(0);
@@ -249,9 +268,9 @@ BGR ega_palette[16] = {
     {255,255,0},    //9=cyan
     {255,127,0},
     {255,63,0},
-    {255,0,0},        //12=blue
+    {255,0,0},      //12=blue
     {255,0,63},
-    {255,63,255},        //14=magenta
+    {255,63,255},   //14=magenta
     {255,255,255}
 };
 
@@ -261,10 +280,6 @@ void vect (int x, int y, int pixvec, unsigned char *buf) {
         SDL_SetRenderDrawColor(sdl_renderer, ega_palette[buf[i]].r, ega_palette[buf[i]].g, ega_palette[buf[i]].b, 0xFF);
         SDL_RenderDrawPoint(sdl_renderer, x+i, y);
     }
-    // Set the color to what was before
-    SDL_SetRenderDrawColor(sdl_renderer, 0x00, 0x00, 0x00, 0xFF);
-    // .. you could do some other drawing here
-    // And now we present everything we draw after the clear.
     SDL_RenderPresent(sdl_renderer);
 }
 
@@ -279,12 +294,10 @@ double prop_fac,scale_fac;
 
 void com_loop(void)
 {
-    int esc;
-    esc = FALSE;
+    int esc = FALSE;
     loop
     {
         if (!esc) (*scan)();
-        while (kbhit()) getch();
         switch (get_key())
         {
             case HOME: zoom(&esc); break;
@@ -293,7 +306,6 @@ void com_loop(void)
             case END : return;
             default: esc = TRUE;
         }
-        sleep(1);
     }
 }
 
@@ -313,16 +325,9 @@ void auto_loop(void) {
         scale_fac = rng/(esw-1);
         (*scan)();              /* this does the work */
         run++;
-        if (kbhit()) break;
         sleep(ps);
-        if (kbhit()) break;
     }
-    do {
-        getch(); 
-    } while (kbhit());
 }
-
-
 
 void scan_tran(void) {
     register int len;
@@ -357,7 +362,7 @@ void scan_tran(void) {
 	{
 		//(*data_in)((char *)buf,len = (int)word_in());
 		if (len == 4) break;
-		//(*vect)((int)buf[1],(int)buf[2],len-3*4,(char *)&buf[3]);
+		vect((int)buf[1],(int)buf[2],len-3*4,(char *)&buf[3]);
 	}
 }
 
@@ -390,8 +395,6 @@ void scan_host(void) {
                 buf[i] = iterate(cx,cy,maxcnt);
             }
             vect (x,y,pixvec,buf);
-            //(*vect)(x,y,pixvec,buf);
-            if (kbhit()) return;
         }
 	}
 }
@@ -465,7 +468,7 @@ void region(int *bx, int *by, int *lx, int *ly, int *esc) {
     int c,tmp,dx,dy,jmp,boxw,boxh,insert;
 
     insert = 0;
-    jmp = 1;
+    jmp = 10;
     boxw = screen_w/10;
     boxh = screen_h/10;
     *esc = FALSE;
@@ -534,16 +537,20 @@ void region(int *bx, int *by, int *lx, int *ly, int *esc) {
     draw_box(*bx,*by,*lx,*ly);
 }
 
-int get_key(void)
-{
-}
-
 void draw_box(int x1, int y1, int x2, int y2) {
     int x,y,w,h;
     if (x1 < x2) {x = x1; w = x2-x1+1;}
     else {x = x2; w = x1-x2+1;}
     if (y1 < y2) {y = y1; h = y2-y1+1;}
     else {y = y2; h = y1-y2+1;}
+    SDL_Rect rect;
+    rect.x = x;
+    rect.y = y;
+    rect.w = w;
+    rect.h = h;
+    SDL_SetRenderDrawColor(sdl_renderer, 0xFF, 0XFF, 0xFF, 0xFF);
+    SDL_RenderDrawRect(sdl_renderer, &rect);
+    SDL_RenderPresent(sdl_renderer);
 }
 
 #define MAXROWS 350
