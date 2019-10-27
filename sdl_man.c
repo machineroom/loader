@@ -585,11 +585,6 @@ void draw_box(int x1, int y1, int x2, int y2) {
     SDL_RenderPresent(sdl_renderer);
 }
 
-#define MAXROWS 350
-#define MAXCOLS 640
-#define COLBYTES MAXCOLS/8
-#define GRAFOUT(index,value) {outp(0x3Ce,index); outp(0x3Cf,value);}
-
 #include "SRESET.ARR"
 #include "FLBOOT.ARR"
 #include "FLLOAD.ARR"
