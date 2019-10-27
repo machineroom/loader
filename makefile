@@ -66,6 +66,9 @@ clean:
 	rm -f MLIBS.TAL
 	rm -f MLIBP.TAL
 
+runhost:
+	dosbox -c "mount C `pwd`" -c "C:" -c "man -v -t"
+
 MAN.OBJ:  MAN.C SRESET.ARR FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR SMALLMAN.ARR
 	dosbox -c "mount D $(BC)" -c "mount C `pwd`" -c "C:" -c "D:\bin\bcc -c -v -ms -Fs -w999 -I$(BCINC) MAN.C" -c exit
 
