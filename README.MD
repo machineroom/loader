@@ -28,3 +28,13 @@ Learn more about the tool at [this page](http://www.geekdot.com/basic-transputer
 Several benchmarking results can be found [here](http://www.geekdot.com/lies-damn-lies-and-benchmarks)
 
 In doubt enter "man /?" for options. 
+
+macihenroomfiddling@gmail.com enhancements
+------------------------
+Modified build to use GNU make and call dosbox for legacy LSC tools
+Remove x86 asm/dos/int usage and replaced render & input with SDL2 so main app now builds on Linux
+Use more memory to get better performance, especially host rendering
+TODO:
+1. replace B004 code
+2. replace timer code that got removed
+
