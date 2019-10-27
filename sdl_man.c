@@ -230,10 +230,35 @@ int main(int argc, char **argv) {
     return(0);
 }
 
+typedef struct {
+    unsigned char b;
+    unsigned char g;
+    unsigned char r;
+} BGR;
+
+BGR ega_palette[16] = {
+    {0,0,0},
+    {0,0,127},
+    {0,0,255},      //2=red
+    {0,63,255},
+    {0,127,255},
+    {0,255,255},    //5=yellow
+    {0,127,63},
+    {0,255,0},      //7=green
+    {127,255,0},
+    {255,255,0},    //9=cyan
+    {255,127,0},
+    {255,63,0},
+    {255,0,0},        //12=blue
+    {255,0,63},
+    {255,63,255},        //14=magenta
+    {255,255,255}
+};
+
 void vect (int x, int y, int pixvec, unsigned char *buf) {
     // Now we can draw our points
     for (int i=0; i < pixvec; i++) {
-        SDL_SetRenderDrawColor(sdl_renderer, 0xFF, 0xFF, buf[i], 0xFF);
+        SDL_SetRenderDrawColor(sdl_renderer, ega_palette[buf[i]].r, ega_palette[buf[i]].g, ega_palette[buf[i]].b, 0xFF);
         SDL_RenderDrawPoint(sdl_renderer, x+i, y);
     }
     // Set the color to what was before
