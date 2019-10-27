@@ -65,6 +65,7 @@ clean:
 	rm -f SMALLMAN.TAL
 	rm -f MLIBS.TAL
 	rm -f MLIBP.TAL
+	rm -f MAN.EXE
 
 runhost:
 	dosbox -c "mount C `pwd`" -c "C:" -c "man -v -t"
