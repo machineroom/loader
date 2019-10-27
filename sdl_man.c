@@ -235,7 +235,7 @@ int main(int argc, char **argv) {
         SDL_Quit();
         return 2;
     }
-    sdl_renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC) ;
+    sdl_renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED) ;
 
     init_window();
 
@@ -274,12 +274,31 @@ BGR ega_palette[16] = {
     {255,255,255}
 };
 
+//x,y - start point
+//pixvec - number of pixels in vector
+//buf - array of pixel colour indices (range 0-15)
 void vect (int x, int y, int pixvec, unsigned char *buf) {
-    // Now we can draw our points
+    //this seems to be slow whatever using SDL
+#if 0
+    SDL_Texture *texture = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, pixvec, 1);
+    SDL_Rect src_rect = {0,0,pixvec,1};
+    SDL_Rect dst_rect = {x,y,pixvec,1};
+    uint8_t pixels[pixvec*3];
+    uint8_t *p = pixels;
+    for (int i=0; i < pixvec; i++) {
+        *p++ = ega_palette[buf[i]].r;
+        *p++ = ega_palette[buf[i]].g;
+        *p++ = ega_palette[buf[i]].b;
+    }
+    SDL_UpdateTexture(texture, NULL, pixels, pixvec*3);
+    SDL_RenderCopy(sdl_renderer, texture, NULL, &dst_rect);
+    SDL_DestroyTexture (texture);
+#else
     for (int i=0; i < pixvec; i++) {
         SDL_SetRenderDrawColor(sdl_renderer, ega_palette[buf[i]].r, ega_palette[buf[i]].g, ega_palette[buf[i]].b, 0xFF);
         SDL_RenderDrawPoint(sdl_renderer, x+i, y);
     }
+#endif
     SDL_RenderPresent(sdl_renderer);
 }
 
@@ -360,7 +379,7 @@ void scan_tran(void) {
 
 	loop
 	{
-		//(*data_in)((char *)buf,len = (int)word_in());
+		(*data_in)((char *)buf,len = (int)word_in());
 		if (len == 4) break;
 		vect((int)buf[1],(int)buf[2],len-3*4,(char *)&buf[3]);
 	}
