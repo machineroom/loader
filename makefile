@@ -15,10 +15,6 @@
 #macihenroomfiddling@gmail.com Oct 2019 started on Linux port
 #LSC 89 comes from http://www.classiccmp.org/transputer/software/languages/ansic/lsc/
 
-# MACRO DEFINITIONS:
-
-.SUFFIXES:
-
 .SUFFIXES: .C .TAL .TLD .ARR .EXE
 
 BC=/home/james/transputer/bc
@@ -45,7 +41,6 @@ BCINC=D:\include
 
 #tcode assemble rule
 %.TRL : %.TAL
-	echo "ttasm $*"
 	dosbox -c "mount D $(LSC93)" -c "mount C `pwd`" -c "C:" -c "$(LSC93_BIN)\ttasm $* -cv" -c exit
 
 #rule to make c arrays from .tld files
