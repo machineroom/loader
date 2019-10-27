@@ -295,6 +295,9 @@ void vect (int x, int y, int buf_size, unsigned char *buf, bool immediate) {
         *p++ = colour.b;
     }
     SDL_UpdateTexture(sdl_texture, &dst_rect, pixels, buf_size*3);
+    if (immediate) {
+        SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+    }
 #else
     for (int i=0; i < buf_size; i++) {
         SDL_SetRenderDrawColor(sdl_renderer, ega_palette[buf[i]].r, ega_palette[buf[i]].g, ega_palette[buf[i]].b, 0xFF);
@@ -405,7 +408,7 @@ void scan_host(void) {
     double gapy;
     REAL cx,cy;
     unsigned char buf[screen_w];
-    bool immediate_render = false;
+    bool immediate_render = true;
 
     xrange = scale_fac*(esw-1);
     yrange = scale_fac*(esh-1);
