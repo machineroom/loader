@@ -25,10 +25,6 @@
 #include <unistd.h>
 #include <SDL2/SDL.h>
 
-//legacy B004 link stuff
-#define LINK_BASE 0x150
-#define DMA_CHAN  1
-
 #define JOBCOM 0L
 #define PRBCOM 1L
 #define DATCOM 2L
@@ -86,8 +82,6 @@ static int host;
 static int hicnt = 1024;
 static int locnt = 150;
 static int mxcnt;
-static int lb = LINK_BASE;
-static int dc = 0;
 static int ps = PAUSE;
 static int screen_w;
 static int screen_h;
@@ -173,22 +167,9 @@ int main(int argc, char **argv) {
                     if ((ps < 0) || (ps > 9)) ps = PAUSE;
                     autz = 1;
                     break;
-                case 'b':
-                    if (i >= argc) {aok = 0; break;}
-                    aok &= sscanf(argv[++i],"%i",&lb) == 1 && *(s+1) == '\0';
-                    break;
-                case 'd':
-                    aok &= sscanf(s+1,"%d",&dc) == 1;
-                    if (aok) s++;
-                    aok &= (dc >= 1) && (dc <= 3);
-                    break;
                 case 'i':
                     if (i >= argc) {aok = 0; break;}
                     aok &= sscanf(argv[++i],"%i",&mxcnt) == 1 && *(s+1) == '\0';
-                    break;
-                case 'p':
-                    data_in = dma_in;
-                    dc = DMA_CHAN;
                     break;
                 case 't':
                     host = 1;
@@ -206,16 +187,13 @@ int main(int argc, char **argv) {
     if (!aok) {
         printf("Usage: man [-b #] [-i #] [-a[#]cd#ehpt]\n");
         printf("  -a  auto-zoom, coord. from file 'man.dat', # sec. pause\n");
-        printf("  -b  link adaptor base address, # is base (default 0x150)\n");
-        printf("  -d  DMA channel, # can be 1-3 (default 1)\n");
         printf("  -i  max. iteration count, # is iter. (default variable)\n");
-        printf("  -p  use program I/O, no DMA (default use DMA)\n");
         printf("  -t  use host, no transputers (default transputers)\n");
         printf("  -x  print verbose messages during initialisation\n");
         exit(1);
     }
     if (!host) {
-        init_lkio(lb,dc,dc);
+        init_lkio(0,0,0);
         boot_mandel();
         scan = scan_tran;
     }
@@ -249,12 +227,10 @@ int main(int argc, char **argv) {
 
     init_window();
 
-    if (dc) dma_on();
     if (autz)
         auto_loop();
     else
         com_loop();
-    if (dc) dma_off();
 
     return(0);
 }
