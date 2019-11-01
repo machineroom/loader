@@ -139,7 +139,6 @@ int get_key(void)
                     return ENTR;
             }
         } else if (event.type == SDL_WINDOWEVENT) {
-            printf ("window event %d\n", event.window.event);
             switch (event.window.event) {
                 case SDL_WINDOWEVENT_CLOSE:
                     return END;
