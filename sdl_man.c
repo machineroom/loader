@@ -50,6 +50,7 @@
 #define DEL  0x153
 #define ESC  0x1b
 #define ENTR 0x0d
+#define NONE 0
 
 #define INSM    0x200
 #define BUFSIZE 20
@@ -137,8 +138,15 @@ int get_key(void)
                 case SDL_SCANCODE_RETURN:
                     return ENTR;
             }
+        } else if (event.type == SDL_WINDOWEVENT) {
+            printf ("window event %d\n", event.window.event);
+            switch (event.window.event) {
+                case SDL_WINDOWEVENT_CLOSE:
+                    return END;
+            }
         }
     }
+    return NONE;
 }
 
 int main(int argc, char **argv) {
