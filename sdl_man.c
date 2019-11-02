@@ -88,6 +88,8 @@ static int screen_h;
 static void (*scan)(void) = scan_host;
 static void (*data_in)(char *, uint) = chan_in;
 static FILE *fpauto;
+static bool use_texture = false;
+static bool immediate_render = false;
 
 static unsigned lt;
 static int D[2][2] = {
@@ -176,7 +178,13 @@ int main(int argc, char **argv) {
                     break;
                 case 'x':
                     verbose = 1;
-                    break;                    
+                    break;
+                case 's':
+                    use_texture = true;
+                    break; 
+                case 'r':
+                    immediate_render = true;
+                    break;   
                 default:
                     aok = 0;
                     break;
@@ -190,6 +198,8 @@ int main(int argc, char **argv) {
         printf("  -i  max. iteration count, # is iter. (default variable)\n");
         printf("  -t  use host, no transputers (default transputers)\n");
         printf("  -x  print verbose messages during initialisation\n");
+        printf("  -s  use SDL2 texture\n");
+        printf("  -r  render each vector as received\n");
         exit(1);
     }
     if (!host) {
@@ -260,42 +270,40 @@ BGR ega_palette[16] = {
     {255,255,255}
 };
 
-#define USE_TEX
-
 //x,y - start point
 //buf_size - number of pixels in buf
 //buf - array of pixel colour indices (range 0-15)
-void vect (int x, int y, int buf_size, unsigned char *buf, bool immediate) {
-#ifdef USE_TEX
-    SDL_Rect src_rect = {0,0,buf_size,1};
-    SDL_Rect dst_rect = {x,y,buf_size,1};
-    uint8_t pixels[buf_size*3];
-    uint8_t *p = pixels;
-    for (int i=0; i < buf_size; i++) {
-        BGR colour = ega_palette[buf[i]];
-        *p++ = colour.r;
-        *p++ = colour.g;
-        *p++ = colour.b;
+void vect (int x, int y, int buf_size, unsigned char *buf) {
+    if (use_texture) {
+        SDL_Rect src_rect = {0,0,buf_size,1};
+        SDL_Rect dst_rect = {x,y,buf_size,1};
+        uint8_t pixels[buf_size*3];
+        uint8_t *p = pixels;
+        for (int i=0; i < buf_size; i++) {
+            BGR colour = ega_palette[buf[i]];
+            *p++ = colour.r;
+            *p++ = colour.g;
+            *p++ = colour.b;
+        }
+        SDL_UpdateTexture(sdl_texture, &dst_rect, pixels, buf_size*3);
+        if (immediate_render) {
+            SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+        }
+    } else {
+        for (int i=0; i < buf_size; i++) {
+            SDL_SetRenderDrawColor(sdl_renderer, ega_palette[buf[i]].r, ega_palette[buf[i]].g, ega_palette[buf[i]].b, 0xFF);
+            SDL_RenderDrawPoint(sdl_renderer, x+i, y);
+        }
     }
-    SDL_UpdateTexture(sdl_texture, &dst_rect, pixels, buf_size*3);
-    if (immediate) {
-        SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
-    }
-#else
-    for (int i=0; i < buf_size; i++) {
-        SDL_SetRenderDrawColor(sdl_renderer, ega_palette[buf[i]].r, ega_palette[buf[i]].g, ega_palette[buf[i]].b, 0xFF);
-        SDL_RenderDrawPoint(sdl_renderer, x+i, y);
-    }
-#endif
-    if (immediate) {
+    if (immediate_render) {
         SDL_RenderPresent(sdl_renderer);
     }
 }
 
 void render_screen(void) {
-#ifdef USE_TEX
-    SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
-#endif
+    if (use_texture) {
+        SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+    }
     SDL_RenderPresent(sdl_renderer);
 }
 
@@ -378,7 +386,10 @@ void scan_tran(void) {
 	{
 		(*data_in)((char *)buf,len = (int)word_in());
 		if (len == 4) break;
-		vect((int)buf[1],(int)buf[2],len-3*4,(char *)&buf[3], true);
+		vect((int)buf[1],(int)buf[2],len-3*4,(char *)&buf[3]);
+	}
+	if (!immediate_render) {
+	    render_screen();
 	}
 }
 
@@ -391,7 +402,6 @@ void scan_host(void) {
     double gapy;
     REAL cx,cy;
     unsigned char buf[screen_w];
-    bool immediate_render = true;
 
     xrange = scale_fac*(esw-1);
     yrange = scale_fac*(esh-1);
@@ -407,7 +417,7 @@ void scan_host(void) {
             cx = (x)*gapx+lo_r;
             buf[x] = iterate(cx,cy,maxcnt);
         }
-        vect (0,y,sizeof(buf),buf,immediate_render);
+        vect (0,y,sizeof(buf),buf);
 	}
 	if (!immediate_render) {
 	    render_screen();
