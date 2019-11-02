@@ -1,15 +1,19 @@
 #include <bcm2835.h>
+#include <time.h>
 #include "pins.h"
 #include "c011.h"
 
-//all the C011 timings are <1uS (60ns top)
-//TODO use nanosleep
-#define TRWVCSL (0)
-#define TCSLCSH (1) //60ns
-#define TCSHCSL (1) //50ns
-#define TRHRL (1)
-#define TRSVCSL (0)
-#define TCSLDrV (1) //50ns
+#define TCSLCSH (60)
+#define TCSHCSL (50)
+#define TCSLDrV (50)
+
+static void sleep_ns(int ns) {
+    struct timespec s = {0,ns};
+    int ret = nanosleep(&s,NULL);
+    if (ret != 0) {
+        printf ("nanosleep(%d) failed\n", ret);
+    }
+}
 
 static void set_control_output_pins(void) {
     bcm2835_gpio_fsel(RS0, BCM2835_GPIO_FSEL_OUTP);
@@ -78,9 +82,9 @@ void c011_enable_out_int(void) {
                              1<<D7 | 1<<D6 | 1<<D5 | 1<<D4 | 1<<D3 | 1<<D2 | 1<<D1 | 1<<D0);
 
     bcm2835_gpio_write(CS, LOW);
-    bcm2835_delayMicroseconds (TCSLCSH);
+    sleep_ns (TCSLCSH);
     bcm2835_gpio_write(CS, HIGH);
-    bcm2835_delayMicroseconds (TCSHCSL);
+    sleep_ns (TCSHCSL);
 }
 
 void c011_enable_in_int(void) {
@@ -90,9 +94,9 @@ void c011_enable_in_int(void) {
     bcm2835_gpio_write_mask (1<<D1,
                              1<<D7 | 1<<D6 | 1<<D5 | 1<<D4 | 1<<D3 | 1<<D2 | 1<<D1 | 1<<D0);
     bcm2835_gpio_write(CS, LOW);
-    bcm2835_delayMicroseconds (TCSLCSH);
+    sleep_ns (TCSLCSH);
     bcm2835_gpio_write(CS, HIGH);
-    bcm2835_delayMicroseconds (TCSHCSL);
+    sleep_ns (TCSHCSL);
 }
 
 int c011_write_byte(uint8_t byte, uint32_t timeout) {
@@ -124,10 +128,10 @@ int c011_write_byte(uint8_t byte, uint32_t timeout) {
                              1<<D7 | 1<<D6 | 1<<D5 | 1<<D4 | 1<<D3 | 1<<D2 | 1<<D1 | 1<<D0);
     //CS=0
     bcm2835_gpio_write(CS, LOW);
-    bcm2835_delayMicroseconds (TCSLCSH);
+    sleep_ns (TCSLCSH);
     //CS=1
     bcm2835_gpio_write(CS, HIGH);
-    bcm2835_delayMicroseconds (TCSHCSL);
+    sleep_ns (TCSHCSL);
     return 0;
 }
 
@@ -136,7 +140,7 @@ static uint8_t read_c011(void) {
     set_data_input_pins();
     bcm2835_gpio_write(CS, LOW);
     //must allow time for data valid after !CS
-    bcm2835_delayMicroseconds (TCSLDrV);
+    sleep_ns (TCSLDrV);
     d7=bcm2835_gpio_lev(D7);
     d6=bcm2835_gpio_lev(D6);
     d5=bcm2835_gpio_lev(D5);
@@ -161,7 +165,7 @@ static uint8_t read_c011(void) {
     byte <<= 1;
     byte |= d0;
     bcm2835_gpio_write(CS, HIGH);
-    bcm2835_delayMicroseconds (TCSHCSL);
+    sleep_ns (TCSHCSL);
     return byte;
 }
 
