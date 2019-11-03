@@ -1,5 +1,6 @@
 #include <bcm2835.h>
 #include <time.h>
+#include <stdio.h>
 #include "pins.h"
 #include "c011.h"
 
@@ -11,7 +12,7 @@ static void sleep_ns(int ns) {
     struct timespec s = {0,ns};
     int ret = nanosleep(&s,NULL);
     if (ret != 0) {
-        printf ("nanosleep(%d) failed\n", ret);
+        fprintf (stderr,"nanosleep(%d) failed\n", ret);
     }
 }
 
