@@ -12,6 +12,7 @@ void rst_adpt(int p) {
 
 int init_lkio(int p,int q,int r) {
     c011_init();
+    return 0;
 }
 
 //return 0==fail, 1==OK
@@ -58,14 +59,14 @@ void word_out(long p) {
 void chan_in(char *p,unsigned int count) {
     int ret = c011_read_bytes ((uint8_t *)p, count, TIMEOUT);
     if (ret != count) {
-        printf ("*E* failed to read bytes: %d != %d\n", ret, count);
+        fprintf (stderr,"*E* failed to read bytes: %d != %d\n", ret, count);
     }
 }
 
 void chan_out(char *p,unsigned int count) {
     int ret = c011_write_bytes ((uint8_t *)p, count, TIMEOUT);
     if (ret != count) {
-        printf ("*E* failed to write bytes: %d != %d\n", ret, count);
+        fprintf (stderr,"*E* failed to write bytes: %d != %d\n", ret, count);
     }
 }
 

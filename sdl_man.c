@@ -91,12 +91,6 @@ static FILE *fpauto;
 static bool use_texture = false;
 static bool immediate_render = false;
 
-static unsigned lt;
-static int D[2][2] = {
-    {0,2},
-    {3,1}
-};
-
 SDL_Renderer *sdl_renderer;
 SDL_Texture *sdl_texture; 
 
@@ -286,7 +280,6 @@ BGR ega_palette[16] = {
 //buf - array of pixel colour indices (range 0-15)
 void vect (int x, int y, int buf_size, unsigned char *buf) {
     if (use_texture) {
-        SDL_Rect src_rect = {0,0,buf_size,1};
         SDL_Rect dst_rect = {x,y,buf_size,1};
         uint8_t pixels[buf_size*3];
         uint8_t *p = pixels;
@@ -424,7 +417,7 @@ void scan_tran(void) {
 		if (len == 4) break;
 		//buf=[n/a,x,y,pixels]
 		//76-(3*4)=64
-		vect((int)buf[1],(int)buf[2],len-3*4,(char *)&buf[3]);
+		vect((int)buf[1],(int)buf[2],len-3*4,(unsigned char *)&buf[3]);
 	}
 	if (!immediate_render) {
 	    render_screen();
