@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <assert.h>
 #include <SDL2/SDL.h>
 
 #define JOBCOM 0L
@@ -47,14 +48,14 @@
 #define ESC  0x1b
 #define ENTR 0x0d
 #define NONE 0
-
 #define INSM    0x200
+
 #define BUFSIZE 20
 #define REAL    double
 #define loop    for (;;)
 
-#define AUTOFILE "man.dat"
-#define PAUSE    3
+#define AUTOFILE "MAN.DAT"
+#define PAUSE    1
 
 #define HIR  2.5
 #define LOR  3.0e-14
@@ -86,7 +87,6 @@ static int ps = PAUSE;
 static int screen_w;
 static int screen_h;
 static void (*scan)(void) = scan_host;
-static void (*data_in)(char *, uint) = chan_in;
 static FILE *fpauto;
 static bool use_texture = false;
 static bool immediate_render = false;
@@ -148,6 +148,8 @@ int main(int argc, char **argv) {
     int i,aok = 1;
     char *s;
 
+	screen_w = 640; screen_h = 480;
+
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         return 1;
     }
@@ -168,6 +170,14 @@ int main(int argc, char **argv) {
                     if (sscanf(s+1,"%d",&ps) == 1) s++;
                     if ((ps < 0) || (ps > 9)) ps = PAUSE;
                     autz = 1;
+                    break;
+                case 'w':
+                    if (i >= argc) {aok = 0; break;}
+                    aok &= sscanf(argv[++i],"%i",&screen_w) == 1 && *(s+1) == '\0';
+                    break;
+                case 'h':
+                    if (i >= argc) {aok = 0; break;}
+                    aok &= sscanf(argv[++i],"%i",&screen_h) == 1 && *(s+1) == '\0';
                     break;
                 case 'i':
                     if (i >= argc) {aok = 0; break;}
@@ -200,6 +210,8 @@ int main(int argc, char **argv) {
         printf("  -x  print verbose messages during initialisation\n");
         printf("  -s  use SDL2 texture\n");
         printf("  -r  render each vector as received\n");
+        printf("  -w  width\n");
+        printf("  -h  height\n");
         exit(1);
     }
     if (!host) {
@@ -221,7 +233,6 @@ int main(int argc, char **argv) {
         printf("PgDn - save coord. and iter. to file 'man.dat'\n");
         printf("End  - quit\n");
     }
-	screen_w = 640; screen_h = 480;
 
     SDL_Window *window = SDL_CreateWindow("T-Mandel with SDL",
             SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen_w,
@@ -318,17 +329,35 @@ double prop_fac,scale_fac;
 
 void com_loop(void)
 {
-    int esc = FALSE;
+    int esc;
+    bool render = true;
     loop
     {
-        if (!esc) (*scan)();
+        if (render) {
+            Uint64 start, now;
+            start = SDL_GetPerformanceCounter();
+            (*scan)();
+            now = SDL_GetPerformanceCounter();
+            printf ("scan took %f ms\n", (double)((now - start)*1000) / SDL_GetPerformanceFrequency()); 
+        }
         switch (get_key())
         {
-            case HOME: zoom(&esc); break;
-            case PGUP: init_window(); esc = FALSE; break;
-            case PGDN: save_coord(); esc = TRUE; break;
-            case END : return;
-            default: esc = TRUE;
+            case HOME:
+                zoom(&esc);
+                render = true;
+                break;
+            case PGUP:
+                init_window(); 
+                render = true;
+                break;
+            case PGDN:
+                save_coord();
+                break;
+            case END :
+                return;
+            default:
+                render=false;
+                break;
         }
     }
 }
@@ -341,13 +370,18 @@ void auto_loop(void) {
     loop
 	{
         res = fscanf(fpauto," x:%lf y:%lf range:%lf iter:%d", &center_r,&center_i,&rng,&mxcnt);
+        printf ("start scan %lf %lf %lf %d\n", center_r, center_i, rng, mxcnt);
         if (res == EOF) {
             rewind(fpauto);
             continue;
         }
         if (res != 4) return;   /* End if anything else returned */
         scale_fac = rng/(esw-1);
+        Uint64 start, now;
+        start = SDL_GetPerformanceCounter();
         (*scan)();              /* this does the work */
+        now = SDL_GetPerformanceCounter();
+        printf ("scan took %f ms\n", (double)((now - start)*1000) / SDL_GetPerformanceFrequency()); 
         run++;
         sleep(ps);
     }
@@ -384,8 +418,12 @@ void scan_tran(void) {
 
 	loop
 	{
-		(*data_in)((char *)buf,len = (int)word_in());
+	    len = (int)word_in();       //len in bytes
+	    assert (len <= sizeof(buf));
+		chan_in ((char *)buf,len);
 		if (len == 4) break;
+		//buf=[n/a,x,y,pixels]
+		//76-(3*4)=64
 		vect((int)buf[1],(int)buf[2],len-3*4,(char *)&buf[3]);
 	}
 	if (!immediate_render) {
