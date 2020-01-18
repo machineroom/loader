@@ -380,6 +380,23 @@ void auto_loop(void) {
     }
 }
 
+void memdump (char *buf, int cnt) {
+    char *p = buf;
+    int byte_cnt=0;
+    char str[200] = {'\0'};
+    while (cnt > 0) {
+        char b[10];
+        sprintf (b, "0x%02X ", *p++);
+        strcat (str,b);
+        if (byte_cnt++==16) {
+            printf ("%s\n", str);
+            str[0] = '\0';
+            byte_cnt=0;
+        }
+        cnt--;
+    }
+}
+
 void scan_tran(void) {
     register int len;
     double xrange,yrange;
@@ -406,17 +423,25 @@ void scan_tran(void) {
     prob_st.lo_i = center_i - (yrange/2.0);
     prob_st.gapx = xrange / (screen_w-1);
     prob_st.gapy = yrange / (screen_h-1);
+#ifdef DEBUG
+    printf ("PRBCOM struct:\n\tcom:%ld\n\twidth:%ld\n\theight:%ld\n\tmaxcnt:%ld\n\tlo_r:%lf\n\tlo_i:%lf\n\tgapx:%lf\n\tgapy:%lf\n",
+             prob_st.com, prob_st.width, prob_st.height, prob_st.maxcnt, prob_st.lo_r, prob_st.lo_i, prob_st.gapx, prob_st.gapy);
+    memdump ((char *)&prob_st,12*4);
+#endif
     word_out(12L*4);
     chan_out((char *)&prob_st,12*4);
 
 	loop
 	{
 	    len = (int)word_in();       //len in bytes
-	    assert (len <= sizeof(buf));
+	    assert (len < sizeof(buf));
 		chan_in ((char *)buf,len);
 		if (len == 4) break;
 		//buf=[n/a,x,y,pixels]
 		//76-(3*4)=64
+#ifdef DEBUG
+		printf ("len=0x%X, buf = 0x%X 0x%X 0x%X 0x%X...0x%X\n",len,buf[0],buf[1],buf[2],buf[3],buf[(len/4)-1]);
+#endif
 		vect((int)buf[1],(int)buf[2],len-3*4,(unsigned char *)&buf[3]);
 	}
 	if (!immediate_render) {

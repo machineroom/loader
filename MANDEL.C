@@ -116,48 +116,48 @@ LOADGB *ld;
     /*{{{  get num nodes and whether floating point*/
     {
         int nodes;
-	int buf[2];
+        int buf[2];
 
-	nodes = fxp = 0;
-	for (i = 0; i < 3 && ld->dn_out[i]; i++)
-	    {
-	    ChanIn(ld->dn_out[i]+4,(char *)buf,2*4);
-	    nodes += buf[0]; fxp |= buf[1];
-	    }
-	fxp |= !((ld->trantype == T800D) ||
-		 ((ld->trantype  > T805L) && (ld->trantype < T805H)) );
-	buf[0] = nodes+1;
-	buf[1] = fxp;
-	ChanOut(ld->up_in-4,(char *)buf,2*4);
+        nodes = fxp = 0;
+        for (i = 0; i < 3 && ld->dn_out[i]; i++)
+        {
+            ChanIn(ld->dn_out[i]+4,(char *)buf,2*4);
+            nodes += buf[0]; fxp |= buf[1];
+        }
+        fxp |= !((ld->trantype == T800D) ||
+            ((ld->trantype  > T805L) && (ld->trantype < T805H)) );
+        buf[0] = nodes+1;
+        buf[1] = fxp;
+        ChanOut(ld->up_in-4,(char *)buf,2*4);
     }
     /*}}}  */
     /*{{{  set up par structure*/
     {
-	Channel *si,*so[5],*sr[5],*ai[5];
-	extern int job(),buffer(),feed(),arbiter(),selector();
-	extern int jobws[JOBWSZ/4];
+        Channel *si,*so[5],*sr[5],*ai[5];
+        extern int job(),buffer(),feed(),arbiter(),selector();
+        extern int jobws[JOBWSZ/4];
 
-	sr[0] = ChanAlloc();
-	so[0] = ChanAlloc();
-	ai[0] = ChanAlloc();
-	PRun(PSetup(jobws,job,JOBWSZ,3,sr[0],so[0],ai[0])|1);
-	for (i = 0; i < 3 && ld->dn_out[i]; i++)
-	    {
-	    sr[i+1] = ChanAlloc();
-	    so[i+1] = ChanAlloc();
+        sr[0] = ChanAlloc();
+        so[0] = ChanAlloc();
+        ai[0] = ChanAlloc();
+        PRun(PSetup(jobws,job,JOBWSZ,3,sr[0],so[0],ai[0])|1);
+        for (i = 0; i < 3 && ld->dn_out[i]; i++)
+        {
+            sr[i+1] = ChanAlloc();
+            so[i+1] = ChanAlloc();
             ai[i+1] = ld->dn_out[i]+4;
             PRun(PSetupA(buffer,BUFWSZ,3,sr[i+1],so[i+1],ld->dn_out[i]));
-            }
+        }
         sr[i+1] = so[i+1] = ai[i+1] = 0;
-	if (ld->id)
-	    {
+        if (ld->id)
+        {
             si = ld->up_in;
-            }
-	else
-            {
+        }
+        else
+        {
             si = ChanAlloc();
-	    PRun(PSetupA(feed,FEDWSZ,3,ld->up_in,si,fxp));
-	    }
+            PRun(PSetupA(feed,FEDWSZ,3,ld->up_in,si,fxp));
+        }
         PRun(PSetupA(arbiter,ARBWSZ,2,ai,ld->up_in-4));
         PRun(PSetupA(selector,SELWSZ,3,si,sr,so));
         PStop();
@@ -207,77 +207,77 @@ Channel *req_out,*job_in,*rsl_out;
     unsigned char *pbuf = (unsigned char *)(buf+3);
 
     loop
-        {
+    {
         ChanOutInt(req_out,0);
         len = ChanInInt(job_in);
-	ChanIn(job_in,(char *)buf,len);
+        ChanIn(job_in,(char *)buf,len);
         if (buf[0] == JOBCOM)
-            /*{{{  */
-	    {
+        /*{{{  */
+        {
             lon();
             pixvec = buf[3];
-	    if (fxp)
-                /*{{{  */
-                {
+            if (fxp)
+            /*{{{  */
+            {
                 int x,y;
                 if (igapx && igapy)
-                    {
-		    y = igapy*buf[2]+iloy;
+                {
+                    y = igapy*buf[2]+iloy;
                     for (i = 0; i < pixvec; i++)
-                        {
-			x = igapx*(buf[1]+i)+ilox;
-                        pbuf[i] = iterFIX(x,y,maxcnt);
-                        }
-		    }
-                else
                     {
-                    for (i = 0; i < pixvec; i++) pbuf[i] = 1;
+                        x = igapx*(buf[1]+i)+ilox;
+                        pbuf[i] = iterFIX(x,y,maxcnt);
                     }
                 }
-		/*}}}  */
-            else
+                else
                 {
-		double x,y;
+                    for (i = 0; i < pixvec; i++) pbuf[i] = 1;
+                }
+            }
+            /*}}}  */
+            else
+            {
+                double x,y;
                 y = buf[2]*dgapy+dloy;
                 for (i = 0; i < pixvec; i++)
-		    {
+                {
                     x = (buf[1]+i)*dgapx+dlox;
                     pbuf[i] = (*iter)(x,y,maxcnt);
-                    }
                 }
-            len = pixvec+3*4;
-	    buf[0] = RSLCOM;
-            loff();
             }
-	    /*}}}  */
+            len = pixvec+3*4;
+            buf[0] = RSLCOM;
+            loff();
+        }
+        /*}}}  */
         else if (buf[0] == DATCOM)
-            /*{{{  */
-	    {
+        /*{{{  */
+        {
             fxp = buf[1];
             maxcnt = buf[2];
             if (fxp)
-                {
+            {
                 ilox = fix(buf+3);
-		iloy = fix(buf+5);
+                iloy = fix(buf+5);
                 igapx = fix(buf+7);
                 igapy = fix(buf+9);
-		}
+            }
             else
-                {
-		int iterR32(),iterR64();
+            {
+                int iterR32(),iterR64();
                 dlox = *(double *)(buf+3);
                 dloy = *(double *)(buf+5);
                 dgapx = *(double *)(buf+7);
                 dgapy = *(double *)(buf+9);
                 if (dgapx < THRESH || dgapy < THRESH) iter = iterR64;
-		else  iter = iterR32;
-                }
+                else  iter = iterR32;
+            }
             continue;
-	    }
-            /*}}}  */
-        ChanOutInt(rsl_out,len);
-	ChanOut(rsl_out,(char *)buf,len);
         }
+        /*}}}  */
+        ChanOutInt(rsl_out,len);
+        ChanOut(rsl_out,(char *)buf,len);
+    }
 }
 
 /*}}}  */
@@ -391,14 +391,14 @@ int maxcnt;
     zx = zy = zx2 = zy2 = 0.0;
     cnt = 0;
     do
-        {
+    {
         tmp = zx2-zy2+cx;
-	zy = zx*zy*2.0+cy;
+        zy = zx*zy*2.0+cy;
         zx = tmp;
         zx2 = zx*zx;
-	zy2 = zy*zy;
+        zy2 = zy*zy;
         cnt++;
-        }
+    }
     while (cnt < maxcnt && zx2+zy2 < four);
     if (cnt != maxcnt) return(cnt);
     return(0);
@@ -418,14 +418,14 @@ int maxcnt;
     x = cx; y = cy;
     cnt = 0;
     do
-        {
+    {
         tmp = zx2-zy2+x;
-	zy = zx*zy*2.0f+y;
+        zy = zx*zy*2.0f+y;
         zx = tmp;
         zx2 = zx*zx;
         zy2 = zy*zy;
         cnt++;
-        }
+    }
     while (cnt < maxcnt && zx2+zy2 < four);
     if (cnt != maxcnt) return(cnt);
     return(0);
@@ -521,13 +521,13 @@ Channel *req_out,*buf_in,*buf_out;
     int buf[PRBSIZE-1];
 
     loop
-        {
-	ChanOutInt(req_out,0);
+    {
+        ChanOutInt(req_out,0);
         len = ChanInInt(buf_in);
         ChanIn(buf_in,(char *)buf,len);
-	ChanOutInt(buf_out,len);
+        ChanOutInt(buf_out,len);
         ChanOut(buf_out,(char *)buf,len);
-        }
+    }
 }
 
 /*}}}  */
@@ -561,30 +561,30 @@ Channel *sel_in,**req_in,**dn_out;
     int buf[PRBSIZE-1];
 
     loop
-	{
+    {
         len = ChanInInt(sel_in);
         ChanIn(sel_in,(char *)buf,len);
-	if (buf[0] == JOBCOM)
-            /*{{{  */
-            {
+        if (buf[0] == JOBCOM)
+        /*{{{  */
+        {
             i = ProcPriAltList(req_in,0);
             ChanInInt(req_in[i]);
             ChanOutInt(dn_out[i],len);
-	    ChanOut(dn_out[i],(char *)buf,len);
-            }
-            /*}}}  */
-	else
-            /*{{{  */
+            ChanOut(dn_out[i],(char *)buf,len);
+        }
+        /*}}}  */
+        else
+        /*{{{  */
+        {
+            for (i = 0; req_in[i]; i++)
             {
-	    for (i = 0; req_in[i]; i++)
-                {
                 ChanInInt(req_in[i]);
                 ChanOutInt(dn_out[i],len);
                 ChanOut(dn_out[i],(char *)buf,len);
-                }
-	    }
-            /*}}}  */
+            }
         }
+        /*}}}  */
+    }
 }
 
 /*}}}  */
@@ -597,34 +597,34 @@ int fxp;
     int buf[PRBSIZE];
 
     loop
-	{
+    {
         len = ChanInInt(fd_in);
         ChanIn(fd_in,(char *)buf,len);
-	if (buf[0] == PRBCOM)
-            /*{{{  */
-            {
+        if (buf[0] == PRBCOM)
+        /*{{{  */
+        {
             int width,height,multiple;
             width = buf[1];
             height = buf[2];
-	    buf[1] = DATCOM;
+            buf[1] = DATCOM;
             buf[2] = fxp;
             ChanOutInt(fd_out,(PRBSIZE-1)*4);
-	    ChanOut(fd_out,(char *)&buf[1],(PRBSIZE-1)*4);
+            ChanOut(fd_out,(char *)&buf[1],(PRBSIZE-1)*4);
             buf[0] = JOBCOM;
             multiple = width/MAXPIX*MAXPIX;
-	    for (buf[2] = 0; buf[2] < height; buf[2]++)
-                {
+            for (buf[2] = 0; buf[2] < height; buf[2]++)
+            {
                 for (buf[1] = 0; buf[1] < width; buf[1]+=MAXPIX)
-                    {
+                {
                     buf[3] = (buf[1] < multiple) ? MAXPIX : width-multiple;
                     ChanOutInt(fd_out,4*4);
-		    ChanOut(fd_out,(char *)buf,4*4);
-                    }
+                    ChanOut(fd_out,(char *)buf,4*4);
                 }
-	    buf[0] = FLHCOM;
-            len = 1*4;
             }
-	    /*}}}  */
+            buf[0] = FLHCOM;
+            len = 1*4;
+        }
+        /*}}}  */
         ChanOutInt(fd_out,len);
         ChanOut(fd_out,(char *)buf,len);
     }

@@ -60,6 +60,8 @@ void c011_reset(void) {
     bcm2835_delayMicroseconds (5*1000);
     bcm2835_gpio_write(RESET, LOW);
     bcm2835_delayMicroseconds (5*1000);
+    //The whitecross HSL takes some time to cascade reset
+    bcm2835_delay(600);
 }
 
 void c011_analyse(void) {
