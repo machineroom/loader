@@ -17,11 +17,11 @@
 
 .SUFFIXES: .C .TAL .TLD .ARR .EXE
 
-BC=/home/james/transputer/bc
-LSC89=/home/james/transputer/lsc-V89.1
+BC=/home/pi/transputer/bc
+LSC89=/home/pi/lsc-V89.1
 LSC89_BIN=d:\exe
 
-LSC93=/home/james/transputer/lsc-V93.1
+LSC93=/home/pi/lsc-V93.1
 LSC93_BIN=d:\bin
 
 # change these according to your system. Keep them SHORT!
@@ -31,13 +31,13 @@ BCINC=D:\include
 #lsc c rule
 %.TAL : %.C
 	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\pp.exe $*.C" -c exit
-# no debugging information, for any processor, relocatable
+    # no debugging information, for any processor, relocatable
 	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\tcx $* -cf1p0r" -c exit
 
 #tcode assemble rule
 %.TLD : %.TAL
-	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\tasm.exe $* -cv" -c exit
-	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\vtlnk $*.lnk" -c exit
+	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\tasm.exe $*.TAL -cv" -c exit
+	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\vtlnk $*.LNK" -c exit
 
 #tcode assemble rule
 %.TRL : %.TAL
@@ -103,7 +103,7 @@ FLBOOT.TLD: FLBOOT.TAL
 FLLOAD.ARR: FLLOAD.TLD
 FLLOAD.TLD: FLLOAD.TAL
 
-IDENT.ARR: IDENT.TLD
-IDENT.TLD: IDENT.TAL
+IDENT.ARR : IDENT.TLD
+IDENT.TLD : IDENT.TAL
 
 
