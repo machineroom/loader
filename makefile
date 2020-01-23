@@ -17,16 +17,11 @@
 
 .SUFFIXES: .C .TAL .TLD .ARR .EXE
 
-BC=/home/pi/transputer/bc
 LSC89=/home/pi/lsc-V89.1
 LSC89_BIN=d:\exe
 
 LSC93=/home/pi/lsc-V93.1
 LSC93_BIN=d:\bin
-
-# change these according to your system. Keep them SHORT!
-BCLIB=D:\lib
-BCINC=D:\include
 
 #lsc c rule
 %.TAL : %.C
@@ -48,10 +43,8 @@ BCINC=D:\include
 	dosbox -c "mount C `pwd`" -c "C:" -c "ltoc $*" -c exit
 	dosbox -c "mount C `pwd`" -c "C:" -c "mkarr $*" -c exit
 
-man: man.exe
-
-man.exe: MAN.OBJ SCREEN2.OBJ LKIO.OBJ
-	dosbox -c "mount D $(BC)" -c "mount C `pwd`" -c "C:" -c "D:\bin\tlink -v  $(BCLIB)\C0S.OBJ MAN.OBJ SCREEN2.OBJ LKIO.OBJ,MAN.EXE,,tchrts $(BCLIB)\emu $(BCLIB)\maths $(BCLIB)\cs" -c exit
+man : sdl_man.c lkio_c011.c  c011.c SRESET.ARR FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR SMALLMAN.ARR
+	gcc -O0 -g sdl_man.c lkio_c011.c  c011.c -lSDL2 -lm -lbcm2835 -o $@
 
 clean:
 	rm -f *.OBJ
@@ -67,18 +60,6 @@ clean:
 	rm -f MLIBP.TAL
 	rm -f MAN.EXE
 
-runhost:
-	dosbox -c "mount C `pwd`" -c "C:" -c "man -v -t"
-
-MAN.OBJ:  MAN.C SRESET.ARR FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR SMALLMAN.ARR
-	dosbox -c "mount D $(BC)" -c "mount C `pwd`" -c "C:" -c "D:\bin\bcc -c -v -ms -Fs -w999 -I$(BCINC) MAN.C" -c exit
-
-LKIO.OBJ:    LKIO.ASM
-	dosbox -c "mount D $(BC)" -c "mount C `pwd`" -c "C:" -c "d:\bin\tasm -zi LKIO.ASM" -c exit
-
-SCREEN2.OBJ:    SCREEN2.ASM
-	dosbox -c "mount D $(BC)" -c "mount C `pwd`" -c "C:" -c "d:\bin\tasm -zi SCREEN2.ASM" -c exit
-
 MANDEL.TAL:  MANDEL.C
 MANDEL.TLD:  MANDEL.TAL MLIBP.TRL MANDEL.LNK
 MANDEL.ARR:  MANDEL.TLD
@@ -86,7 +67,6 @@ MANDEL.ARR:  MANDEL.TLD
 SMALLMAN.TAL:  SMALLMAN.C
 SMALLMAN.TLD:  SMALLMAN.TAL MLIBS.TRL SMALLMAN.LNK
 SMALLMAN.ARR:  SMALLMAN.TLD
-
 
 MLIBS.TAL:  MLIBS.C
 MLIBS.TRL:  MLIBS.TAL
