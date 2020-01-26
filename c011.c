@@ -1,8 +1,9 @@
 #include <bcm2835.h>
 #include <time.h>
-#include <stdio.h>
 #include "pins.h"
 #include "c011.h"
+#include <stdio.h>
+
 
 #define TCSLCSH (60)
 #define TCSHCSL (50)
@@ -12,7 +13,7 @@ static void sleep_ns(int ns) {
     struct timespec s = {0,ns};
     int ret = nanosleep(&s,NULL);
     if (ret != 0) {
-        fprintf (stderr,"nanosleep(%d) failed\n", ret);
+        printf ("nanosleep(%d) failed\n", ret);
     }
 }
 
@@ -144,14 +145,15 @@ static uint8_t read_c011(void) {
     bcm2835_gpio_write(CS, LOW);
     //must allow time for data valid after !CS
     sleep_ns (TCSLDrV);
-    d7=bcm2835_gpio_lev(D7);
-    d6=bcm2835_gpio_lev(D6);
-    d5=bcm2835_gpio_lev(D5);
-    d4=bcm2835_gpio_lev(D4);
-    d3=bcm2835_gpio_lev(D3);
-    d2=bcm2835_gpio_lev(D2);
-    d1=bcm2835_gpio_lev(D1);
-    d0=bcm2835_gpio_lev(D0);
+    uint32_t reg = bcm2835_peri_read (bcm2835_regbase(BCM2835_REGBASE_GPIO) + BCM2835_GPLEV0/4);
+    d7=(reg & 1<<D7) != 0;
+    d6=(reg & 1<<D6) != 0;
+    d5=(reg & 1<<D5) != 0;
+    d4=(reg & 1<<D4) != 0;
+    d3=(reg & 1<<D3) != 0;
+    d2=(reg & 1<<D2) != 0;
+    d1=(reg & 1<<D1) != 0;
+    d0=(reg & 1<<D0) != 0;
     byte = d7;
     byte <<= 1;
     byte |= d6;
