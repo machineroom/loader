@@ -24,7 +24,7 @@
 	.val    RESERVE,16
 	.val    CALLWSP,-4
 	.val    INITIME,0
-	.val    DELAY,16*2
+	.val    DELAY,16*2      ; not used!
         .val    LOCTOP,16
 
         .val    MININT,1
