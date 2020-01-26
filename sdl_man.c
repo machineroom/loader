@@ -645,8 +645,8 @@ void boot_mandel(void)
 {   int fxp, only_2k, nnodes;
 
     rst_adpt(TRUE);
-    if (verbose) printf("Resetting Transputers...");
-    if (!load_buf(SRESET,sizeof(SRESET))) exit(1);
+//    if (verbose) printf("Resetting Transputers...");
+//    if (!load_buf(SRESET,sizeof(SRESET))) exit(1);
     if (verbose) printf("Booting...");
     if (!load_buf(FLBOOT,sizeof(FLBOOT))) exit(1);
     if (verbose) printf("Loading...");      
