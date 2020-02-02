@@ -21,33 +21,34 @@
 	.t800
 ;  val definitions
 
-	.val    RESERVE,16
-	.val    CALLWSP,-4
-	.val    INITIME,0
-	.val    DELAY,16*2      ; not used!
-        .val    LOCTOP,16
+    .val    RESERVE,16
+    .val    CALLWSP,-4
+    .val    INITIME,0       ; not used!
+    .val    DELAY,16*2      ; not used!
+    .val    LOCTOP,16
 
-        .val    MININT,1
-        .val    DBLINK,1
-        .val    MEMSTART,2
-        .val    BOOTIN,3
-	.val    BOOTOUT,4               ;5 and 6 contain links out
-        .val    LDSTART,7               ;zeroed during BOOTOUT save
-	.val    ENTRYP,8
-        .val    WSPACE,9
-        .val    LDADDR,10
-        .val    TRANTYPE,11
-        .val    CODELEN,12              ;high order bytes must stay zeroed
-        .val    BIDX,12
-        .val    LOOPA,13
-        .val    LOOPB,14
-        .val    TLINK,15
-        .val    WSP,15
+    ;this struct shared with flboot & ident
+    .val    MININT,1
+    .val    DBLINK,1
+    .val    MEMSTART,2
+    .val    BOOTIN,3
+    .val    BOOTOUT,4               ;5 and 6 contain links out
+    .val    LDSTART,7               ;zeroed during BOOTOUT save
+    .val    ENTRYP,8
+    .val    WSPACE,9
+    .val    LDADDR,10
+    .val    TRANTYPE,11
+    .val    CODELEN,12              ;high order bytes must stay zeroed
+    .val    BIDX,12
+    .val    LOOPA,13
+    .val    LOOPB,14
+    .val    TLINK,15
+    .val    WSP,15
 
-	.val    OBUFWS,6
-        .val    OLOCAL,3
-	.val    OSTATIC,1
-        .val    OLINK,2
+    .val    OBUFWS,6
+    .val    OLOCAL,3
+    .val    OSTATIC,1
+    .val    OLINK,2
 
 ;
         .pub    START
@@ -57,9 +58,9 @@
 ;
 ;
 START:  ldl     LDSTART                 ;setup current load address
-	stl     LDADDR
+        stl     LDADDR
         ldc     0                       ;zero upper bytes of CODELEN
-	stl     CODELEN
+        stl     CODELEN
 L1:     ldlp    CODELEN                 ;input code length
         ldl     BOOTIN
         ldc     1
@@ -72,7 +73,7 @@ L1:     ldlp    CODELEN                 ;input code length
         in
 L2:     ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
         stl     LOOPA
-	ldc     3
+        ldc     3
         stl     LOOPB
 L3:
         ldl     LOOPA                   ;TLINK:= @OOTOUT[i]
@@ -83,9 +84,9 @@ L3:
         ldl     TLINK                   ;if TLINK <> 0
         cj      @L4
         ldlp    CODELEN                 ;send out length to neighbors
-	ldl     TLINK
+        ldl     TLINK
         ldc     1
-	out
+        out
         ldl     CODELEN                 ;if CODELEN <> 0
         cj      @L4
         ldl     LDADDR                  ;send out code to neighbors
@@ -98,7 +99,7 @@ L4:
         lend                            ;end loop
 L5:     ldl     CODELEN                 ;if CODELEN <> 0
         cj      @EXEC
-	ldl     CODELEN                 ;LDADDR:= LDADDR+CODELEN
+        ldl     CODELEN                 ;LDADDR:= LDADDR+CODELEN
         ldl     LDADDR
         bsub
         stl     LDADDR
@@ -109,9 +110,9 @@ L5:     ldl     CODELEN                 ;if CODELEN <> 0
 ;
 ;
 EXEC:   ldc     E2-E1                   ;save return address
-	ldpi
+        ldpi
 E1:     ldl     WSPACE
-	stnl    0
+        stnl    0
         ldl     WSPACE                  ;adjust to new work space
         gajw
         stl     1                       ;save old work space as param

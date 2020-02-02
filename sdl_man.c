@@ -670,12 +670,13 @@ void boot_mandel(void)
     if (verbose) printf("\"fpx\",");
     fxp     = (int)word_in();
     printf("\nnodes found: %d",nnodes);
-    if (only_2k) printf("\nnodes have only 2K RAM");
+    printf("\nnodes with only 2K RAM: %d", only_2k);
     printf("\nusing %s-point arith.\n", fxp ? "fixed" : "floating");
     if (only_2k)
     {
         if (verbose) printf("Sending 2k mandel-code\n");
         if (!load_buf(SMALLMAN,sizeof(SMALLMAN))) exit(1);
+        //send 0 (marker for no more code). FLLOAD will start executing the loaded code
         if (!tbyte_out(0))
         {
             printf(" -- timeout sending execute\n");
