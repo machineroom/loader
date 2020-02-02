@@ -21,12 +21,6 @@
 	.t800
 ;  val definitions
 
-    .val    RESERVE,16
-    .val    CALLWSP,-4
-    .val    INITIME,0       ; not used!
-    .val    DELAY,16*2      ; not used!
-    .val    LOCTOP,16
-
     ;this struct shared with flboot & ident
     .val    MININT,1
     .val    DBLINK,1
