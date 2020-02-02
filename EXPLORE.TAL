@@ -1,0 +1,246 @@
+;******************************* EXPLORE.TAL ********************************
+;rip-off of FLBOOT.TAL
+
+	.t800
+;  val definition;
+
+;link speed = 120KB/sec 
+;bootstrap ~= 224 bytes
+;need ~2ms (2000uS) /64 = 31 ticks
+	.val    RESERVE,16
+	.val    CALLWSP,-4
+	.val    INITIME,0
+	.val    DELAY,50
+	.val    T805,  0x0a
+	.val    T800D, 0x60
+	.val    T414B, 0x61
+	.val    LOCTOP,16
+
+    ;this struct shared with flboot & ident
+	.val    MININT,1
+	.val    MEMSTART,2
+	.val    BOOTIN,3
+	.val    BOOTOUT,4               ;5 and 6 contain links out (array of 3 link IDs, 0 if not connected to another transputer)
+	.val    LDSTART,7               ;zeroed during BOOTOUT save
+	.val    ENTRYP,8
+	.val    WSPACE,9
+	.val    LDADDR,10
+	.val    TRANTYPE,11
+	.val    CODELEN,12              ;high order bytes must stay zeroed
+	.val    BIDX,12
+	.val    LOOPA,13
+	.val    LOOPB,14
+	.val    TLINK,15
+	.val    WSP,15
+
+	.val    OBUFWS,6
+	.val    OLOCAL,3
+	.val    OSTATIC,1
+	.val    OLINK,2
+
+
+	.pub    START
+;       initialization
+
+	.align
+START:  ajw     RESERVE                 ;reserve work space
+	call    0                       ;save registers into workspace. Fills: MININT, MEMSTART & BOOTIN (from Creg)
+	ldc     @START - @S1
+	ldpi
+S1:     stl     MEMSTART                ;save memory start
+	ldlp    4-RESERVE               ;calc code length
+	ldl     MEMSTART
+	diff
+	stl     CODELEN
+	mint
+	stl     MININT                  ;save MIN INTEGER
+	ldl     MININT                  ;init process front pointers
+	stlf
+	ldl     MININT
+	sthf
+	ldc    T800D                    ;find transtputer type (A=T800)
+	ldc    T414B                    ;(A=T414B, B=T800)
+	ldc     0                       ;(A=0, B=T414B, C=T800D)
+	opr    0x17c                    ;lddevid    (A=devid, B=0, C=T414B)
+	stl    LOOPA                    ;LOOPA = devid  (A=0, B=T414B)
+	stl    LOOPB                    ;LOOPB = 0 (A=T414B)
+	ldl    LOOPB                    ;(A=0, B=T414B)
+	cj     @nfp1                    ;jump if A==0 (no lddevid)
+	ldl    LOOPB
+	stl    TRANTYPE
+	j      @nfp2
+nfp1    ldl    LOOPA
+	stl    TRANTYPE                 ;TRANTYPE=devid
+nfp2
+	testerr                         ;clear error flag
+	clrhalterr                      ;clear halt on error
+	ldl     TRANTYPE                ;clear fpu error flag if T800 or T805
+	eqc     T800D
+	ldl     TRANTYPE
+	eqc     T805
+	or
+	cj      @I1                     ; JMP if not T8xx
+	fptesterr
+I1: ldc     0                       ;init links and event
+	stl     LOOPA                   ;LOOPA=0 (lend control block 0:11)
+	ldc     11
+	stl     LOOPB                   
+I2: ldl     MININT                  ;(A=minint)
+	ldl     LOOPA                   ;(A=LOOPA,B=minint)
+	ldl     MININT                  ;(A=minint,B=LOOPA,C=minint)
+	wsub                            ;A=minint[LOOPA]
+	stnl    0                       ;minint[LOOPA+0]=LOOPA
+	ldlp    LOOPA
+	ldc     I3-I2
+	lend                            ;inc & test loop control struct
+I3: ldc     INITIME                 ;start timer at INITIME(0)
+	sttimer
+
+; bootstrap neighbors
+; send bootstrap out on all links, except link booted from. Use high-prio processes to do all 3 links in PAR
+; fire & forget, i.e don't care if bootstrap accepted
+
+	ldlp    LOCTOP-OLOCAL           ;init new work space ptr
+	stl     WSP
+	ldc     0                       ;loop i:= 0 for 4 each link
+	stl     LOOPA                   ;LOOPA = lend control struct 0:4
+	ldc     4
+	stl     LOOPB
+B1: ldl     LOOPA                   ;if LINKIN[i] <> BOOTIN
+	ldl     MININT
+	ldnlp   4
+	wsub
+	ldl     BOOTIN
+	diff
+	cj      @B3
+	ldl     WSP                     ;alloc OUTBUF work space
+	ldnlp   OBUFWS
+	stl     WSP
+	ldl     LOOPA                   ;save LINKOUT[i]
+	ldl     MININT
+	wsub
+	ldl     WSP
+	stnl    OLINK
+	ldlp    0                       ;save static link
+	ldl     WSP
+	stnl    OSTATIC
+	ldc     OUTBUF-B2               ;save iptr to OUTBUF
+	ldpi
+B2: ldl     WSP
+	stnl    -1
+	ldl     WSP                     ;load new work space ptr
+	runp                            ;run output buffer at high pri
+B3: ldlp    LOOPA
+	ldc     B4-B1
+	lend                            ;end loop
+B4: ldtimer                         ;wait for any com. to finish
+	adc     DELAY
+	tin                             ;block until timer reaches DELAY
+	
+;seterr -> first 12 transputers light error
+;seterr,write 42 to bootin -> all transputers light error
+;delay >40 ticks -> all transputers get code
+;    seterr
+    ldtimer
+    ldc     100  ;20,30=no error flag, 40=error flag
+    sum
+    tin
+;    testerr
+    
+
+; save BOOTOUT links (those that successfuly communicated) and reset others except BOOTIN
+
+	ldc     0                       ;BIDX:= 0
+	stl     BIDX
+	ldc     0                       ;loop i:= 0 for 8 each hard link (0-3 output, 4-7 input)
+	stl     LOOPA
+	ldc     8
+	stl     LOOPB
+R1: ldl     LOOPA                   ;TLINK:= LINK[i]
+	ldl     MININT
+	wsub
+	stl     TLINK
+	ldc     4                       ;if i < 4 (output link)
+	ldl     LOOPA
+	gt                              ;A=1 if B>A
+	cj      @R2                     ;j if A=0
+	ldc     0                       ;BOOTOUT[i]:= 0 (default to inactive link)
+	ldl     LOOPA
+	ldlp    BOOTOUT
+	wsub
+	stnl    0
+	ldl     TLINK                   ;if TLINK+4 <> BOOTIN
+	ldnlp   4
+	ldl     BOOTIN
+	diff
+	cj      @R3
+	ldl     TLINK                   ;if *TLINK = MININT (comms done)
+	ldnl    0
+	ldl     MININT
+	diff
+	eqc     0                       ;A=1 if link word reg == minint
+	cj      @R2                     ;jump if A==0 (link word reg != minint)
+	ldl     TLINK                   ;BOOTOUT[BIDX]:= TLINK
+	ldl     BIDX
+	ldlp    BOOTOUT
+	wsub
+	stnl    0
+	ldl     BIDX                    ;BIDX:= BIDX+1
+	adc     1
+	stl     BIDX
+	j       @R3
+R2: ldl     TLINK                   ;if TLINK <> BOOTIN
+	ldl     BOOTIN
+    diff
+    cj      @R3
+    ldl     TLINK                   ;resetch(TLINK)
+    resetch
+R3: ldlp    LOOPA
+    ldc     R4-R1
+    lend                            ;end loop
+R4:
+
+;JCW begin
+	ldc     0                       ;loop i:= 0 for 3
+	stl     LOOPA
+	ldc     3
+	stl     LOOPB
+R5:
+    ldl     LOOPA                   ;Areg=BOOTOUT[i]
+    ldlp    BOOTOUT
+    wsub
+    ldnl    0
+    cj      @R6    
+	seterr                          ;flash error LED
+    ldtimer
+    ldc     4000
+	sum
+	tin
+    testerr
+    ldtimer
+    ldc     4000
+	sum
+	tin
+R6: ldlp    LOOPA
+    ldc     R7-R5
+    lend                            ;end loop
+R7:
+    stopp
+;JCW end
+
+;       output buffer
+
+OUTBUF: ldl     OLINK                   ;load output link
+        ldl     OSTATIC                 ;load code length
+        ldnl    CODELEN
+        outbyte                         ;output code length
+        ldl     OSTATIC                 ;load code start
+        ldnl    MEMSTART
+        ldl     OLINK                   ;load output link
+        ldl     OSTATIC                 ;load code length
+        ldnl    CODELEN
+        out                             ;output code
+        stopp
+
+        .align
+END:    .end

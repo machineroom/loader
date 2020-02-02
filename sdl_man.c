@@ -640,11 +640,17 @@ void draw_box(int x1, int y1, int x2, int y2) {
 #include "IDENT.ARR"
 #include "MANDEL.ARR"
 #include "SMALLMAN.ARR"
+#include "EXPLORE.ARR"
 
 void boot_mandel(void)
 {   int fxp, only_2k, nnodes;
 
     rst_adpt(TRUE);
+#if 1
+    if (verbose) printf("Exploring...");
+    load_buf(FLBOOT,sizeof(EXPLORE));
+    exit(0);
+#else
 //    if (verbose) printf("Resetting Transputers...");
 //    if (!load_buf(SRESET,sizeof(SRESET))) exit(1);
     if (verbose) printf("Booting...");
@@ -693,6 +699,7 @@ void boot_mandel(void)
         word_in();    /*throw away nnodes*/
         word_in();    /*throw away fixed point*/
     }
+#endif
 }
 
 /* return TRUE if loaded ok, FALSE if error. */

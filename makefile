@@ -41,7 +41,7 @@ LSC93_BIN=d:\bin
 %.ARR : %.TLD
 	dosbox -c "mount C `pwd`" -c "C:" -c "ltoc $*" -c "mkarr $*" -c exit
 
-man : sdl_man.c lkio_c011.c  c011.c SRESET.ARR FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR SMALLMAN.ARR
+man : sdl_man.c lkio_c011.c  c011.c SRESET.ARR FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR SMALLMAN.ARR EXPLORE.ARR
 	gcc -O0 -g sdl_man.c lkio_c011.c  c011.c -lSDL2 -lm -lbcm2835 -o $@
 
 clean:
@@ -77,6 +77,9 @@ SRESET.TLD: SRESET.TAL
 
 FLBOOT.ARR: FLBOOT.TLD
 FLBOOT.TLD: FLBOOT.TAL
+
+EXPLORE.ARR: EXPLORE.TLD
+EXPLORE.TLD: EXPLORE.TAL
 
 FLLOAD.ARR: FLLOAD.TLD
 FLLOAD.TLD: FLLOAD.TAL
