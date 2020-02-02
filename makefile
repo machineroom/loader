@@ -26,13 +26,12 @@ LSC93_BIN=d:\bin
 #lsc c rule
 %.TAL : %.C
 	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\pp.exe $*.C" -c exit
-    # no debugging information, for any processor, relocatable
+    #no debugging information, for any processor, relocatable
 	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\tcx $* -cf1p0r" -c exit
 
 #tcode assemble rule
 %.TLD : %.TAL
-	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\tasm.exe $*.TAL -cv" -c exit
-	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\vtlnk $*.LNK" -c exit
+	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\tasm.exe $*.TAL -cv" -c "$(LSC89_BIN)\vtlnk $*.LNK" -c exit
 
 #tcode assemble rule
 %.TRL : %.TAL
@@ -40,8 +39,7 @@ LSC93_BIN=d:\bin
 
 #rule to make c arrays from .tld files
 %.ARR : %.TLD
-	dosbox -c "mount C `pwd`" -c "C:" -c "ltoc $*" -c exit
-	dosbox -c "mount C `pwd`" -c "C:" -c "mkarr $*" -c exit
+	dosbox -c "mount C `pwd`" -c "C:" -c "ltoc $*" -c "mkarr $*" -c exit
 
 man : sdl_man.c lkio_c011.c  c011.c SRESET.ARR FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR SMALLMAN.ARR
 	gcc -O0 -g sdl_man.c lkio_c011.c  c011.c -lSDL2 -lm -lbcm2835 -o $@
