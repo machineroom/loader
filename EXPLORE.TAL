@@ -98,7 +98,9 @@ I3: ldc     INITIME                 ;start timer at INITIME(0)
 
 ; bootstrap neighbors
 ; send bootstrap out on all links, except link booted from. Use high-prio processes to do all 3 links in PAR
-; fire & forget, i.e don't care if bootstrap accepted
+; If a link isn't connected (or the transputer doesn't ack) then the process will block.
+; consider this to be fire & forget, i.e don't care if bootstrap accepted
+; we subsequently see which links accepted the bootstrap and mark those as 'valid'
 
 	ldlp    LOCTOP-OLOCAL           ;init new work space ptr
 	stl     WSP
@@ -142,7 +144,7 @@ B4: ldtimer                         ;wait for any com. to finish
 ;delay >40 ticks -> all transputers get code
 ;    seterr
     ldtimer
-    ldc     100  ;20,30=no error flag, 40=error flag
+    ldc     100  ;delay >40 -> transputers after HSL get booted
     sum
     tin
 ;    testerr
@@ -201,6 +203,10 @@ R3: ldlp    LOOPA
 R4:
 
 ;JCW begin
+; by flashing the error LED for each valid link in BOOTOUT we can see how many links each transputer thinks
+; it is connected too. We know from ispy that nearly all links in a WX cluster are connected (1 bootstrap, 3 neighbours), 
+; with the exceptions being 3 links (1 bootstrap, 2 out) or 2 links (1 bootstrap, 1 out)
+; in all cases thereofre each transputer in the network should flash error at-least once!
 	ldc     0                       ;loop i:= 0 for 3
 	stl     LOOPA
 	ldc     3
@@ -230,7 +236,8 @@ R7:
 
 ;       output buffer
 
-OUTBUF: ldl     OLINK                   ;load output link
+OUTBUF: 
+        ldl     OLINK                   ;load output link
         ldl     OSTATIC                 ;load code length
         ldnl    CODELEN
         outbyte                         ;output code length

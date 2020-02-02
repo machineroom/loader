@@ -647,8 +647,8 @@ void boot_mandel(void)
 
     rst_adpt(TRUE);
 #if 1
-    if (verbose) printf("Exploring...");
-    load_buf(FLBOOT,sizeof(EXPLORE));
+    printf("Exploring...\n");
+    load_buf(EXPLORE,sizeof(EXPLORE));
     exit(0);
 #else
 //    if (verbose) printf("Resetting Transputers...");
