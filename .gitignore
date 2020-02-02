@@ -1,1 +1,11 @@
-a.out
+*.TLD
+*.TRL
+*.ARR
+*.BIN
+*.MAP
+*.PP
+MANDEL.TAL
+SMALLMAN.TAL
+MLIBP.TAL
+MLIBS.TAL
+man
