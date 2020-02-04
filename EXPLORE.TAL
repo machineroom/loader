@@ -180,11 +180,6 @@ R1: ldl     LOOPA                   ;TLINK:= LINK[i]
 	ldl     LOOPA
 	gt                              ;A=1 if B>A
 	cj      @R2                     ;j if A=0
-	ldc     0                       ;BOOTOUT[i]:= 0 (default to inactive link)
-	ldl     LOOPA
-	ldlp    BOOTOUT
-	wsub
-	stnl    0
 	ldl     TLINK                   ;if TLINK+4 <> BOOTIN
 	ldnlp   4
 	ldl     BOOTIN
