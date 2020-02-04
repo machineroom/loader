@@ -139,15 +139,10 @@ B4: ldtimer                         ;wait for any com. to finish
 	adc     DELAY
 	tin                             ;block until timer reaches DELAY
 	
-;seterr -> first 12 transputers light error
-;seterr,write 42 to bootin -> all transputers light error
-;delay >40 ticks -> all transputers get code
-;    seterr
     ldtimer
     ldc     100  ;delay >40 -> transputers after HSL get booted
     sum
     tin
-;    testerr
     
 
 ; save BOOTOUT links (those that successfuly communicated) and reset others except BOOTIN
