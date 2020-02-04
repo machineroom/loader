@@ -96,6 +96,24 @@ I2: ldl     MININT                  ;(A=minint)
 I3: ldc     INITIME                 ;start timer at INITIME(0)
 	sttimer
 
+;JCW begin
+	ldc     0                       ;BOOTOUT[0]:= 0 (default to inactive link)
+	ldc     0
+	ldlp    BOOTOUT
+	wsub
+	stnl    0
+	ldc     0                       ;BOOTOUT[1]:= 0 (default to inactive link)
+	ldc     1
+	ldlp    BOOTOUT
+	wsub
+	stnl    0
+	ldc     0                       ;BOOTOUT[2]:= 0 (default to inactive link)
+	ldc     2
+	ldlp    BOOTOUT
+	wsub
+	stnl    0
+;JCW end
+
 ; bootstrap neighbors
 ; send bootstrap out on all links, except link booted from. Use high-prio processes to do all 3 links in PAR
 ; If a link isn't connected (or the transputer doesn't ack) then the process will block.
@@ -132,6 +150,13 @@ B2: ldl     WSP
 	stnl    -1
 	ldl     WSP                     ;load new work space ptr
 	runp                            ;run output buffer at high pri
+	;JCW begin
+    ldtimer                         ;delay to allow comms to take place
+    ldc     100
+    sum
+    tin
+	
+	;JCW end
 B3: ldlp    LOOPA
 	ldc     B4-B1
 	lend                            ;end loop
@@ -139,12 +164,6 @@ B4: ldtimer                         ;wait for any com. to finish
 	adc     DELAY
 	tin                             ;block until timer reaches DELAY
 	
-    ldtimer
-    ldc     100  ;delay >40 -> transputers after HSL get booted
-    sum
-    tin
-    
-
 ; save BOOTOUT links (those that successfuly communicated) and reset others except BOOTIN
 
 	ldc     0                       ;BIDX:= 0
@@ -201,7 +220,7 @@ R4:
 ; by flashing the error LED for each valid link in BOOTOUT we can see how many links each transputer thinks
 ; it is connected too. We know from ispy that nearly all links in a WX cluster are connected (1 bootstrap, 3 neighbours), 
 ; with the exceptions being 3 links (1 bootstrap, 2 out) or 2 links (1 bootstrap, 1 out)
-; in all cases thereofre each transputer in the network should flash error at-least once!
+; in all cases therefore each transputer in the network should flash error at-least once!
 	ldc     0                       ;loop i:= 0 for 3
 	stl     LOOPA
 	ldc     3
