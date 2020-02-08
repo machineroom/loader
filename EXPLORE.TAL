@@ -98,6 +98,8 @@ I2: ldl     MININT                  ;init link control words to minint
 	lend                            ;inc & test loop control struct
 I3: ldc     INITIME                 ;start timer at INITIME(0)
 	sttimer
+	testerr
+	clrhalterr
 
 ;JCW begin
 	ldc     0                       ;BOOTOUT[0]:= 0 (default to inactive link)
@@ -152,7 +154,7 @@ B2: ldl     WSP
 	runp                            ;run output buffer at high pri (running at low prio is same)
 ;JCW begin
     ldtimer                         ;delay to allow comms to take place
-    ldc     1200
+    ldc     600
     sum
     tin
     
@@ -161,22 +163,11 @@ B2: ldl     WSP
 	wsub
 	stl     TLINK                   ;TLINK is address of link register (minint+0,8,C)
 
- ldc    1
- mint ;boot out (console)
- wsub
- ldc   10   ;A
- outword
- ldc    1
- mint ;boot out (console)
- wsub
- ldl     TLINK
- outword
- ldc    1
- mint ;boot out (console)
- wsub
- ldl     TLINK
- ldnl    0
- outword
+; ldc    1
+; mint ;boot out (console)
+; wsub
+; ldc   10   ;A
+; outword
 	ldl     TLINK                   ;if *TLINK = MININT (comms done)
 	ldnl    0
 	ldl     MININT
@@ -193,8 +184,8 @@ B2: ldl     WSP
 	stl     WSPACE
 	j       @B3
 J1:
-    ;ldl     TLINK                   ;reset output side of chanel that didn't get a response
-    ;resetch
+    ldl     TLINK                   ;reset output side of chanel that didn't get a response
+    resetch
 ;JCW end
 B3:     
     ldlp    LOOPA
@@ -212,11 +203,11 @@ B4:
 	ldc     3
 	stl     LOOPB
 R5:
-    ldl     LOOPA                   ;if BOOTOUT[i]==0 jump R6
-    ldlp    BOOTOUT
-    wsub
-    ldnl    0
-    cj      @R6    
+    ;ldl     LOOPA                   ;if BOOTOUT[i]==0 jump R6
+    ;ldlp    BOOTOUT
+    ;wsub
+    ;ldnl    0
+    ;cj      @R6    
 	seterr                          ;error LED ON
     ldtimer
     ldc     4000
@@ -237,11 +228,6 @@ R7:
         
 ;       output buffer
 OUTBUF: 
-    ldc    1
-    mint ;boot out (console)
-    wsub
-    ldc 11  ;B
-    outword
         ldl     OLINK                   ;load output link
         ldl     OSTATIC                 ;load code length
         ldnl    CODELEN
