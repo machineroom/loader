@@ -21,16 +21,19 @@
 	.val    MEMSTART,2
 	.val    BOOTIN,3
 	.val    BOOTOUT,4               ;5 and 6 contain links out (array of 3 link IDs, 0 if not connected to another transputer)
+	.val    BOOTOUT1,4
+	.val    BOOTOUT2,5
+	.val    BOOTOUT3,6
 	.val    LDSTART,7               ;zeroed during BOOTOUT save
 	.val    ENTRYP,8
 	.val    WSPACE,9
 	.val    LDADDR,10
 	.val    TRANTYPE,11
 	.val    CODELEN,12              ;high order bytes must stay zeroed
-	.val    BIDX,12
+	.val    BIDX,12                 ;NOTE shared location
 	.val    LOOPA,13
 	.val    LOOPB,14
-	.val    TLINK,15
+	.val    TLINK,11                ;NOTE shared location
 	.val    WSP,15
 
 	.val    OBUFWS,6
@@ -85,11 +88,11 @@ I1: ldc     0                       ;init links and event
 	stl     LOOPA                   ;LOOPA=0 (lend control block 0:11)
 	ldc     11
 	stl     LOOPB                   
-I2: ldl     MININT                  ;(A=minint)
-	ldl     LOOPA                   ;(A=LOOPA,B=minint)
-	ldl     MININT                  ;(A=minint,B=LOOPA,C=minint)
-	wsub                            ;A=minint[LOOPA]
-	stnl    0                       ;minint[LOOPA+0]=LOOPA
+I2: ldl     MININT                  ;init link control words to minint
+	ldl     LOOPA                   
+	ldl     MININT                  
+	wsub                            
+	stnl    0                       ;minint[LOOPA+0]=minint
 	ldlp    LOOPA
 	ldc     I3-I2
 	lend                            ;inc & test loop control struct
@@ -98,20 +101,11 @@ I3: ldc     INITIME                 ;start timer at INITIME(0)
 
 ;JCW begin
 	ldc     0                       ;BOOTOUT[0]:= 0 (default to inactive link)
-	ldc     0
-	ldlp    BOOTOUT
-	wsub
-	stnl    0
-	ldc     0                       ;BOOTOUT[1]:= 0 (default to inactive link)
-	ldc     1
-	ldlp    BOOTOUT
-	wsub
-	stnl    0
-	ldc     0                       ;BOOTOUT[2]:= 0 (default to inactive link)
-	ldc     2
-	ldlp    BOOTOUT
-	wsub
-	stnl    0
+	stl     BOOTOUT1
+	ldc     0        
+	stl     BOOTOUT2
+	ldc     0        
+	stl     BOOTOUT3
 ;JCW end
 
 ; bootstrap neighbors
@@ -120,13 +114,18 @@ I3: ldc     INITIME                 ;start timer at INITIME(0)
 ; consider this to be fire & forget, i.e don't care if bootstrap accepted
 ; we subsequently see which links accepted the bootstrap and mark those as 'valid'
 
+;JCW begin
+	ldc     0                       ;WSPACE:= 0
+	stl     WSPACE
+;JCW end
 	ldlp    LOCTOP-OLOCAL           ;init new work space ptr
 	stl     WSP
 	ldc     0                       ;loop i:= 0 for 4 each link
 	stl     LOOPA                   ;LOOPA = lend control struct 0:4
 	ldc     4
 	stl     LOOPB
-B1: ldl     LOOPA                   ;if LINKIN[i] <> BOOTIN
+B1: 
+    ldl     LOOPA                   ;if LINKIN[i] <> BOOTIN
 	ldl     MININT
 	ldnlp   4
 	wsub
@@ -148,68 +147,60 @@ B1: ldl     LOOPA                   ;if LINKIN[i] <> BOOTIN
 	ldpi
 B2: ldl     WSP
 	stnl    -1
+
 	ldl     WSP                     ;load new work space ptr
-	runp                            ;run output buffer at high pri
-	;JCW begin
+	runp                            ;run output buffer at high pri (running at low prio is same)
+;JCW begin
     ldtimer                         ;delay to allow comms to take place
-    ldc     100
+    ldc     1200
     sum
     tin
-	
-	;JCW end
-B3: ldlp    LOOPA
-	ldc     B4-B1
-	lend                            ;end loop
-B4: ldtimer                         ;wait for any com. to finish
-	adc     DELAY
-	tin                             ;block until timer reaches DELAY
-	
-; save BOOTOUT links (those that successfuly communicated) and reset others except BOOTIN
-
-	ldc     0                       ;BIDX:= 0
-	stl     BIDX
-	ldc     0                       ;loop i:= 0 for 8 each hard link (0-3 output, 4-7 input)
-	stl     LOOPA
-	ldc     8
-	stl     LOOPB
-R1: ldl     LOOPA                   ;TLINK:= LINK[i]
+    
+    ldl     LOOPA                   ;TLINK:= LINK[i]
 	ldl     MININT
 	wsub
-	stl     TLINK
-	ldc     4                       ;if i < 4 (output link)
-	ldl     LOOPA
-	gt                              ;A=1 if B>A
-	cj      @R2                     ;j if A=0
-	ldl     TLINK                   ;if TLINK+4 <> BOOTIN
-	ldnlp   4
-	ldl     BOOTIN
-	diff
-	cj      @R3
+	stl     TLINK                   ;TLINK is address of link register (minint+0,8,C)
+
+ ldc    1
+ mint ;boot out (console)
+ wsub
+ ldc   10   ;A
+ outword
+ ldc    1
+ mint ;boot out (console)
+ wsub
+ ldl     TLINK
+ outword
+ ldc    1
+ mint ;boot out (console)
+ wsub
+ ldl     TLINK
+ ldnl    0
+ outword
 	ldl     TLINK                   ;if *TLINK = MININT (comms done)
 	ldnl    0
 	ldl     MININT
 	diff
 	eqc     0                       ;A=1 if link word reg == minint
-	cj      @R2                     ;jump if A==0 (link word reg != minint)
-	ldl     TLINK                   ;BOOTOUT[BIDX]:= TLINK
-	ldl     BIDX
+	cj      @J1                     ;jump if A==0 (link word reg != minint i.e. comms pending)
+	ldl     TLINK                   ;BOOTOUT[WSPACE]:= TLINK
+	ldl     WSPACE
 	ldlp    BOOTOUT
 	wsub
 	stnl    0
-	ldl     BIDX                    ;BIDX:= BIDX+1
+	ldl     WSPACE                    ;WSPACE:= WSPACE+1
 	adc     1
-	stl     BIDX
-	j       @R3
-R2: ldl     TLINK                   ;if TLINK <> BOOTIN
-	ldl     BOOTIN
-    diff
-    cj      @R3
-    ldl     TLINK                   ;resetch(TLINK)
-    resetch
-R3: ldlp    LOOPA
-    ldc     R4-R1
-    lend                            ;end loop
-R4:
+	stl     WSPACE
+	j       @B3
+J1:
+    ;ldl     TLINK                   ;reset output side of chanel that didn't get a response
+    ;resetch
+;JCW end
+B3:     
+    ldlp    LOOPA
+	ldc     B4-B1
+	lend                            ;end loop
+B4: 
 
 ;JCW begin
 ; by flashing the error LED for each valid link in BOOTOUT we can see how many links each transputer thinks
@@ -221,21 +212,21 @@ R4:
 	ldc     3
 	stl     LOOPB
 R5:
-    ldl     LOOPA                   ;Areg=BOOTOUT[i]
+    ldl     LOOPA                   ;if BOOTOUT[i]==0 jump R6
     ldlp    BOOTOUT
     wsub
     ldnl    0
     cj      @R6    
-	seterr                          ;flash error LED
+	seterr                          ;error LED ON
     ldtimer
     ldc     4000
 	sum
-	tin
-    testerr
+	tin                             ;end delay
+    testerr                         ;error LED OFF
     ldtimer
     ldc     4000
 	sum
-	tin
+	tin                             ;end delay
 R6: ldlp    LOOPA
     ldc     R7-R5
     lend                            ;end loop
@@ -243,9 +234,14 @@ R7:
     stopp
 ;JCW end
 
+        
 ;       output buffer
-
 OUTBUF: 
+    ldc    1
+    mint ;boot out (console)
+    wsub
+    ldc 11  ;B
+    outword
         ldl     OLINK                   ;load output link
         ldl     OSTATIC                 ;load code length
         ldnl    CODELEN

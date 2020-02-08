@@ -649,6 +649,11 @@ void boot_mandel(void)
 #if 1
     printf("Exploring...\n");
     load_buf(EXPLORE,sizeof(EXPLORE));
+    while (1) {
+        only_2k = (int)word_in();
+        if (only_2k == -1) break;
+        printf("word = 0x%X\n", only_2k);
+    }
     exit(0);
 #else
 //    if (verbose) printf("Resetting Transputers...");
