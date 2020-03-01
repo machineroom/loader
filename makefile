@@ -31,7 +31,8 @@ LSC93_BIN=d:\bin
 
 #tcode assemble rule
 %.TLD : %.TAL
-	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\tasm.exe $*.TAL -cv" -c "$(LSC89_BIN)\vtlnk $*.LNK" -c exit
+	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\tasm.exe $*.TAL -cv > asm.out" -c "$(LSC89_BIN)\vtlnk $*.LNK" -c exit
+	cat ASM.OUT
 
 #tcode assemble rule
 %.TRL : %.TAL
