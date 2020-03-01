@@ -68,11 +68,13 @@ START:  ajw     -RESERVE
     ldl     STATIC
     ldnl    BOOTIN
     ldc     1
-    in
+    in                              ;read 1 byte from BOOTIN to TMPID
+
     ldlp    TMPID                   ;ID:= TMPID
     lb
     ldl     STATIC
     stnl    ID
+    
     ldl     TMPID                   ;TMPID:= TMPID BITOR 1
     ldc     1
     or
@@ -102,68 +104,11 @@ L3: ldc     TRUE
     stl     LOADING
 ;}}}  ;
 ;{{{  get info to send to paren;
-;{{{  are we fixed point;
-    ldl     STATIC
-    ldnl    TRANTYPE
-    eqc     T800D
-
-    ldl     STATIC
-    ldnl    TRANTYPE
-    LDC	    T805LO
-    GT
-    CJ	    @?5
-;   stl	    TEMP1
-    LDC	    T805HI
-    ldl	    STATIC
-    LDNL    TRANTYPE
-    GT
-    CJ	    @?5
-    ldc	    1
-?3
-;   eqc     T805
-?5
-    or
-    eqc     0                    ;do a LOGICAL NOT
+    ldc     0               ;no T800 (testing)
     stl     FIXED_POINT
-;}}}  ;
-;{{{  do we have only 2k;
 	;    do initializations
-    ldc     FALSE          ;no for now
+    ldc     FALSE           ;no 2k (testing)
     stl     ONLY_2K
-    mint
-    adc     3000           ; create an address between 2 and 4K
-    stl     TEMP1
-    ldc     0x55555555
-    stl     TEMP2
-    ldc     0xaaaaaaaa
-    stl     TEMP3
-
-    ;  try writing 0x55555555 and reading it
-    ldl     TEMP2
-    ldl     TEMP1
-    stnl    0
-    ldl     TEMP1
-    ldnl    0
-    ldl     TEMP2
-    diff
-    eqc     0
-    cj      @P1
-    
-    ;  try writing 0xaaaaaaaa and reading it
-    ldl     TEMP3
-    ldl     TEMP1
-    stnl    0
-    ldl     TEMP1
-    ldnl    0
-    ldl     TEMP3
-    diff
-    eqc     0
-    cj      @P1
-    j       @P2           ;leave ONLY_2K set to FALSE
-P1: ldc     TRUE
-    stl     ONLY_2K
-P2:
-;}}}  ;
 ;{{{  start out assuming we are leaf node;
     ldc    1
     stl    NNODES
@@ -189,6 +134,7 @@ N1: ldl     LOOPA                   ;TLINK:= BOOTOUT[i]
     ldl     TLINK                ;from child
     ldc     12
     in
+
     ldl     ONLY_2K              ;collect number of nodes with only 2k RAM
     ldl     TEMP1
     sum
@@ -217,7 +163,6 @@ N3:
     ldl     TO_PARENT     ;   to parent
     ldc     12
     out
-;}}}  ;
 ;}}}  ;
     ajw     RESERVE
     ret
