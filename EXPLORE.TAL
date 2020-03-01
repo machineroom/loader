@@ -10,7 +10,7 @@
 	.val    RESERVE,16
 	.val    CALLWSP,-4
 	.val    INITIME,0
-	.val    DELAY,50
+	.val    DELAY,16*20
 	.val    T805,  0x0a
 	.val    T800D, 0x60
 	.val    T414B, 0x61
@@ -20,7 +20,7 @@
 	.val    MININT,1
 	.val    MEMSTART,2
 	.val    BOOTIN,3
-	.val    BOOTOUT,4               ;5 and 6 contain links out (array of 3 link IDs, 0 if not connected to another transputer)
+	.val    BOOTOUT,4               ;4,5,6 contain links out (array of 3 link IDs, 0 if not connected to another transputer)
 	.val    BOOTOUT1,4
 	.val    BOOTOUT2,5
 	.val    BOOTOUT3,6
@@ -37,9 +37,11 @@
 	.val    WSP,15
 
 	.val    OBUFWS,6
-	.val    OLOCAL,3
 	.val    OSTATIC,1
 	.val    OLINK,2
+	.val    OLOCAL,3
+	.val    OBOOTOUT,4
+    .val    OLINKID,5
 
 
 	.pub    START
@@ -101,14 +103,12 @@ I3: ldc     INITIME                 ;start timer at INITIME(0)
 	testerr
 	clrhalterr
 
-;JCW begin
 	ldc     0                       ;BOOTOUT[0]:= 0 (default to inactive link)
 	stl     BOOTOUT1
 	ldc     0        
 	stl     BOOTOUT2
 	ldc     0        
 	stl     BOOTOUT3
-;JCW end
 
 ; bootstrap neighbors
 ; send bootstrap out on all links, except link booted from. Use high-prio processes to do all 3 links in PAR
@@ -116,10 +116,6 @@ I3: ldc     INITIME                 ;start timer at INITIME(0)
 ; consider this to be fire & forget, i.e don't care if bootstrap accepted
 ; we subsequently see which links accepted the bootstrap and mark those as 'valid'
 
-;JCW begin
-	ldc     0                       ;WSPACE:= 0
-	stl     WSPACE
-;JCW end
 	ldlp    LOCTOP-OLOCAL           ;init new work space ptr
 	stl     WSP
 	ldc     0                       ;loop i:= 0 for 4 each link
@@ -142,6 +138,20 @@ B1:
 	wsub
 	ldl     WSP
 	stnl    OLINK
+	
+	;{{{ PAR will store at OBOOTOUT the link ID
+	ldl LOOPA
+	ldlp BOOTOUT
+	wsub
+	ldl WSP
+	stnl OBOOTOUT       
+	
+	ldl LOOPA   
+	adc 1
+	ldl WSP
+	stnl OLINKID       
+	;}}}
+	
 	ldlp    0                       ;save static link
 	ldl     WSP
 	stnl    OSTATIC
@@ -152,78 +162,47 @@ B2: ldl     WSP
 
 	ldl     WSP                     ;load new work space ptr
 	runp                            ;run output buffer at high pri (running at low prio is same)
-;JCW begin
     ldtimer                         ;delay to allow comms to take place
-    ldc     600
-    sum
+    adc     DELAY
     tin
-    
-    ldl     LOOPA                   ;TLINK:= LINK[i]
-	ldl     MININT
-	wsub
-	stl     TLINK                   ;TLINK is address of link register (minint+0,8,C)
-
-; ldc    1
-; mint ;boot out (console)
-; wsub
-; ldc   10   ;A
-; outword
-	ldl     TLINK                   ;if *TLINK = MININT (comms done)
-	ldnl    0
-	ldl     MININT
-	diff
-	eqc     0                       ;A=1 if link word reg == minint
-	cj      @J1                     ;jump if A==0 (link word reg != minint i.e. comms pending)
-	ldl     TLINK                   ;BOOTOUT[WSPACE]:= TLINK
-	ldl     WSPACE
-	ldlp    BOOTOUT
-	wsub
-	stnl    0
-	ldl     WSPACE                    ;WSPACE:= WSPACE+1
-	adc     1
-	stl     WSPACE
-	j       @B3
-J1:
-    ldl     TLINK                   ;reset output side of chanel that didn't get a response
-    resetch
-;JCW end
+  
+    ;ldl     TLINK                   ;reset output side of chanel that didn't get a response
+    ;resetch
 B3:     
     ldlp    LOOPA
 	ldc     B4-B1
 	lend                            ;end loop
 B4: 
 
-;JCW begin
 ; by flashing the error LED for each valid link in BOOTOUT we can see how many links each transputer thinks
 ; it is connected too. We know from ispy that nearly all links in a WX cluster are connected (1 bootstrap, 3 neighbours), 
 ; with the exceptions being 3 links (1 bootstrap, 2 out) or 2 links (1 bootstrap, 1 out)
 ; in all cases therefore each transputer in the network should flash error at-least once!
+	;{{{
 	ldc     0                       ;loop i:= 0 for 3
 	stl     LOOPA
 	ldc     3
 	stl     LOOPB
 R5:
-    ;ldl     LOOPA                   ;if BOOTOUT[i]==0 jump R6
-    ;ldlp    BOOTOUT
-    ;wsub
-    ;ldnl    0
-    ;cj      @R6    
+    ldl     LOOPA                   ;if BOOTOUT[i]==0 jump R6
+    ldlp    BOOTOUT
+    wsub
+    ldnl    0
+    cj      @R6    
 	seterr                          ;error LED ON
     ldtimer
-    ldc     4000
-	sum
+    adc     4000
 	tin                             ;end delay
     testerr                         ;error LED OFF
     ldtimer
-    ldc     4000
-	sum
+    adc     4000
 	tin                             ;end delay
 R6: ldlp    LOOPA
     ldc     R7-R5
     lend                            ;end loop
 R7:
     stopp
-;JCW end
+	;}}}
 
         
 ;       output buffer
@@ -238,6 +217,11 @@ OUTBUF:
         ldl     OSTATIC                 ;load code length
         ldnl    CODELEN
         out                             ;output code
+        ;if the code got this far it means the worm was recieved by a downstream transputer
+        ;mark this boot link as active - store the link ID
+        ldl     OLINKID
+        ldl     OBOOTOUT
+        stnl 0
         stopp
 
         .align
