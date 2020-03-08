@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "c011.h"
 
-#define TIMEOUT 100
+#define TIMEOUT 5000
 
 void rst_adpt(int p) {
     c011_reset();

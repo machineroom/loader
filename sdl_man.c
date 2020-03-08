@@ -646,21 +646,21 @@ void boot_mandel(void)
 {   int fxp, only_2k, nnodes;
 
     rst_adpt(TRUE);
-#if 1
+#if 0
     printf("Exploring...\n");
     load_buf(EXPLORE,sizeof(EXPLORE));
-    while (1) {
+/*    while (1) {
         only_2k = (int)word_in();
         if (only_2k == -1) break;
         printf("word = 0x%X\n", only_2k);
-    }
+    }*/
     exit(0);
 #else
 //    if (verbose) printf("Resetting Transputers...");
 //    if (!load_buf(SRESET,sizeof(SRESET))) exit(1);
-    if (verbose) printf("Booting...");
+    if (verbose) printf("Booting...\n");
     if (!load_buf(FLBOOT,sizeof(FLBOOT))) exit(1);
-    if (verbose) printf("Loading...");      
+    if (verbose) printf("Loading...\n");      
     if (!load_buf(FLLOAD,sizeof(FLLOAD))) exit(1);
     if (verbose) printf("ID'ing...\n");
     if (!load_buf(IDENT,sizeof(IDENT))) exit(1);
@@ -680,9 +680,11 @@ void boot_mandel(void)
     nnodes  = (int)word_in();
     if (verbose) printf("\"fpx\",");
     fxp     = (int)word_in();
-    printf("\nnodes found: %d",nnodes);
-    printf("\nnodes with only 2K RAM: %d", only_2k);
+    printf("\nnodes found: %d 0x%X",nnodes,nnodes);
+    printf("\nnodes with only 2K RAM: %d 0x%X",only_2k,only_2k);
+    printf("\nFXP: %d 0x%X",fxp,fxp);
     printf("\nusing %s-point arith.\n", fxp ? "fixed" : "floating");
+    exit(0);
     if (only_2k)
     {
         if (verbose) printf("Sending 2k mandel-code\n");

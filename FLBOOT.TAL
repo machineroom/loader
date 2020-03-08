@@ -24,7 +24,7 @@
 	.val    RESERVE,16
 	.val    CALLWSP,-4
 	.val    INITIME,0
-	.val    DELAY,16*2
+	.val    DELAY,16*600      ;16*2- only first rack gets loader (nnodes=13). 16*6 - all get loader BUT nnodes is invalid, even for 13 processors.
 	.val    T805,  0x0a
 	.val    T800D, 0x60
 	.val    T414B, 0x61
@@ -34,23 +34,27 @@
 	.val    MININT,1
 	.val    MEMSTART,2
 	.val    BOOTIN,3
-	.val    BOOTOUT,4               ;5 and 6 contain links out (array of 3 link IDs, 0 if not connected to another transputer)
+	.val    BOOTOUT,4               ;4,5,6 contain links out (array of 3 link IDs, 0 if not connected to another transputer)
+	.val    BOOTOUT1,4
+	.val    BOOTOUT2,5
+	.val    BOOTOUT3,6
 	.val    LDSTART,7               ;zeroed during BOOTOUT save
 	.val    ENTRYP,8
 	.val    WSPACE,9
 	.val    LDADDR,10
 	.val    TRANTYPE,11
 	.val    CODELEN,12              ;high order bytes must stay zeroed
-	.val    BIDX,12
+	.val    BIDX,12                 ;NOTE shared location
 	.val    LOOPA,13
 	.val    LOOPB,14
-	.val    TLINK,15
+	.val    TLINK,15		;NOTE shared location
 	.val    WSP,15
 
-	.val    OBUFWS,6
-	.val    OLOCAL,3
+	.val    OBUFWS,7
 	.val    OSTATIC,1
 	.val    OLINK,2
+	.val    OBOOTOUT,3
+	.val    OLOCAL,4
 
 
 	.pub    START
@@ -101,16 +105,23 @@ I1: ldc     0                       ;init links and event
 	stl     LOOPA                   ;LOOPA=0 (lend control block 0:11)
 	ldc     11
 	stl     LOOPB                   
-I2: ldl     MININT                  ;(A=minint)
-	ldl     LOOPA                   ;(A=LOOPA,B=minint)
-	ldl     MININT                  ;(A=minint,B=LOOPA,C=minint)
-	wsub                            ;A=minint[LOOPA]
-	stnl    0                       ;minint[LOOPA+0]=LOOPA
+I2: ldl     MININT                  ;init link control words to minint
+	ldl     LOOPA                   
+	ldl     MININT                  
+	wsub                            
+	stnl    0                       ;minint[LOOPA+0]=minint
 	ldlp    LOOPA
 	ldc     I3-I2
 	lend                            ;inc & test loop control struct
 I3: ldc     INITIME                 ;start timer at INITIME(0)
 	sttimer
+
+	ldc     0                       ;BOOTOUT[0]:= 0 (default to inactive link)
+	stl     BOOTOUT1
+	ldc     0        
+	stl     BOOTOUT2
+	ldc     0        
+	stl     BOOTOUT3
 
 ; bootstrap neighbors
 ; send bootstrap out on all links, except link booted from. Use high-prio processes to do all 3 links in PAR
@@ -137,6 +148,15 @@ B1: ldl     LOOPA                   ;if LINKIN[i] <> BOOTIN
 	wsub
 	ldl     WSP
 	stnl    OLINK
+
+	;{{{ PAR will store at OBOOTOUT the out link register address
+	ldl LOOPA
+	ldlp BOOTOUT
+	wsub
+	ldl WSP
+	stnl OBOOTOUT       
+	;}}}
+
 	ldlp    0                       ;save static link
 	ldl     WSP
 	stnl    OSTATIC
@@ -146,66 +166,32 @@ B2: ldl     WSP
 	stnl    -1
 	ldl     WSP                     ;load new work space ptr
 	runp                            ;run output buffer at high pri
+
+   ; reset ch if failed to communicate
+;    ldl     LOOPA
+;    ldlp    BOOTOUT
+;    wsub
+;    ldnl    0
+;    cj      @B3
+;    ldl     LOOPA                   ;reset output side of chanel
+;    ldl     MININT
+;    wsub
+;    resetch
+;    ldl     LOOPA                   ;reset input side of chanel
+;	ldl     MININT
+;	ldnlp   4
+;    wsub
+;    resetch
+
 B3: ldlp    LOOPA
 	ldc     B4-B1
 	lend                            ;end loop
-B4: ldtimer                         ;wait for any com. to finish
+B4: 
+    ldtimer                         ;wait for any com. to finish
 	adc     DELAY
 	tin                             ;block until timer reaches DELAY
 
-; save BOOTOUT links (those that successfuly communicated) and reset others except BOOTIN
-
-	ldc     0                       ;BIDX:= 0
-	stl     BIDX
-	ldc     0                       ;loop i:= 0 for 8 each hard link (0-3 output, 4-7 input)
-	stl     LOOPA
-	ldc     8
-	stl     LOOPB
-R1: ldl     LOOPA                   ;TLINK:= LINK[i]
-	ldl     MININT
-	wsub
-	stl     TLINK
-	ldc     4                       ;if i < 4 (output link)
-	ldl     LOOPA
-	gt                              ;A=1 if B>A
-	cj      @R2                     ;j if A=0
-	ldc     0                       ;BOOTOUT[i]:= 0 (default to inactive link)
-	ldl     LOOPA
-	ldlp    BOOTOUT
-	wsub
-	stnl    0
-	ldl     TLINK                   ;if TLINK+4 <> BOOTIN
-	ldnlp   4
-	ldl     BOOTIN
-	diff
-	cj      @R3
-	ldl     TLINK                   ;if *TLINK = MININT (comms done)
-	ldnl    0
-	ldl     MININT
-	diff
-	eqc     0                       ;A=1 if link word reg == minint
-	cj      @R2                     ;jump if A==0 (link word reg != minint)
-	ldl     TLINK                   ;BOOTOUT[BIDX]:= TLINK
-	ldl     BIDX
-	ldlp    BOOTOUT
-	wsub
-	stnl    0
-	ldl     BIDX                    ;BIDX:= BIDX+1
-	adc     1
-	stl     BIDX
-	j       @R3
-R2: ldl     TLINK                   ;if TLINK <> BOOTIN
-	ldl     BOOTIN
-    diff
-    cj      @R3
-    ldl     TLINK                   ;resetch(TLINK)
-    resetch
-R3: ldlp    LOOPA
-    ldc     R4-R1
-    lend                            ;end loop
-R4:
-
-;       loader and executer setup (received on same link as bootstrap)
+;  loader and executer setup (received on same link as bootstrap)
 
     ldlp    CODELEN                 ;input length of fload loader
     ldl     BOOTIN
@@ -220,13 +206,18 @@ H2: ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
     stl     LOOPA
     ldc     3
     stl     LOOPB
-H3: ldl     LOOPA                   ;TLINK:= BOOTOUT[i]
+H3: 
+    ldl     LOOPA                   ;TLINK:= BOOTOUT[i]
     ldlp    BOOTOUT
     wsub
     ldnl    0
     stl     TLINK
     ldl     TLINK                   ;if TLINK <> 0
     cj      @H4
+   seterr                          ;error LED ON
+   ;ldtimer
+   ;adc     4000
+   ;tin                             ;end delay
     ldlp    CODELEN                 ;send out length to neighbors (1 byte)
     ldl     TLINK
     ldc     1
@@ -234,12 +225,15 @@ H3: ldl     LOOPA                   ;TLINK:= BOOTOUT[i]
     ldl     MEMSTART                ;send out code to neighbors
     ldl     TLINK
     ldl     CODELEN
-    out                             ;A=len, B=link, C=addr
+    out    
+   testerr                         ;error LED OFF
+   ;ldtimer
+   ;adc     4000
+   ;tin                             ;end delay
 H4: ldlp    LOOPA
     ldc     H5-H3
     lend                            ;end loop
 H5
-
     ldlp    LOCTOP                  ;init load start address
     stl     LDSTART
     ldl     LDSTART                 ;init entry point
@@ -249,10 +243,9 @@ H5
     ldl     MEMSTART                ;go to loader
     gcall
 
-
 ;       output buffer
-
-OUTBUF: ldl     OLINK                   ;load output link
+OUTBUF: 
+        ldl     OLINK                   ;load output link
         ldl     OSTATIC                 ;load code length
         ldnl    CODELEN
         outbyte                         ;output code length
@@ -262,6 +255,11 @@ OUTBUF: ldl     OLINK                   ;load output link
         ldl     OSTATIC                 ;load code length
         ldnl    CODELEN
         out                             ;output code
+        ;if the code got this far it means the worm was recieved by a downstream transputer
+        ;mark this boot link as active - store the link address into BOOTOUT array
+        ldl     OLINK
+        ldl     OBOOTOUT
+        stnl    0
         stopp
 
         .align

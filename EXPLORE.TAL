@@ -161,13 +161,20 @@ B2: ldl     WSP
 	stnl    -1
 
 	ldl     WSP                     ;load new work space ptr
-	runp                            ;run output buffer at high pri (running at low prio is same)
+	runp                            ;run output buffer at high pri
     ldtimer                         ;delay to allow comms to take place
     adc     DELAY
     tin
   
-    ;ldl     TLINK                   ;reset output side of chanel that didn't get a response
-    ;resetch
+    ldl     LOOPA                   ;reset output side of chanel
+    ldl     MININT
+    wsub
+    resetch
+    ldl     LOOPA                   ;reset input side of chanel
+    ldl     MININT
+	ldnlp   4
+    wsub
+    resetch
 B3:     
     ldlp    LOOPA
 	ldc     B4-B1
