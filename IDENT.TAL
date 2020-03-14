@@ -159,19 +159,19 @@ N3:
     ldc     16
     diff
     stl     TO_PARENT
-    ;ldlp    ONLY_2K     ;   send ONLY_2K, NNODES AND FIXED_POINT
+    ldlp    ONLY_2K     ;   send ONLY_2K, NNODES AND FIXED_POINT
+    ldl     TO_PARENT     ;   to parent
+    ldc     12
+    out
     ;ldl     TO_PARENT     ;   to parent
-    ;ldc     12
-    ;out
-    ldl     TO_PARENT     ;   to parent
-    ldc 1
-    outword
-    ldl     TO_PARENT     ;   to parent
-    ldc 2
-    outword
-    ldl     TO_PARENT     ;   to parent
-    ldc 3
-    outword
+    ;ldc 1
+    ;outword
+    ;ldl     TO_PARENT     ;   to parent
+    ;ldc 2
+    ;outword
+    ;ldl     TO_PARENT     ;   to parent
+    ;ldc 3
+    ;outword
 
 ;}}}  ;
     ajw     RESERVE

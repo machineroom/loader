@@ -18,6 +18,27 @@
 ; to other transputers connected. Then it starts executing the loader.
 ;***************************************************************************
 
+; write out 3 BOOTOUT words to host
+    ;ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
+    ;stl     LOOPA
+    ;ldc     3
+    ;stl     LOOPB
+;D1: 
+    ;ldl     LOOPA                   ;TLINK:= BOOTOUT[i]
+    ;ldlp    BOOTOUT
+    ;wsub
+    ;ldnl    0
+    ;stl     TLINK
+    ;ldl     BOOTIN
+    ;ldc     16
+    ;diff
+    ;ldl TLINK
+    ;outword
+    ;ldlp    LOOPA
+    ;ldc     D2-D1
+    ;lend                            ;end loop
+;D2:
+
 	.t800
 ;  val definition;
 
@@ -41,13 +62,14 @@
 	.val    LDSTART,7               ;zeroed during BOOTOUT save
 	.val    ENTRYP,8
 	.val    WSPACE,9
+	.val    BO_IDX,9                ;NOTE shared location
 	.val    LDADDR,10
 	.val    TRANTYPE,11
 	.val    CODELEN,12              ;high order bytes must stay zeroed
 	.val    BIDX,12                 ;NOTE shared location
 	.val    LOOPA,13
 	.val    LOOPB,14
-	.val    TLINK,15		;NOTE shared location
+	.val    TLINK,15                ;NOTE shared location
 	.val    WSP,15
 
 	.val    OBUFWS,7
@@ -122,6 +144,8 @@ I3: ldc     INITIME                 ;start timer at INITIME(0)
 	stl     BOOTOUT2
 	ldc     0        
 	stl     BOOTOUT3
+	ldc     0        
+	stl     BO_IDX                  ;loop 0,1,2 through BOOTOUT array
 
 ; bootstrap neighbors
 ; send bootstrap out on all links, except link booted from. Use high-prio processes to do all 3 links in PAR
@@ -150,13 +174,13 @@ B1: ldl     LOOPA                   ;if LINKIN[i] <> BOOTIN
 	stnl    OLINK
 
 	;{{{ PAR will store at OBOOTOUT the out link register address
-	ldl LOOPA
-	ldlp BOOTOUT
+	ldl     BO_IDX
+	ldlp    BOOTOUT
 	wsub
-	ldl WSP
-	stnl OBOOTOUT       
+	ldl     WSP
+	stnl    OBOOTOUT       
 	;}}}
-
+	
 	ldlp    0                       ;save static link
 	ldl     WSP
 	stnl    OSTATIC
@@ -166,22 +190,9 @@ B2: ldl     WSP
 	stnl    -1
 	ldl     WSP                     ;load new work space ptr
 	runp                            ;run output buffer at high pri
-
-   ; reset ch if failed to communicate
-;    ldl     LOOPA
-;    ldlp    BOOTOUT
-;    wsub
-;    ldnl    0
-;    cj      @B3
-;    ldl     LOOPA                   ;reset output side of chanel
-;    ldl     MININT
-;    wsub
-;    resetch
-;    ldl     LOOPA                   ;reset input side of chanel
-;	ldl     MININT
-;	ldnlp   4
-;    wsub
-;    resetch
+	ldl     BO_IDX
+	adc     1
+	stl     BO_IDX
 
 B3: ldlp    LOOPA
 	ldc     B4-B1
@@ -190,6 +201,7 @@ B4:
     ldtimer                         ;wait for any com. to finish
 	adc     DELAY
 	tin                             ;block until timer reaches DELAY
+
 
 ;  loader and executer setup (received on same link as bootstrap)
 
@@ -201,7 +213,8 @@ B4:
     ldl     BOOTIN
     ldl     CODELEN
     in
-;  send loader to neighbor;
+
+;  send loader to neighbors
 H2: ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
     stl     LOOPA
     ldc     3
@@ -214,10 +227,11 @@ H3:
     stl     TLINK
     ldl     TLINK                   ;if TLINK <> 0
     cj      @H4
+   ; 2 cards = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
    seterr                          ;error LED ON
-   ;ldtimer
-   ;adc     4000
-   ;tin                             ;end delay
+   ldtimer
+   adc    4000
+   tin                             ;end delay
     ldlp    CODELEN                 ;send out length to neighbors (1 byte)
     ldl     TLINK
     ldc     1
@@ -227,9 +241,9 @@ H3:
     ldl     CODELEN
     out    
    testerr                         ;error LED OFF
-   ;ldtimer
-   ;adc     4000
-   ;tin                             ;end delay
+   ldtimer
+   adc     4000
+   tin                             ;end delay
 H4: ldlp    LOOPA
     ldc     H5-H3
     lend                            ;end loop

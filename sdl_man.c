@@ -649,17 +649,23 @@ void boot_mandel(void)
 #if 0
     printf("Exploring...\n");
     load_buf(EXPLORE,sizeof(EXPLORE));
-/*    while (1) {
+    while (1) {
         only_2k = (int)word_in();
         if (only_2k == -1) break;
         printf("word = 0x%X\n", only_2k);
-    }*/
+    }
     exit(0);
 #else
 //    if (verbose) printf("Resetting Transputers...");
 //    if (!load_buf(SRESET,sizeof(SRESET))) exit(1);
     if (verbose) printf("Booting...\n");
     if (!load_buf(FLBOOT,sizeof(FLBOOT))) exit(1);
+    /*while (1) {
+        only_2k = (int)word_in();
+        if (only_2k == -1) break;
+        printf("word = 0x%X\n", only_2k);
+    }
+    exit(0);*/
     if (verbose) printf("Loading...\n");      
     if (!load_buf(FLLOAD,sizeof(FLLOAD))) exit(1);
     if (verbose) printf("ID'ing...\n");
