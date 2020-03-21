@@ -136,7 +136,7 @@ B1: ldl     LOOPA                   ;if LINKIN[i] <> BOOTIN
 	ldl     WSP
 	stnl    OLINK
 
-	;{{{ PAR will store at OBOOTOUT the out link register address
+	;{{{ PAR will store at OBOOTOUT the out link register address if bootstrap recieved
 	ldl     BO_IDX
 	ldlp    BOOTOUT
 	wsub
@@ -164,27 +164,6 @@ B4:
     ldtimer                         ;wait for any com. to finish
 	adc     DELAY
 	tin                             ;block until timer reaches DELAY
-
-; write out 3 BOOTOUT words to host
-    ;ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
-    ;stl     LOOPA
-    ;ldc     3
-    ;stl     LOOPB
-;D1: 
-    ;ldl     LOOPA                   ;TLINK:= BOOTOUT[i]
-    ;ldlp    BOOTOUT
-    ;wsub
-    ;ldnl    0
-    ;stl     TLINK
-    ;ldl     BOOTIN
-    ;ldc     16
-    ;diff
-    ;ldl TLINK
-    ;outword
-    ;ldlp    LOOPA
-    ;ldc     D2-D1
-    ;lend                            ;end loop
-;D2:
 
 ;  loader and executer setup (received on same link as bootstrap)
 
