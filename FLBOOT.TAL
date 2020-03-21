@@ -18,27 +18,6 @@
 ; to other transputers connected. Then it starts executing the loader.
 ;***************************************************************************
 
-; write out 3 BOOTOUT words to host
-    ;ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
-    ;stl     LOOPA
-    ;ldc     3
-    ;stl     LOOPB
-;D1: 
-    ;ldl     LOOPA                   ;TLINK:= BOOTOUT[i]
-    ;ldlp    BOOTOUT
-    ;wsub
-    ;ldnl    0
-    ;stl     TLINK
-    ;ldl     BOOTIN
-    ;ldc     16
-    ;diff
-    ;ldl TLINK
-    ;outword
-    ;ldlp    LOOPA
-    ;ldc     D2-D1
-    ;lend                            ;end loop
-;D2:
-
 	.t800
 ;  val definition;
 
@@ -64,7 +43,7 @@
 	.val    WSPACE,9
 	.val    BO_IDX,9                ;NOTE shared location
 	.val    LDADDR,10
-	.val    TRANTYPE,11
+	.val    UNUSED,11               ;was TRANTYPE - not used on wx9020
 	.val    CODELEN,12              ;high order bytes must stay zeroed
 	.val    BIDX,12                 ;NOTE shared location
 	.val    LOOPA,13
@@ -77,19 +56,20 @@
 	.val    OLINK,2
 	.val    OBOOTOUT,3
 	.val    OLOCAL,4
+	
+	.val    STATUS,0x80000F00
+	.val    BOOTED,0xB007EEED
 
 
 	.pub    START
-;       initialization
+;initialization
 
 	.align
 START:  ajw     RESERVE                 ;reserve work space
 	call    0                       ;save registers into workspace. Fills: MININT, MEMSTART & BOOTIN (from Creg)
 	ldc     @START - @S1
 	ldpi
-	;ldl     0                       ;return address of call
-	;adc     -3                      ;compute memory start
-S1:     stl     MEMSTART                ;save memory start
+S1: stl     MEMSTART                ;save memory start
 	ldlp    4-RESERVE               ;calc code length
 	ldl     MEMSTART
 	diff
@@ -100,29 +80,6 @@ S1:     stl     MEMSTART                ;save memory start
 	stlf
 	ldl     MININT
 	sthf
-	ldc    T800D                    ;find transtputer type (A=T800)
-	ldc    T414B                    ;(A=T414B, B=T800)
-	ldc     0                       ;(A=0, B=T414B, C=T800D)
-	opr    0x17c                    ;lddevid    (A=devid, B=0, C=T414B)
-	stl    LOOPA                    ;LOOPA = devid  (A=0, B=T414B)
-	stl    LOOPB                    ;LOOPB = 0 (A=T414B)
-	ldl    LOOPB                    ;(A=0, B=T414B)
-	cj     @nfp1                    ;jump if A==0 (no lddevid)
-	ldl    LOOPB
-	stl    TRANTYPE
-	j      @nfp2
-nfp1    ldl    LOOPA
-	stl    TRANTYPE                 ;TRANTYPE=devid
-nfp2
-	testerr                         ;clear error flag
-	clrhalterr                      ;clear halt on error
-	ldl     TRANTYPE                ;clear fpu error flag if T800 or T805
-	eqc     T800D
-	ldl     TRANTYPE
-	eqc     T805
-	or
-	cj      @I1                     ; JMP if not T8xx
-	fptesterr
 I1: ldc     0                       ;init links and event
 	stl     LOOPA                   ;LOOPA=0 (lend control block 0:11)
 	ldc     11
@@ -138,6 +95,12 @@ I2: ldl     MININT                  ;init link control words to minint
 I3: ldc     INITIME                 ;start timer at INITIME(0)
 	sttimer
 
+	;{{{ STATUS=BOOTED
+	ldc     BOOTED
+	ldc     STATUS
+	stnl    0
+	;}}}
+	
 	ldc     0                       ;BOOTOUT[0]:= 0 (default to inactive link)
 	stl     BOOTOUT1
 	ldc     0        
@@ -202,6 +165,26 @@ B4:
 	adc     DELAY
 	tin                             ;block until timer reaches DELAY
 
+; write out 3 BOOTOUT words to host
+    ;ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
+    ;stl     LOOPA
+    ;ldc     3
+    ;stl     LOOPB
+;D1: 
+    ;ldl     LOOPA                   ;TLINK:= BOOTOUT[i]
+    ;ldlp    BOOTOUT
+    ;wsub
+    ;ldnl    0
+    ;stl     TLINK
+    ;ldl     BOOTIN
+    ;ldc     16
+    ;diff
+    ;ldl TLINK
+    ;outword
+    ;ldlp    LOOPA
+    ;ldc     D2-D1
+    ;lend                            ;end loop
+;D2:
 
 ;  loader and executer setup (received on same link as bootstrap)
 
@@ -213,8 +196,9 @@ B4:
     ldl     BOOTIN
     ldl     CODELEN
     in
+    ;ONLY ONE FLASH HERE = i.e. bootstrap is only run once
 
-;  send loader to neighbors
+; send loader to neighbors
 H2: ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
     stl     LOOPA
     ldc     3
@@ -227,11 +211,43 @@ H3:
     stl     TLINK
     ldl     TLINK                   ;if TLINK <> 0
     cj      @H4
-   ; 2 cards = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
-   seterr                          ;error LED ON
-   ldtimer
-   adc    4000
-   tin                             ;end delay
+
+    ;peek STATUS word to see if proc already booted
+    ;{{{
+    ;ldl     TLINK
+    ;ldc     1
+    ;outbyte
+    ;ldl     TLINK
+    ;ldc     STATUS
+    ;outword
+    ;ldlp    LDSTART ;temp abuse another var
+    ;ldl     TLINK   ;input reg is 16 bytes on from output
+    ;adc     16
+    ;ldc     4       ;read a word
+    ;in
+    ;ldl     LDSTART
+    ;ldc     BOOTED
+    ;diff
+    ;cj @H4
+    ;}}}
+    ;poke STATUS=BOOTED to mark proc as booted
+    ;{{{
+    ;ldl     TLINK
+    ;ldc     0
+    ;outbyte
+    ;ldl     TLINK
+    ;ldc     STATUS
+    ;outword
+    ;ldl     TLINK
+    ;ldc     BOOTED
+    ;outword
+    ;}}}
+   ; SHOULD HAVE 2 cards = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
+   ; XXX now 3 on each processor XXX
+   ;seterr                          ;error LED ON
+   ;ldtimer
+   ;adc    4000
+   ;tin                             ;end delay
     ldlp    CODELEN                 ;send out length to neighbors (1 byte)
     ldl     TLINK
     ldc     1
@@ -240,14 +256,16 @@ H3:
     ldl     TLINK
     ldl     CODELEN
     out    
-   testerr                         ;error LED OFF
-   ldtimer
-   adc     4000
-   tin                             ;end delay
+   ;testerr                         ;error LED OFF
+   ;ldtimer
+   ;adc     4000
+   ;tin                             ;end delay
+   ;j @H5    ; TESTING only boot fist non-zero linkid (only 1 flash)
 H4: ldlp    LOOPA
     ldc     H5-H3
     lend                            ;end loop
 H5
+    ;start loader on self
     ldlp    LOCTOP                  ;init load start address
     stl     LDSTART
     ldl     LDSTART                 ;init entry point
@@ -269,12 +287,13 @@ OUTBUF:
         ldl     OSTATIC                 ;load code length
         ldnl    CODELEN
         out                             ;output code
+        
         ;if the code got this far it means the worm was recieved by a downstream transputer
-        ;mark this boot link as active - store the link address into BOOTOUT array
+        ;mark this boot link as active - store the output link register address into BOOTOUT array
         ldl     OLINK
         ldl     OBOOTOUT
         stnl    0
-        stopp
+OB1:    stopp
 
         .align
 END:    .end

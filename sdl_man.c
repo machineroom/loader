@@ -660,6 +660,8 @@ void boot_mandel(void)
 //    if (!load_buf(SRESET,sizeof(SRESET))) exit(1);
     if (verbose) printf("Booting...\n");
     if (!load_buf(FLBOOT,sizeof(FLBOOT))) exit(1);
+    //only_2k = (int)word_in();
+    //printf("ACK = 0x%X\n", only_2k);
     /*while (1) {
         only_2k = (int)word_in();
         if (only_2k == -1) break;
