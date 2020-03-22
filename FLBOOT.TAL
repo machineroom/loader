@@ -24,7 +24,7 @@
 	.val    RESERVE,16
 	.val    CALLWSP,-4
 	.val    INITIME,0
-	.val    DELAY,16*600      ;16*2- only first rack gets loader (nnodes=13). 16*6 - all get loader BUT nnodes is invalid, even for 13 processors.
+	.val    DELAY,1000      ;16*2- only first rack gets loader (nnodes=13). 16*6 - all get loader BUT nnodes is invalid, even for 13 processors.
 	.val    T805,  0x0a
 	.val    T800D, 0x60
 	.val    T414B, 0x61
@@ -56,7 +56,8 @@
 	.val    OLINK,2
 	.val    OBOOTOUT,3
 	.val    OTEMP,4
-	.val    OLOCAL,5
+	.val    OID,5
+	.val    OLOCAL,6
 	
 	.val    STATUS,0x80000F00
 	.val    BOOTED,0xB007EEED
@@ -95,6 +96,8 @@ I2: ldl     MININT                  ;init link control words to minint
 	lend                            ;inc & test loop control struct
 I3: ldc     INITIME                 ;start timer at INITIME(0)
 	sttimer
+	testerr                         ;clear error flag
+	clrhalterr                      ;clear halt on error
 
    ;one flash for loader starting
    seterr                          ;error LED ON
@@ -145,6 +148,9 @@ B1: ldl     LOOPA                   ;if LINKIN[i] <> BOOTIN
 	ldl     WSP
 	stnl    OBOOTOUT       
 	;}}}
+	ldl     LOOPA
+	ldl     WSP
+	stnl    OID
 	
 	ldlp    0                       ;save static link
 	ldl     WSP
@@ -158,15 +164,13 @@ B2: ldl     WSP
 	ldl     BO_IDX
 	adc     1
 	stl     BO_IDX
-
-    ldtimer                         ;wait for any com. to finish
-	adc     DELAY
-	tin                             ;block until timer reaches DELAY
-
 B3: ldlp    LOOPA
 	ldc     B4-B1
 	lend                            ;end loop
 B4: 
+    ldtimer                         ;wait for any com. to finish
+	adc     DELAY
+	tin                             ;block until timer reaches DELAY
 
 ;  loader and executer setup (received on same link as bootstrap)
 
@@ -178,7 +182,6 @@ B4:
     ldl     BOOTIN
     ldl     CODELEN
     in
-    ;ONLY ONE FLASH HERE = i.e. bootstrap is only run once
 
 ; send loader to neighbors
 H2: ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
@@ -194,7 +197,7 @@ H3:
     ldl     TLINK                   ;if TLINK <> 0
     cj      @H4
 
-   ; SHOULD HAVE 2 cards = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
+   ; SHOULD HAVE (with 2 cards) = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
    ; XXX now 3 on each processor XXX
    ;seterr                          ;error LED ON
    ;ldtimer
@@ -273,7 +276,8 @@ OUTBUF:
     ldl     OLINK
     ldl     OBOOTOUT
     stnl    0
-O1: stopp
+O1: 
+    stopp
 
         .align
 END:    .end
