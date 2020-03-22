@@ -22,45 +22,25 @@
 ;  val definition;
 
 	.val    RESERVE,16
-	.val    CALLWSP,-4
 	.val    INITIME,0
-	.val    DELAY,16*600      ;16*2- only first rack gets loader (nnodes=13). 16*6 - all get loader BUT nnodes is invalid, even for 13 processors.
-	.val    T805,  0x0a
-	.val    T800D, 0x60
-	.val    T414B, 0x61
+	.val    DELAY,16*100
 	.val    LOCTOP,16
 
     ;this struct shared with flboot & ident
 	.val    MININT,1
 	.val    MEMSTART,2
 	.val    BOOTIN,3
-	.val    BOOTOUT,4               ;4,5,6 contain links out (array of 3 link IDs, 0 if not connected to another transputer)
-	.val    BOOTOUT1,4
-	.val    BOOTOUT2,5
-	.val    BOOTOUT3,6
-	.val    LDSTART,7               ;zeroed during BOOTOUT save
-	.val    ENTRYP,8
-	.val    WSPACE,9
-	.val    BO_IDX,9                ;NOTE shared location
-	.val    LDADDR,10
-	.val    UNUSED,11               ;was TRANTYPE - not used on wx9020
 	.val    CODELEN,12              ;high order bytes must stay zeroed
-	.val    BIDX,12                 ;NOTE shared location
 	.val    LOOPA,13
 	.val    LOOPB,14
-	.val    TLINK,15                ;NOTE shared location
 	.val    WSP,15
 
 	.val    OBUFWS,7
 	.val    OSTATIC,1
 	.val    OLINK,2
-	.val    OBOOTOUT,3
-	.val    OTEMP,4
-	.val    OLOCAL,5
+	.val    OLOCAL,3
 	
 	.val    STATUS,0x80000F00
-	.val    BOOTED,0xB007EEED
-
 
 	.pub    START
 ;initialization
@@ -96,21 +76,12 @@ I2: ldl     MININT                  ;init link control words to minint
 I3: ldc     INITIME                 ;start timer at INITIME(0)
 	sttimer
 
-   ;one flash for loader starting
-   seterr                          ;error LED ON
-   ldtimer
-   adc    2000
-   tin                             ;end delay
-   testerr                         ;error LED ODD
+	;{{{ STATUS=0
+	ldc     0
+	ldc     STATUS
+	stnl    0
+	;}}}
 
-	ldc     0                       ;BOOTOUT[0]:= 0 (default to inactive link)
-	stl     BOOTOUT1
-	ldc     0        
-	stl     BOOTOUT2
-	ldc     0        
-	stl     BOOTOUT3
-	ldc     0        
-	stl     BO_IDX                  ;loop 0,1,2 through BOOTOUT array
 
 ; bootstrap neighbors
 ; send bootstrap out on all links, except link booted from. Use high-prio processes to do all 3 links in PAR
@@ -138,14 +109,6 @@ B1: ldl     LOOPA                   ;if LINKIN[i] <> BOOTIN
 	ldl     WSP
 	stnl    OLINK
 
-	;{{{ PAR will store at OBOOTOUT the out link register address if bootstrap recieved
-	ldl     BO_IDX
-	ldlp    BOOTOUT
-	wsub
-	ldl     WSP
-	stnl    OBOOTOUT       
-	;}}}
-	
 	ldlp    0                       ;save static link
 	ldl     WSP
 	stnl    OSTATIC
@@ -155,107 +118,31 @@ B2: ldl     WSP
 	stnl    -1
 	ldl     WSP                     ;load new work space ptr
 	runp                            ;run output buffer at high pri
-	ldl     BO_IDX
-	adc     1
-	stl     BO_IDX
-
-    ldtimer                         ;wait for any com. to finish
-	adc     DELAY
-	tin                             ;block until timer reaches DELAY
-
 B3: ldlp    LOOPA
 	ldc     B4-B1
 	lend                            ;end loop
 B4: 
 
-;  loader and executer setup (received on same link as bootstrap)
+    ;quick double flash
+   seterr                          ;error LED ON
+   ldtimer
+   adc    2000
+   tin                             ;end delay
+   testerr                         ;error LED OFF
+   ldtimer
+   adc    2000
+   tin                             ;end delay
+   seterr                          ;error LED ON
+   ldtimer
+   adc    2000
+   tin                             ;end delay
+   testerr                         ;error LED OFF
+   
+    stopp
 
-    ldlp    CODELEN                 ;input length of fload loader
-    ldl     BOOTIN
-    ldc     1
-    in                              ;A=len, B=link, C=addr
-    ldl     MEMSTART                ;input fload loader
-    ldl     BOOTIN
-    ldl     CODELEN
-    in
-    ;ONLY ONE FLASH HERE = i.e. bootstrap is only run once
-
-; send loader to neighbors
-H2: ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
-    stl     LOOPA
-    ldc     3
-    stl     LOOPB
-H3: 
-    ldl     LOOPA                   ;TLINK:= BOOTOUT[i]
-    ldlp    BOOTOUT
-    wsub
-    ldnl    0
-    stl     TLINK
-    ldl     TLINK                   ;if TLINK <> 0
-    cj      @H4
-
-   ; SHOULD HAVE 2 cards = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
-   ; XXX now 3 on each processor XXX
-   ;seterr                          ;error LED ON
-   ;ldtimer
-   ;adc    4000
-   ;tin                             ;end delay
-    ldlp    CODELEN                 ;send out length to neighbors (1 byte)
-    ldl     TLINK
-    ldc     1
-    out
-    ldl     MEMSTART                ;send out code to neighbors
-    ldl     TLINK
-    ldl     CODELEN
-    out    
-   ;testerr                         ;error LED OFF
-   ;ldtimer
-   ;adc     4000
-   ;tin                             ;end delay
-H4: ldlp    LOOPA
-    ldc     H5-H3
-    lend                            ;end loop
-H5
-    ;start loader on self
-    ldlp    LOCTOP                  ;init load start address
-    stl     LDSTART
-    ldl     LDSTART                 ;init entry point
-    stl     ENTRYP
-    ldlp    CALLWSP                 ;init work space
-    stl     WSPACE
-    ldl     MEMSTART                ;go to loader
-    gcall
-
+    
 ;       output buffer
 OUTBUF: 
-    ;peek STATUS word to see if proc already booted
-    ldl     OLINK
-    ldc     1                       ;PEEK,ADDR
-    outbyte
-    ldl     OLINK
-    ldc     STATUS
-    outword
-    ldlp    OTEMP
-    ldl     OLINK                   ;input reg is 16 bytes on from output
-    adc     16
-    ldc     4                       ;read a word
-    in
-    ldl     OTEMP
-    ldc     BOOTED
-    diff
-    cj      @O1
-
-    ;poke STATUS=BOOTED to mark proc as booted
-    ldl     OLINK
-    ldc     0                       ;POKE,ADDR,VAL
-    outbyte
-    ldl     OLINK
-    ldc     STATUS
-    outword
-    ldl     OLINK
-    ldc     BOOTED
-    outword
-
     ;send bootstrap
     ldl     OLINK                   ;load output link
     ldl     OSTATIC                 ;load code length
@@ -267,13 +154,7 @@ OUTBUF:
     ldl     OSTATIC                 ;load code length
     ldnl    CODELEN
     out                             ;output code
-
-    ;if the code got this far it means the worm was recieved by a downstream transputer
-    ;mark this boot link as active - store the output link register address into BOOTOUT array
-    ldl     OLINK
-    ldl     OBOOTOUT
-    stnl    0
-O1: stopp
+    stopp
 
         .align
 END:    .end

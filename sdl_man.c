@@ -635,6 +635,7 @@ void draw_box(int x1, int y1, int x2, int y2) {
 }
 
 #include "SRESET.ARR"
+#include "CLEAR.ARR"
 #include "FLBOOT.ARR"
 #include "FLLOAD.ARR"
 #include "IDENT.ARR"
@@ -658,6 +659,10 @@ void boot_mandel(void)
 #else
 //    if (verbose) printf("Resetting Transputers...");
 //    if (!load_buf(SRESET,sizeof(SRESET))) exit(1);
+    if (verbose) printf("Clear status word...\n");
+    if (!load_buf(CLEAR,sizeof(CLEAR))) exit(1);
+    sleep(1);
+    rst_adpt(TRUE);
     if (verbose) printf("Booting...\n");
     if (!load_buf(FLBOOT,sizeof(FLBOOT))) exit(1);
     //only_2k = (int)word_in();

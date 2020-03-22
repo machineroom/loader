@@ -31,8 +31,9 @@ LSC93_BIN=d:\bin
 
 #tcode assemble rule
 %.TLD : %.TAL
-	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\tasm.exe $*.TAL -cv > asm.out" -c "$(LSC89_BIN)\vtlnk $*.LNK" -c exit
+	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\tasm.exe $*.TAL -cv > ASM.OUT" -c "$(LSC89_BIN)\vtlnk $*.LNK > LNK.OUT" -c exit
 	cat ASM.OUT
+	cat LNK.OUT
 
 #tcode assemble rule
 %.TRL : %.TAL
@@ -42,7 +43,7 @@ LSC93_BIN=d:\bin
 %.ARR : %.TLD
 	dosbox -c "mount C `pwd`" -c "C:" -c "ltoc $*" -c "mkarr $*" -c exit
 
-man : sdl_man.c lkio_c011.c  c011.c SRESET.ARR FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR SMALLMAN.ARR EXPLORE.ARR
+man : sdl_man.c lkio_c011.c  c011.c SRESET.ARR CLEAR.ARR FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR SMALLMAN.ARR EXPLORE.ARR
 	gcc -O0 -g sdl_man.c lkio_c011.c  c011.c -lSDL2 -lm -lbcm2835 -o $@
 
 clean:
@@ -72,6 +73,9 @@ MLIBS.TRL:  MLIBS.TAL
 
 MLIBP.TAL: MLIBP.C
 MLIBP.TRL: MLIBP.TAL
+
+CLEAR.ARR: CLEAR.TLD
+CLEAR.TLD: CLEAR.TAL
 
 SRESET.ARR: SRESET.TLD
 SRESET.TLD: SRESET.TAL
