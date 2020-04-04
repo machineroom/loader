@@ -77,7 +77,7 @@ I3: ldc     INITIME                 ;start timer at INITIME(0)
 	sttimer
 
 	;{{{ STATUS=0
-	ldc     0
+	ldc     0xAA
 	ldc     STATUS
 	stnl    0
 	;}}}

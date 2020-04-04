@@ -24,10 +24,7 @@
 	.val    RESERVE,16
 	.val    CALLWSP,-4
 	.val    INITIME,0
-	.val    DELAY,1000      ;16*2- only first rack gets loader (nnodes=13). 16*6 - all get loader BUT nnodes is invalid, even for 13 processors.
-	.val    T805,  0x0a
-	.val    T800D, 0x60
-	.val    T414B, 0x61
+	.val    DELAY,10000
 	.val    LOCTOP,16
 
     ;this struct shared with flboot & ident
@@ -51,33 +48,33 @@
 	.val    TLINK,15                ;NOTE shared location
 	.val    WSP,15
 
-	.val    OBUFWS,7
 	.val    OSTATIC,1
 	.val    OLINK,2
 	.val    OBOOTOUT,3
 	.val    OTEMP,4
 	.val    OID,5
 	.val    OLOCAL,6
+
+	.val    OBUFWS,10         ; 5 words is max additional workspace requirement for a concurrent process
 	
 	.val    STATUS,0x80000F00
 	.val    BOOTED,0xB007EEED
-
 
 	.pub    START
 ;initialization
 
 	.align
-START:  ajw     RESERVE                 ;reserve work space
-	call    0                       ;save registers into workspace. Fills: MININT, MEMSTART & BOOTIN (from Creg)
-	ldc     @START - @S1
-	ldpi
-S1: stl     MEMSTART                ;save memory start
-	ldlp    4-RESERVE               ;calc code length
-	ldl     MEMSTART
-	diff
-	stl     CODELEN
+START:  
+    ajw     RESERVE                 ;reserve work space (16 words) -> Wptr = memstart + codelen + 16w (8000 019c)
+	stl     BOOTIN                  ;discard Iptr
+	stl     BOOTIN                  ;discard Wdesc
+	stl     BOOTIN                  ;Areg = bootin
+    ldmemstartval
+    stl     MEMSTART                ;save memory start (start of bootstrap code)
+	ldc     @END-@START             
+	stl     CODELEN                 ;save length of bootstrap code
 	mint
-	stl     MININT                  ;save MIN INTEGER
+	stl     MININT                  ;save MIN INTEGER (more efficient to 'ldl MININT' than mint)
 	ldl     MININT                  ;init process front pointers
 	stlf
 	ldl     MININT
@@ -97,15 +94,29 @@ I2: ldl     MININT                  ;init link control words to minint
 I3: ldc     INITIME                 ;start timer at INITIME(0)
 	sttimer
 	testerr                         ;clear error flag
-	clrhalterr                      ;clear halt on error
+	clrhalterr                      ; halt on error
+
+   ldc BOOTED ; STATUS = BOOTED
+   ldc STATUS
+   stnl 0
+
+   ;ldl MININT
+   ;adc 4
+   ;ldl BOOTIN  ;good (0x80000014)
+   ;ldl MEMSTART ;good (0x80000070)
+   ;ldl CODELEN ;good
+   ;ldlp 1
+   ;outword 
 
    ;one flash for loader starting
    seterr                          ;error LED ON
    ldtimer
-   adc    2000
+   adc    6000
    tin                             ;end delay
-   testerr                         ;error LED ODD
-
+   testerr                         ;error LED OFF
+   adc    6000
+   tin                             ;end delay
+  
 	ldc     0                       ;BOOTOUT[0]:= 0 (default to inactive link)
 	stl     BOOTOUT1
 	ldc     0        
@@ -116,10 +127,9 @@ I3: ldc     INITIME                 ;start timer at INITIME(0)
 	stl     BO_IDX                  ;loop 0,1,2 through BOOTOUT array
 
 ; bootstrap neighbors
-; send bootstrap out on all links, except link booted from. Use high-prio processes to do all 3 links in PAR
-; fire & forget, i.e don't care if bootstrap accepted
+; send bootstrap out on all links, except link booted from. Use processes since in,out can block
 
-	ldlp    LOCTOP-OLOCAL           ;init new work space ptr
+	ldlp    LOCTOP+5;-OLOCAL           ;init new work space ptr
 	stl     WSP
 	ldc     0                       ;loop i:= 0 for 4 each link
 	stl     LOOPA                   ;LOOPA = lend control struct 0:4
@@ -148,9 +158,6 @@ B1: ldl     LOOPA                   ;if LINKIN[i] <> BOOTIN
 	ldl     WSP
 	stnl    OBOOTOUT       
 	;}}}
-	ldl     LOOPA
-	ldl     WSP
-	stnl    OID
 	
 	ldlp    0                       ;save static link
 	ldl     WSP
@@ -160,10 +167,18 @@ B1: ldl     LOOPA                   ;if LINKIN[i] <> BOOTIN
 B2: ldl     WSP
 	stnl    -1
 	ldl     WSP                     ;load new work space ptr
-	runp                            ;run output buffer at high pri
+	;ldc 1
+	;or
+	runp                            ;run output buffer process
+
+    ldtimer                         ;wait for any com. to finish
+	adc     1000
+	tin                             ;block until timer reaches DELAY
+
 	ldl     BO_IDX
 	adc     1
 	stl     BO_IDX
+
 B3: ldlp    LOOPA
 	ldc     B4-B1
 	lend                            ;end loop
@@ -171,17 +186,18 @@ B4:
     ldtimer                         ;wait for any com. to finish
 	adc     DELAY
 	tin                             ;block until timer reaches DELAY
+    
 
 ;  loader and executer setup (received on same link as bootstrap)
 
-    ldlp    CODELEN                 ;input length of fload loader
-    ldl     BOOTIN
-    ldc     1
-    in                              ;A=len, B=link, C=addr
-    ldl     MEMSTART                ;input fload loader
-    ldl     BOOTIN
-    ldl     CODELEN
-    in
+    ;ldlp    CODELEN                 ;input length of fload loader
+    ;ldl     BOOTIN
+    ;ldc     1
+    ;in                              ;A=len, B=link, C=addr
+    ;ldl     MEMSTART                ;input fload loader
+    ;ldl     BOOTIN
+    ;ldl     CODELEN
+    ;in
 
 ; send loader to neighbors
 H2: ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
@@ -193,41 +209,47 @@ H3:
     ldlp    BOOTOUT
     wsub
     ldnl    0
-    stl     TLINK
-    ldl     TLINK                   ;if TLINK <> 0
+    ;stl     TLINK
+    ;ldl     TLINK                   ;if TLINK <> 0
     cj      @H4
 
    ; SHOULD HAVE (with 2 cards) = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
    ; XXX now 3 on each processor XXX
-   ;seterr                          ;error LED ON
-   ;ldtimer
-   ;adc    4000
-   ;tin                             ;end delay
-    ldlp    CODELEN                 ;send out length to neighbors (1 byte)
-    ldl     TLINK
-    ldc     1
-    out
-    ldl     MEMSTART                ;send out code to neighbors
-    ldl     TLINK
-    ldl     CODELEN
-    out    
-   ;testerr                         ;error LED OFF
-   ;ldtimer
-   ;adc     4000
-   ;tin                             ;end delay
+
+   seterr                          ;error LED ON
+   ldtimer
+   adc    4000
+   tin                             ;end delay
+   testerr                         ;error LED OFF
+   ldtimer
+   adc    4000
+   tin                             ;end delay
+
+    ;ldlp    CODELEN                 ;send out length to neighbors (1 byte)
+    ;ldl     TLINK
+    ;ldc     1
+    ;out
+    ;ldl     MEMSTART                ;send out code to neighbors
+    ;ldl     TLINK
+    ;ldl     CODELEN
+    ;out    
+
 H4: ldlp    LOOPA
     ldc     H5-H3
     lend                            ;end loop
 H5
+    ;XXXXX TEMP XXXXX
+    stopp
+    
     ;start loader on self
-    ldlp    LOCTOP                  ;init load start address
-    stl     LDSTART
-    ldl     LDSTART                 ;init entry point
-    stl     ENTRYP
-    ldlp    CALLWSP                 ;init work space
-    stl     WSPACE
-    ldl     MEMSTART                ;go to loader
-    gcall
+    ;ldlp    LOCTOP                  ;init load start address
+    ;stl     LDSTART
+    ;ldl     LDSTART                 ;init entry point
+    ;stl     ENTRYP
+    ;ldlp    CALLWSP                 ;init work space
+    ;stl     WSPACE
+    ;ldl     MEMSTART                ;go to loader
+    ;gcall
 
 ;       output buffer
 OUTBUF: 
@@ -259,6 +281,12 @@ OUTBUF:
     ldc     BOOTED
     outword
 
+    ;if the code got this far it means the worm will be recieved by a downstream transputer
+    ;mark this boot link as active - store the output link register address into BOOTOUT array
+    ldl     OLINK
+    ldl     OBOOTOUT
+    stnl    0
+
     ;send bootstrap
     ldl     OLINK                   ;load output link
     ldl     OSTATIC                 ;load code length
@@ -271,11 +299,6 @@ OUTBUF:
     ldnl    CODELEN
     out                             ;output code
 
-    ;if the code got this far it means the worm was recieved by a downstream transputer
-    ;mark this boot link as active - store the output link register address into BOOTOUT array
-    ldl     OLINK
-    ldl     OBOOTOUT
-    stnl    0
 O1: 
     stopp
 

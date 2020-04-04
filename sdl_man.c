@@ -665,14 +665,14 @@ void boot_mandel(void)
     rst_adpt(TRUE);
     if (verbose) printf("Booting...\n");
     if (!load_buf(FLBOOT,sizeof(FLBOOT))) exit(1);
-    //only_2k = (int)word_in();
-    //printf("ACK = 0x%X\n", only_2k);
-    /*while (1) {
+    #if 0
+    while (1) {
         only_2k = (int)word_in();
         if (only_2k == -1) break;
         printf("word = 0x%X\n", only_2k);
     }
-    exit(0);*/
+    #endif
+    exit(0);
     if (verbose) printf("Loading...\n");      
     if (!load_buf(FLLOAD,sizeof(FLLOAD))) exit(1);
     if (verbose) printf("ID'ing...\n");
