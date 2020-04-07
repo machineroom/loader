@@ -77,11 +77,10 @@ I3: ldc     INITIME                 ;start timer at INITIME(0)
 	sttimer
 
 	;{{{ STATUS=0
-	ldc     0xAA
+	ldc     0
 	ldc     STATUS
 	stnl    0
 	;}}}
-
 
 ; bootstrap neighbors
 ; send bootstrap out on all links, except link booted from. Use high-prio processes to do all 3 links in PAR
