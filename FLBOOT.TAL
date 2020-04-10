@@ -41,7 +41,7 @@
 	.val    BO_IDX,9
 	.val    WSPACE,9
 	.val    LDADDR,10
-    .val    UNUSED,11
+    .val    TRANTYPE,11
 	.val    CODELEN,12              ;high order bytes must stay zeroed
 	.val    LOOPA,13
 	.val    LOOPB,14
@@ -94,6 +94,9 @@ I3: ldc     INITIME                 ;start timer at INITIME(0)
 	sttimer
 	testerr                         ;clear error flag
 	clrhalterr                      ;clear halt on error
+    lddevid
+    stl TRANTYPE
+
 
     ;send BOOTED word to host to acknowlege bootstrap code received and executing
     ldl     BOOTIN
