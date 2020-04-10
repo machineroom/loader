@@ -163,15 +163,6 @@ N3:
     ldl     TO_PARENT     ;   to parent
     ldc     12
     out
-    ;ldl     TO_PARENT     ;   to parent
-    ;ldc 1
-    ;outword
-    ;ldl     TO_PARENT     ;   to parent
-    ;ldc 2
-    ;outword
-    ;ldl     TO_PARENT     ;   to parent
-    ;ldc 3
-    ;outword
 
 ;}}}  ;
     ajw     RESERVE
