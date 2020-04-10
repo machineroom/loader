@@ -25,7 +25,7 @@
 	.val    RESERVE,16
 	.val    CALLWSP,-4
 	.val    INITIME,0
-	.val    DELAY,10000
+	.val    DELAY,100
 	.val    LOCTOP,16
 
     ;this struct shared with flboot & ident
@@ -207,11 +207,11 @@ H3:
    ; HAVE (with 2 cards) = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
    seterr                          ;error LED ON
    ldtimer
-   adc    4000
+   adc    2000
    tin                             ;end delay
    testerr                         ;error LED OFF
    ldtimer
-   adc    4000
+   adc    2000
    tin                             ;end delay
 
 H4: ldlp    LOOPA
