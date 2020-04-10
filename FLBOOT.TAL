@@ -21,7 +21,7 @@
 	.t800
 ;  val definition;
 
-    .val    WORKSPACE_RESERVED, 5   ; 5 words is max additional workspace requirement for a concurrent process
+    .val    WORKSPACE_RESERVED,5    ;5 words is max additional workspace requirement for a concurrent process
 	.val    RESERVE,16
 	.val    CALLWSP,-4
 	.val    INITIME,0
@@ -38,27 +38,24 @@
 	.val    BOOTOUT3,6
 	.val    LDSTART,7               ;zeroed during BOOTOUT save
 	.val    ENTRYP,8
-	.val    WSPACE,9
-	.val    BO_IDX,9                ;NOTE shared location
+	.val    BO_IDX,9
 	.val    LDADDR,10
-	.val    UNUSED,11               ;was TRANTYPE - not used on wx9020
+    .val    UNUSED,11
 	.val    CODELEN,12              ;high order bytes must stay zeroed
-	.val    BIDX,12                 ;NOTE shared location
 	.val    LOOPA,13
 	.val    LOOPB,14
 	.val    TLINK,15                ;NOTE shared location
 	.val    WSP,15
 
-	.val    OSTATIC,1
-	.val    OLINK,2
-	.val    OBOOTOUT,3
-	.val    OTEMP,4
-	.val    OID,5
+	.val    OLINK,1
+	.val    OBOOTOUT,2
+	.val    OTEMP,3
+	.val    OCODE,4
+	.val    OSIZE,5
 	.val    OLOCAL,6
 
 	.val    OBUFWS,OLOCAL+WORKSPACE_RESERVED     
 	
-	.val    STATUS,0x80000F00
 	.val    BOOTED,0xB007EEED
 
 	.pub    START
@@ -67,9 +64,9 @@
 	.align
 START:  
     ajw     RESERVE                 ;reserve work space (16 words) -> Wptr = memstart + codelen + 16w (8000 019c)
-	stl     BOOTIN                  ;discard Iptr
-	stl     BOOTIN                  ;discard Wdesc
-	stl     BOOTIN                  ;Areg = bootin
+	stl     BOOTIN                  ;pop Iptr
+	stl     BOOTIN                  ;pop Wdesc
+	stl     BOOTIN                  ;pop in boot link
     ldmemstartval
     stl     MEMSTART                ;save memory start (start of bootstrap code)
 	ldc     @END-@START             
@@ -95,29 +92,15 @@ I2: ldl     MININT                  ;init link control words to minint
 I3: ldc     INITIME                 ;start timer at INITIME(0)
 	sttimer
 	testerr                         ;clear error flag
-	clrhalterr                      ; halt on error
+	clrhalterr                      ;clear halt on error
 
-    ldc BOOTED ; STATUS = BOOTED
-    ldc STATUS
-    stnl 0
+    ;send BOOTED word to host to acknowlege bootstrap code received and executing
+    ldl     BOOTIN
+    ldc     16
+    sub
+    ldc     BOOTED
+    outword
 
-   ;ldl MININT
-   ;adc 4
-   ;ldl BOOTIN  ;good (0x80000014)
-   ;ldl MEMSTART ;good (0x80000070)
-   ;ldl CODELEN ;good
-   ;ldlp 1
-   ;outword 
-
-   ;one flash for loader starting
-   ;seterr                          ;error LED ON
-   ;ldtimer
-   ;adc    16000
-   ;tin                             ;end delay
-   ;testerr                         ;error LED OFF
-   ;adc    16000
-   ;tin                             ;end delay
-  
 	ldc     0                       ;BOOTOUT[0]:= 0 (default to inactive link)
 	stl     BOOTOUT1
 	ldc     0        
@@ -125,12 +108,10 @@ I3: ldc     INITIME                 ;start timer at INITIME(0)
 	ldc     0        
 	stl     BOOTOUT3
 	ldc     0        
-	stl     BO_IDX                  ;loop 0,1,2 through BOOTOUT array
+	stl     BO_IDX
 
-   
-; bootstrap neighbors
-; send bootstrap out on all links, except link booted from. Use processes since in,out can block
-
+; boot neighbors. Use processes since in,out can block
+; send bootstrap out on all links, except link booted from.
 	ldlp    LOCTOP                  ;init new work space ptr (at top of current locals)
 	stl     WSP
 	ldc     0                       ;loop i:= 0 for 4 each link
@@ -153,18 +134,23 @@ B1: ldl     LOOPA                   ;if LINKIN[i] <> BOOTIN
 	ldl     WSP
 	stnl    OLINK
 
-	;{{{ PAR will store at OBOOTOUT the out link register address if bootstrap recieved
+	;{{{ send address of BOOTOUT[i] to be filled in by process if bootstrap recieved
 	ldl     BO_IDX
 	ldlp    BOOTOUT
 	wsub
 	ldl     WSP
 	stnl    OBOOTOUT       
 	;}}}
+
+    ldl     MEMSTART
+    ldl     WSP
+    stnl    OCODE
+
+    ldl     CODELEN
+    ldl     WSP
+    stnl    OSIZE
 	
-	ldlp    0                       ;save static link
-	ldl     WSP
-	stnl    OSTATIC
-	ldc     OUTBUF-B2               ;save iptr to OUTBUF
+	ldc     BOOT-B2               ;save iptr to OUTBUF
 	ldpi
 B2: ldl     WSP
 	stnl    -1
@@ -183,45 +169,6 @@ B4:
 	adc     DELAY
 	tin                             ;block until timer reaches DELAY
 
-    ;{{{flash err for bootin link number
-	;ldc     0                       ;loop i:= 0 for 4 each link
-	;stl     LOOPA                   ;LOOPA = lend control struct 0:4
-    ;ldl     BOOTIN
-    ;ldl     MININT
-    ;diff
-    ;ldc 16
-    ;sub
-    ;ldc 4
-    ;div
-	;stl     LOOPB                   ;LOOPB=(BOOTIN-MININT-0x10)/4 -> 0,1,2,3
-	;ldl LOOPB
-	;cj @F4
-F1: ;seterr                          ;error LED ON
-    ;ldtimer
-    ;adc    14000
-    ;tin                             ;end delay
-    ;testerr                         ;error LED OFF
-    ;ldtimer
-    ;adc    14000
-    ;tin                             ;end delay
-F3: ;ldlp    LOOPA
-	;ldc     F4-F1
-	;lend                            ;end loop
-F4: ;stopp
-    ;}}}
-
-;  loader and executer setup (received on same link as bootstrap)
-
-    ;ldlp    CODELEN                 ;input length of fload loader
-    ;ldl     BOOTIN
-    ;ldc     1
-    ;in                              ;A=len, B=link, C=addr
-    ;ldl     MEMSTART                ;input fload loader
-    ;ldl     BOOTIN
-    ;ldl     CODELEN
-    ;in
-
-; send loader to neighbors
 H2: ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
     stl     LOOPA
     ldc     3
@@ -235,8 +182,7 @@ H3:
     ldl     TLINK                   ;if TLINK <> 0
     cj      @H4
 
-   ; SHOULD HAVE (with 2 cards) = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
-   ; XXX now 3 on each processor XXX
+   ; HAVE (with 2 cards) = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
 
    seterr                          ;error LED ON
    ldtimer
@@ -250,19 +196,22 @@ H3:
 H4: ldlp    LOOPA
     ldc     H5-H3
     lend                            ;end loop
-H5
+H5:
     stopp
   
 
-;       output buffer
-OUTBUF: 
-    ;peek STATUS word to see if proc already booted
-    ldl     OLINK
-    ldc     1                       ;PEEK,ADDR
-    outbyte
-    ldl     OLINK
-    ldc     STATUS
-    outword
+; boot link
+BOOT: 
+    ;send bootstrap
+    ldl     OLINK                   ;load output link
+    ldl     OSIZE
+    outbyte                         ;output code length
+    ldl     OCODE
+    ldl     OLINK                   ;load output link
+    ldl     OSIZE                   ;load code length
+    out                             ;output code
+
+    ;receive ACK word - if == BOOTED then the daughter booted
     ldlp    OTEMP
     ldl     OLINK                   ;input reg is 16 bytes on from output
     adc     16
@@ -271,38 +220,15 @@ OUTBUF:
     ldl     OTEMP
     ldc     BOOTED
     diff
-    cj      @O1
-
-    ;poke STATUS=BOOTED to mark proc as booted
-    ldl     OLINK
-    ldc     0                       ;POKE,ADDR,VAL
-    outbyte
-    ldl     OLINK
-    ldc     STATUS
-    outword
-    ldl     OLINK
-    ldc     BOOTED
-    outword
-
-    ;send bootstrap
-    ldl     OLINK                   ;load output link
-    ldl     OSTATIC                 ;load code length
-    ldnl    CODELEN
-    outbyte                         ;output code length
-    ldl     OSTATIC                 ;load code start
-    ldnl    MEMSTART
-    ldl     OLINK                   ;load output link
-    ldl     OSTATIC                 ;load code length
-    ldnl    CODELEN
-    out                             ;output code
-
-    ;if the code got this far it means the worm will be recieved by a downstream transputer
+    cj      @P1
+    stopp
+P1:
+    ;if the code got this far it means the worm has been recieved by a downstream transputer
+    ;and the bootstrap has returned an ACK word (BOOTED)
     ;mark this boot link as active - store the output link register address into BOOTOUT array
     ldl     OLINK
     ldl     OBOOTOUT
     stnl    0
-
-O1: 
     stopp
 
         .align

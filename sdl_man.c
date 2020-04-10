@@ -644,27 +644,14 @@ void draw_box(int x1, int y1, int x2, int y2) {
 #include "EXPLORE.ARR"
 
 void boot_mandel(void)
-{   int fxp, only_2k, nnodes;
+{   int ack, fxp, only_2k, nnodes;
 
-    rst_adpt(TRUE);
-#if 0
-    printf("Exploring...\n");
-    load_buf(EXPLORE,sizeof(EXPLORE));
-    while (1) {
-        only_2k = (int)word_in();
-        if (only_2k == -1) break;
-        printf("word = 0x%X\n", only_2k);
-    }
-    exit(0);
-#else
-//    if (verbose) printf("Resetting Transputers...");
-//    if (!load_buf(SRESET,sizeof(SRESET))) exit(1);
-    if (verbose) printf("Clear status word...\n");
-    if (!load_buf(CLEAR,sizeof(CLEAR))) exit(1);
-    sleep(1);
     rst_adpt(TRUE);
     if (verbose) printf("Booting...\n");
     if (!load_buf(FLBOOT,sizeof(FLBOOT))) exit(1);
+    //daughter sends back an ACK work on the booted link
+    ack = (int)word_in();
+    printf("ack = 0x%X\n", ack);
     #if 0
     while (1) {
         only_2k = (int)word_in();
@@ -719,7 +706,6 @@ void boot_mandel(void)
         word_in();    /*throw away nnodes*/
         word_in();    /*throw away fixed point*/
     }
-#endif
 }
 
 /* return TRUE if loaded ok, FALSE if error. */
