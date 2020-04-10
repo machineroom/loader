@@ -39,6 +39,7 @@
 	.val    LDSTART,7               ;zeroed during BOOTOUT save
 	.val    ENTRYP,8
 	.val    BO_IDX,9
+	.val    WSPACE,9
 	.val    LDADDR,10
     .val    UNUSED,11
 	.val    CODELEN,12              ;high order bytes must stay zeroed
@@ -169,6 +170,18 @@ B4:
 	adc     DELAY
 	tin                             ;block until timer reaches DELAY
 
+
+; loader and executer setup (received on same link as bootstrap)
+    ldlp    CODELEN                 ;input length of fload loader
+    ldl     BOOTIN
+    ldc     1
+    in                              ;A=len, B=link, C=addr
+    ldl     MEMSTART                ;input fload loader
+    ldl     BOOTIN
+    ldl     CODELEN
+    in
+
+; send loader to neighbors
 H2: ldc     0                       ;loop i:= 0 for 3 each BOOTOUT link
     stl     LOOPA
     ldc     3
@@ -182,8 +195,16 @@ H3:
     ldl     TLINK                   ;if TLINK <> 0
     cj      @H4
 
-   ; HAVE (with 2 cards) = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
+    ldlp    CODELEN                 ;send out length to neighbors (1 byte)
+    ldl     TLINK
+    ldc     1
+    out
+    ldl     MEMSTART                ;send out code to neighbors
+    ldl     TLINK
+    ldl     CODELEN
+    out            
 
+   ; HAVE (with 2 cards) = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
    seterr                          ;error LED ON
    ldtimer
    adc    4000
@@ -197,8 +218,16 @@ H4: ldlp    LOOPA
     ldc     H5-H3
     lend                            ;end loop
 H5:
-    stopp
-  
+    ldlp    LOCTOP                  ;init load start address
+    stl     LDSTART
+    ldl     LDSTART                 ;init entry point
+    stl     ENTRYP
+    ldlp    CALLWSP                 ;init work space
+    stl     WSPACE
+    ldl     MEMSTART                ;go to loader
+    gcall
+
+
 
 ; boot link
 BOOT: 

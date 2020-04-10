@@ -658,8 +658,8 @@ void boot_mandel(void)
         if (only_2k == -1) break;
         printf("word = 0x%X\n", only_2k);
     }
-    #endif
     exit(0);
+    #endif
     if (verbose) printf("Loading...\n");      
     if (!load_buf(FLLOAD,sizeof(FLLOAD))) exit(1);
     if (verbose) printf("ID'ing...\n");
@@ -684,7 +684,6 @@ void boot_mandel(void)
     printf("\nnodes with only 2K RAM: %d 0x%X",only_2k,only_2k);
     printf("\nFXP: %d 0x%X",fxp,fxp);
     printf("\nusing %s-point arith.\n", fxp ? "fixed" : "floating");
-    exit(0);
     if (only_2k)
     {
         if (verbose) printf("Sending 2k mandel-code\n");
