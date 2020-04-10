@@ -634,14 +634,11 @@ void draw_box(int x1, int y1, int x2, int y2) {
     SDL_RenderPresent(sdl_renderer);
 }
 
-#include "SRESET.ARR"
-#include "CLEAR.ARR"
 #include "FLBOOT.ARR"
 #include "FLLOAD.ARR"
 #include "IDENT.ARR"
 #include "MANDEL.ARR"
 #include "SMALLMAN.ARR"
-#include "EXPLORE.ARR"
 
 void boot_mandel(void)
 {   int ack, fxp, only_2k, nnodes;
@@ -652,14 +649,6 @@ void boot_mandel(void)
     //daughter sends back an ACK work on the booted link
     ack = (int)word_in();
     printf("ack = 0x%X\n", ack);
-    #if 0
-    while (1) {
-        only_2k = (int)word_in();
-        if (only_2k == -1) break;
-        printf("word = 0x%X\n", only_2k);
-    }
-    exit(0);
-    #endif
     if (verbose) printf("Loading...\n");      
     if (!load_buf(FLLOAD,sizeof(FLLOAD))) exit(1);
     if (verbose) printf("ID'ing...\n");
@@ -674,16 +663,14 @@ void boot_mandel(void)
         printf(" -- timeout sending id\n");
         exit(1);
     }
-    if (verbose) printf("Done. Getting data for \"only_2k\",");        
     only_2k = (int)word_in();
-    if (verbose) printf("\"num_nodes\",");
     nnodes  = (int)word_in();
-    if (verbose) printf("\"fpx\",");
     fxp     = (int)word_in();
-    printf("\nnodes found: %d 0x%X",nnodes,nnodes);
-    printf("\nnodes with only 2K RAM: %d 0x%X",only_2k,only_2k);
-    printf("\nFXP: %d 0x%X",fxp,fxp);
-    printf("\nusing %s-point arith.\n", fxp ? "fixed" : "floating");
+    printf("\nfrom IDENT");
+    printf("\n\tnodes found: %d",nnodes);
+    printf("\n\tnodes with only 2K RAM: %d",only_2k);
+    printf("\n\tFXP: %d",fxp);
+    printf("\n\tusing %s-point arith.\n", fxp ? "fixed" : "floating");
     if (only_2k)
     {
         if (verbose) printf("Sending 2k mandel-code\n");
@@ -702,8 +689,12 @@ void boot_mandel(void)
             printf(" -- timeout sending execute\n");
             exit(1);
         }
-        word_in();    /*throw away nnodes*/
-        word_in();    /*throw away fixed point*/
+        //mandel code sends these back to parent, so these will reach the host
+        nnodes = word_in();
+        fxp = word_in();
+        printf("\nfrom MANDEL");
+        printf("\n\tnodes found: %d",nnodes);
+        printf("\n\tFXP: %d",fxp);
     }
 }
 

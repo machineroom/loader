@@ -165,6 +165,17 @@ B2: ldl     WSP
 	adc     1
 	stl     BO_IDX
 
+    ;ldtimer                         ;wait for any com. to finish
+	;adc     100
+	;tin                             ;block until timer reaches DELAY
+	;ldl     WSP
+	;ldnl    OLINK
+	;resetch
+	;ldl     WSP
+	;ldnl    OLINK
+	;adc 16
+	;resetch
+
 B3: ldlp    LOOPA
 	ldc     B4-B1
 	lend                            ;end loop
@@ -208,14 +219,14 @@ H3:
     out            
 
    ; HAVE (with 2 cards) = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
-   seterr                          ;error LED ON
-   ldtimer
-   adc    2000
-   tin                             ;end delay
-   testerr                         ;error LED OFF
-   ldtimer
-   adc    2000
-   tin                             ;end delay
+   ;seterr                          ;error LED ON
+   ;ldtimer
+   ;adc    2000
+   ;tin                             ;end delay
+   ;testerr                         ;error LED OFF
+   ;ldtimer
+   ;adc    2000
+   ;tin                             ;end delay
 
 H4: ldlp    LOOPA
     ldc     H5-H3

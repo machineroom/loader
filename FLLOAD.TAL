@@ -48,6 +48,7 @@
         .pub    START
 ;
 ;       mini distributing loader
+;       loops loading, then executing code. i.e. this first loads & executes IDENT, then main mandel code.
 ;
 ;
 ;
