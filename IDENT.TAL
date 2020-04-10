@@ -104,7 +104,7 @@ L3: ldc     TRUE
     stl     LOADING
 ;}}}  ;
 ;{{{  get info to send to paren;
-    ldc     0               ;no T800 (testing)
+    ldc     1               ;no T800 (testing)
     stl     FIXED_POINT
 	;    do initializations
     ldc     FALSE           ;no 2k (testing)
