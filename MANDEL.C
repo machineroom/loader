@@ -119,6 +119,7 @@ LOADGB *ld;
         int buf[2];
 
         nodes = fxp = 0;
+        /* LSC89 compiler bug? ld->dn_out[1] & ld->dn_out[2] are both set but loop skips these (at least on the root node) */
         for (i = 0; i < 3 && ld->dn_out[i]; i++)
         {
             ChanIn(ld->dn_out[i]+4,(char *)buf,2*4);
@@ -129,8 +130,8 @@ LOADGB *ld;
         buf[0] = nodes+1;
         buf[1] = fxp;
         ChanOut(ld->up_in-4,(char *)buf,2*4);
-    }
     /*}}}  */
+    }
     /*{{{  set up par structure*/
     {
         Channel *si,*so[5],*sr[5],*ai[5];

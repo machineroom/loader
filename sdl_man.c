@@ -638,7 +638,9 @@ void draw_box(int x1, int y1, int x2, int y2) {
 #include "FLLOAD.ARR"
 #include "IDENT.ARR"
 #include "MANDEL.ARR"
-#include "SMALLMAN.ARR"
+#ifdef SMALL
+    #include "SMALLMAN.ARR"
+#endif
 
 void boot_mandel(void)
 {   int ack, fxp, only_2k, nnodes;
@@ -671,6 +673,7 @@ void boot_mandel(void)
     printf("\n\tnodes with only 2K RAM: %d",only_2k);
     printf("\n\tFXP: %d",fxp);
     printf("\n\tusing %s-point arith.\n", fxp ? "fixed" : "floating");
+#ifdef SMALL
     if (only_2k)
     {
         if (verbose) printf("Sending 2k mandel-code\n");
@@ -681,6 +684,11 @@ void boot_mandel(void)
             printf(" -- timeout sending execute\n");
             exit(1);
         }
+#else
+    if (only_2k) {
+        printf ("You need to enable 2K support\n");
+        exit(-1);
+#endif
     } else {
         if (verbose) printf("Sending mandel-code\n");	   
         if (!load_buf(MANDEL,sizeof(MANDEL))) exit(1);
@@ -693,8 +701,8 @@ void boot_mandel(void)
         nnodes = word_in();
         fxp = word_in();
         printf("\nfrom MANDEL");
-        printf("\n\tnodes found: %d",nnodes);
-        printf("\n\tFXP: %d",fxp);
+        printf("\n\tnodes found: %d 0x%X",nnodes,nnodes);
+        printf("\n\tFXP: %d 0x%X",fxp,fxp);
     }
 }
 
