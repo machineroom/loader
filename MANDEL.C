@@ -63,7 +63,7 @@ main will be the first byte in the code.
 #define   T414B 0x61
 /*}}}  */
 /*{{{  lights macro*/
-#pragma define LIGHTS
+/*#pragma define LIGHTS*/
 
 #pragma asm
 	.T800
@@ -138,25 +138,26 @@ LOADGB *ld;
         Channel *si,*so[5],*sr[5],*ai[5];
         extern int job(),buffer(),feed(),arbiter(),selector();
         extern int jobws[JOBWSZ/4];
+        int list_index;
 
         sr[0] = ChanAlloc();
         so[0] = ChanAlloc();
         ai[0] = ChanAlloc();
         PRun(PSetup(jobws,job,JOBWSZ,3,sr[0],so[0],ai[0])|1);
+        /* The channel lists are zero terminated. ld->dn_out may have 0, 1 or 2 links set and in any order,
+           i.e [0,0,linkA], [linkB,0,linkA] & [linkA,linkB,linkC] are all valid */
+        list_index=1;
         for (i = 0; i < 3; i++)
         {
-            if (ld->dn_out[i]) {
-                sr[i+1] = ChanAlloc();
-                so[i+1] = ChanAlloc();
-                ai[i+1] = ld->dn_out[i]+4;
-                PRun(PSetupA(buffer,BUFWSZ,3,sr[i+1],so[i+1],ld->dn_out[i]));
-            } else {
-                sr[i+1] = 0;
-                so[i+1] = 0;
-                ai[i+1] = 0;
-            }
+            if (ld->dn_out[i]!=(void *)0) {
+                sr[list_index] = ChanAlloc();
+                so[list_index] = ChanAlloc();
+                ai[list_index] = ld->dn_out[i]+4;
+                PRun(PSetupA(buffer,BUFWSZ,3,sr[list_index],so[list_index],ld->dn_out[i]));
+                list_index++;
+            } 
         }
-        sr[i+1] = so[i+1] = ai[i+1] = 0;
+        sr[list_index] = so[list_index] = ai[list_index] = 0;
         if (ld->id)
         {
             /* id!=0 == worker node */
@@ -257,7 +258,7 @@ Channel *req_out,*job_in,*rsl_out;
             }
             len = pixvec+3*4;
             buf[0] = RSLCOM;
-            /*loff();*/
+            loff();
         }
         /*}}}  */
         else if (buf[0] == DATCOM)
@@ -586,11 +587,13 @@ Channel *sel_in,**req_in,**dn_out;
         else
         /*{{{  */
         {
-            for (i = 0; req_in[i]; i++)
+            for (i = 0; i<3; i++)
             {
-                ChanInInt(req_in[i]);
-                ChanOutInt(dn_out[i],len);
-                ChanOut(dn_out[i],(char *)buf,len);
+                if (req_in[i]) {
+                    ChanInInt(req_in[i]);
+                    ChanOutInt(dn_out[i],len);
+                    ChanOut(dn_out[i],(char *)buf,len);
+                }
             }
         }
         /*}}}  */
