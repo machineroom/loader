@@ -33,7 +33,7 @@ LSC_BIN=$(LSC89_BIN)
 	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\pp.exe $*.C > PP.OUT" -c "exit"
 	cat PP.OUT
 	#-c (no debugging information), -f1(ANSI f.p), -p0 (for any processor), -r(relocatable)
-	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\tcx $* -q0 -q1 -q2 -f1 -p0 -r > CC.OUT" -c "exit"
+	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\tcx $* -f1 -p0 -r > CC.OUT" -c "exit"
 	cat CC.OUT
 
 #tcode assemble rule

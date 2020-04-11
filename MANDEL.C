@@ -63,19 +63,18 @@ main will be the first byte in the code.
 #define   T414B 0x61
 /*}}}  */
 /*{{{  lights macro*/
-/*#pragma define LIGHTS*/
+#pragma define LIGHTS
 
 #pragma asm
 	.T800
 	.NOEMULATE
 #pragma endasm
 
+/* lights on whitecross uses error LED on each processor */
 #pragma macro lon()
 #pragma ifdef LIGHTS
 #pragma asm
-	LDC     0
-	LDC     0
-	STNL    0
+    seterr
 #pragma endasm
 #pragma endif
 #pragma endmacro
@@ -83,15 +82,13 @@ main will be the first byte in the code.
 #pragma macro loff()
 #pragma ifdef LIGHTS
 #pragma asm
-        LDC     1
-	LDC     0
-        STNL    0
+    testerr
 #pragma endasm
 #pragma endif
 #pragma endmacro
 /*}}}  */
-/*{{{  struct type def*/
 
+/*{{{  struct type def*/
 typedef struct {
     int id;
     void *minint;
@@ -119,11 +116,15 @@ LOADGB *ld;
         int buf[2];
 
         nodes = fxp = 0;
-        /* LSC89 compiler bug? ld->dn_out[1] & ld->dn_out[2] are both set but loop skips these (at least on the root node) */
-        for (i = 0; ld->dn_out[i]!=(void *)0 && i < 3; i++)
+        /* LSC89 compiler bug? ld->dn_out[1] & ld->dn_out[2] are both set but loop skips these (at least on the root node)
+           LSC93 seems to generate very similar code. jumps out of loop if ld->dn_out[0]==0 so link 1&2 are ignored! 
+           Suspect that with older FLBOOT code [0] was incorrectly set so this problem was masked */
+        for (i = 0; i < 3; i++)
         {
-            ChanIn(ld->dn_out[i]+4,(char *)buf,2*4);
-            nodes += buf[0]; fxp |= buf[1];
+            if (ld->dn_out[i]!=(void *)0) {
+                ChanIn(ld->dn_out[i]+4,(char *)buf,2*4);
+                nodes += buf[0]; fxp |= buf[1];
+            }
         }
         fxp |= !((ld->trantype == T800D) ||
             ((ld->trantype  > T805L) && (ld->trantype < T805H)) );
@@ -142,20 +143,28 @@ LOADGB *ld;
         so[0] = ChanAlloc();
         ai[0] = ChanAlloc();
         PRun(PSetup(jobws,job,JOBWSZ,3,sr[0],so[0],ai[0])|1);
-        for (i = 0; i < 3 && ld->dn_out[i]; i++)
+        for (i = 0; i < 3; i++)
         {
-            sr[i+1] = ChanAlloc();
-            so[i+1] = ChanAlloc();
-            ai[i+1] = ld->dn_out[i]+4;
-            PRun(PSetupA(buffer,BUFWSZ,3,sr[i+1],so[i+1],ld->dn_out[i]));
+            if (ld->dn_out[i]) {
+                sr[i+1] = ChanAlloc();
+                so[i+1] = ChanAlloc();
+                ai[i+1] = ld->dn_out[i]+4;
+                PRun(PSetupA(buffer,BUFWSZ,3,sr[i+1],so[i+1],ld->dn_out[i]));
+            } else {
+                sr[i+1] = 0;
+                so[i+1] = 0;
+                ai[i+1] = 0;
+            }
         }
         sr[i+1] = so[i+1] = ai[i+1] = 0;
         if (ld->id)
         {
+            /* id!=0 == worker node */
             si = ld->up_in;
         }
         else
         {
+            /* id=0 == root node */
             si = ChanAlloc();
             PRun(PSetupA(feed,FEDWSZ,3,ld->up_in,si,fxp));
         }
@@ -248,7 +257,7 @@ Channel *req_out,*job_in,*rsl_out;
             }
             len = pixvec+3*4;
             buf[0] = RSLCOM;
-            loff();
+            /*loff();*/
         }
         /*}}}  */
         else if (buf[0] == DATCOM)

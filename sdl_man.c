@@ -61,6 +61,8 @@
 #define LOR  3.0e-14
 #define f(x) sqrt(log(x)-log(LOR)+1.0)
 
+//#define DEBUG
+
 typedef unsigned int uint;
 
 void com_loop(void);
@@ -426,14 +428,21 @@ void scan_tran(void) {
 #ifdef DEBUG
     printf ("PRBCOM struct:\n\tcom:%ld\n\twidth:%ld\n\theight:%ld\n\tmaxcnt:%ld\n\tlo_r:%lf\n\tlo_i:%lf\n\tgapx:%lf\n\tgapy:%lf\n",
              prob_st.com, prob_st.width, prob_st.height, prob_st.maxcnt, prob_st.lo_r, prob_st.lo_i, prob_st.gapx, prob_st.gapy);
-    memdump ((char *)&prob_st,12*4);
+    memdump ((char *)&prob_st,sizeof(prob_st));
+    assert (sizeof(prob_st) == 48);
 #endif
-    word_out(12L*4);
-    chan_out((char *)&prob_st,12*4);
+    word_out(sizeof(prob_st));
+    chan_out((char *)&prob_st,sizeof(prob_st));
+#ifdef DEBUG
+    printf ("PRBCOM sent\n");
+#endif
 
 	loop
 	{
 	    len = (int)word_in();       //len in bytes
+#ifdef DEBUG
+        printf ("len word = %d 0x%X\n",len,len);
+#endif
 	    assert (len < sizeof(buf));
 		chan_in ((char *)buf,len);
 		if (len == 4) break;
@@ -701,8 +710,8 @@ void boot_mandel(void)
         nnodes = word_in();
         fxp = word_in();
         printf("\nfrom MANDEL");
-        printf("\n\tnodes found: %d 0x%X",nnodes,nnodes);
-        printf("\n\tFXP: %d 0x%X",fxp,fxp);
+        printf("\n\tnodes found: %d",nnodes);
+        printf("\n\tFXP: %d",fxp);
     }
 }
 
