@@ -120,7 +120,7 @@ LOADGB *ld;
 
         nodes = fxp = 0;
         /* LSC89 compiler bug? ld->dn_out[1] & ld->dn_out[2] are both set but loop skips these (at least on the root node) */
-        for (i = 0; i < 3 && ld->dn_out[i]; i++)
+        for (i = 0; ld->dn_out[i]!=(void *)0 && i < 3; i++)
         {
             ChanIn(ld->dn_out[i]+4,(char *)buf,2*4);
             nodes += buf[0]; fxp |= buf[1];

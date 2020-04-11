@@ -16,6 +16,8 @@
 #LSC 89 comes from http://www.classiccmp.org/transputer/software/languages/ansic/lsc/
 
 .SUFFIXES: .C .TAL .TLD .ARR .EXE
+.PHONY: lsc_debug
+all: man
 
 LSC89=/home/pi/lsc-V89.1
 LSC89_BIN=d:\exe
@@ -23,29 +25,36 @@ LSC89_BIN=d:\exe
 LSC93=/home/pi/lsc-V93.1
 LSC93_BIN=d:\bin
 
+LSC=$(LSC89)
+LSC_BIN=$(LSC89_BIN)
+
 #lsc c rule
 %.TAL : %.C
-	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\pp.exe $*.C > PP.OUT" -c "exit"
+	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\pp.exe $*.C > PP.OUT" -c "exit"
 	cat PP.OUT
-	#no debugging information, for any processor, relocatable
-	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\tcx $* -cf1p0r > CC.OUT" -c "exit"
+	#-c (no debugging information), -f1(ANSI f.p), -p0 (for any processor), -r(relocatable)
+	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\tcx $* -q0 -q1 -q2 -f1 -p0 -r > CC.OUT" -c "exit"
 	cat CC.OUT
 
 #tcode assemble rule
 %.TLD : %.TAL
-	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\tasm.exe $*.TAL -cv > ASM.OUT" -c "$(LSC89_BIN)\vtlnk $*.LNK > LNK.OUT" -c exit
+	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\tasm.exe $*.TAL -c > ASM.OUT" -c "exit"
 	cat ASM.OUT
+	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\vtlnk $*.LNK > LNK.OUT" -c "exit"
 	cat LNK.OUT
 
 #tcode assemble rule
 %.TRL : %.TAL
-	dosbox -c "mount D $(LSC89)" -c "mount C `pwd`" -c "C:" -c "$(LSC89_BIN)\tasm $* -cv > ASM.OUT" -c "exit"
+	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\tasm $* -c > ASM.OUT" -c "exit"
 	cat ASM.OUT
 
 #rule to make c arrays from .tld files
 %.ARR : %.TLD
 	dosbox -c "mount C `pwd`" -c "C:" -c "ltoc $*" -c "mkarr $*" -c "exit"
 
+lsc_debug: 
+	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "D:" -c "cd $(LSC_BIN)"
+    
 man : sdl_man.c lkio_c011.c  c011.c FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR
 	gcc -O0 -g sdl_man.c lkio_c011.c  c011.c -lSDL2 -lm -lbcm2835 -o $@
 
