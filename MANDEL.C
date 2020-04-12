@@ -63,7 +63,7 @@ main will be the first byte in the code.
 #define   T414B 0x61
 /*}}}  */
 /*{{{  lights macro*/
-/*#pragma define LIGHTS*/
+#pragma define LIGHTS
 
 #pragma asm
 	.T800
@@ -141,16 +141,15 @@ LOADGB *ld;
         int list_index;
 
         /* job worker on each node - this does iter() */
-        sr[0] = ChanAlloc();    /* sr = job request channel */
-        so[0] = ChanAlloc();    /* so = job configuration channel */
-        ai[0] = ChanAlloc();    /* ai = job results channel */
+        sr[0] = ChanAlloc();    /* sr = selector request (job request channel) */
+        so[0] = ChanAlloc();    /* so = slector outputs (job configuration channel) */
+        ai[0] = ChanAlloc();    /* ai = arbiter inputs (job/buffer results written to these channels) */
         /* job(Channel *req_out, Channel *job_in, Channel *rsl_out) */
         PRun(PSetup(jobws,job,JOBWSZ,3,sr[0],so[0],ai[0])|1);
         /* buffer worker for each child node */
         /* The channel lists are zero terminated. ld->dn_out may have 0, 1 or 2 links set and in any order,
            i.e [0,0,linkA], [linkB,0,linkA] & [linkA,linkB,linkC] are all valid */
         list_index=1;
-#if 0
         for (i = 0; i < 3; i++)
         {
             if (ld->dn_out[i]!=(void *)0) {
@@ -162,35 +161,9 @@ LOADGB *ld;
                 list_index++;
             } 
         }
-#else
-        {
-            int length = 3;
-            int i,j;
-            for (i = (length - 1); i >= 0; i--) {
-                for (j = 1; j <= i; j++) {
-                    if (ld->dn_out[j-1] > ld->dn_out[j]) {
-                        Channel *temp = ld->dn_out[j-1];
-                        ld->dn_out[j-1] = ld->dn_out[j];
-                        ld->dn_out[j] = temp;
-                    } 
-                } 
-            } 
-        }
-   
-        for (i = 0; i < 3; i++)
-        {
-            Channel *current = ld->dn_out[i];
-            if (current!=(void *)0) {
-                sr[list_index] = ChanAlloc();
-                so[list_index] = ChanAlloc();
-                ai[list_index] = current+4;   /* input link from child */
-                /* buffer (Channel *req_out, Channel *buf_in, Channel *buf_out) */
-                PRun(PSetupA(buffer,BUFWSZ,3,sr[list_index],so[list_index],current));
-                list_index++;
-            } 
-        }
-#endif
-        sr[list_index] = so[list_index] = ai[list_index] = 0;
+        sr[list_index] = 0;
+        so[list_index] = 0;
+        ai[list_index] = 0;
         if (ld->id)
         {
             /* id!=0 == worker node */
@@ -238,7 +211,6 @@ Channel *req_out,*job_in,*rsl_out;
         if (buf[0] == JOBCOM)
         /*{{{  */
         {
-            lon();
             pixvec = buf[3];
             if (fxp)
             /*{{{  */
@@ -250,7 +222,7 @@ Channel *req_out,*job_in,*rsl_out;
                     for (i = 0; i < pixvec; i++)
                     {
                         x = igapx*(buf[1]+i)+ilox;
-                        pbuf[i] = iterFIX(x,y,maxcnt);
+                        /*pbuf[i] = iterFIX(x,y,maxcnt);*/
                     }
                 }
                 else
@@ -271,7 +243,6 @@ Channel *req_out,*job_in,*rsl_out;
             }
             len = pixvec+3*4;
             buf[0] = RSLCOM;
-            loff();
         }
         /*}}}  */
         else if (buf[0] == DATCOM)
@@ -298,8 +269,10 @@ Channel *req_out,*job_in,*rsl_out;
             }
             continue;
         }
+        /* XXX all nodes get here */
         /*}}}  */
         ChanOutInt(rsl_out,len);
+        /* XXX ONLY LH card gets here - blocked on arbiter */
         ChanOut(rsl_out,(char *)buf,len);
     }
 }
@@ -575,6 +548,10 @@ Channel **arb_in,*arb_out;
     loop
 	{
         i = ProcPriAltList(arb_in,pri);
+        /* XXX new code only gets here on nodes with 1 or 2 links = LH card. OLD code gets here for all nodes */
+#pragma asm
+    seterr
+#pragma endasm
         pri = (arb_in[pri+1]) ? pri+1 : 0;
         len = ChanInInt(arb_in[i]);
         ChanIn(arb_in[i],(char *)buf,len);
@@ -584,8 +561,10 @@ Channel **arb_in,*arb_out;
     	    else 
     	        cnt = 0;
     	}
+        /* XXX new code only gets here on nodes with 2 links */
         ChanOutInt(arb_out,len);
         ChanOut(arb_out,(char *)buf,len);
+        /* XXX only LH card gets here */
 	}
 }
 
@@ -602,6 +581,7 @@ Channel *sel_in,**req_in,**dn_out;
 
     loop
     {
+        /* XXX new code only gets here on nodes with 2 links */
         len = ChanInInt(sel_in);
         ChanIn(sel_in,(char *)buf,len);
         if (buf[0] == JOBCOM)
