@@ -222,7 +222,7 @@ Channel *req_out,*job_in,*rsl_out;
                     for (i = 0; i < pixvec; i++)
                     {
                         x = igapx*(buf[1]+i)+ilox;
-                        /*pbuf[i] = iterFIX(x,y,maxcnt);*/
+                        pbuf[i] = iterFIX(x,y,maxcnt);
                     }
                 }
                 else
@@ -269,10 +269,8 @@ Channel *req_out,*job_in,*rsl_out;
             }
             continue;
         }
-        /* XXX all nodes get here */
         /*}}}  */
         ChanOutInt(rsl_out,len);
-        /* XXX ONLY LH card gets here - blocked on arbiter */
         ChanOut(rsl_out,(char *)buf,len);
     }
 }
@@ -548,10 +546,6 @@ Channel **arb_in,*arb_out;
     loop
 	{
         i = ProcPriAltList(arb_in,pri);
-        /* XXX new code only gets here on nodes with 1 or 2 links = LH card. OLD code gets here for all nodes */
-#pragma asm
-    seterr
-#pragma endasm
         pri = (arb_in[pri+1]) ? pri+1 : 0;
         len = ChanInInt(arb_in[i]);
         ChanIn(arb_in[i],(char *)buf,len);
@@ -561,10 +555,8 @@ Channel **arb_in,*arb_out;
     	    else 
     	        cnt = 0;
     	}
-        /* XXX new code only gets here on nodes with 2 links */
         ChanOutInt(arb_out,len);
         ChanOut(arb_out,(char *)buf,len);
-        /* XXX only LH card gets here */
 	}
 }
 
@@ -596,13 +588,11 @@ Channel *sel_in,**req_in,**dn_out;
         else
         /*{{{  */
         {
-            for (i = 0; i<3; i++)
+            for (i = 0; req_in[i]; i++)
             {
-                if (req_in[i]) {
-                    ChanInInt(req_in[i]);
-                    ChanOutInt(dn_out[i],len);
-                    ChanOut(dn_out[i],(char *)buf,len);
-                }
+                ChanInInt(req_in[i]);
+                ChanOutInt(dn_out[i],len);
+                ChanOut(dn_out[i],(char *)buf,len);
             }
         }
         /*}}}  */
