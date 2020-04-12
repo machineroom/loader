@@ -18,6 +18,19 @@
 ; to other transputers connected. Then it starts executing the loader.
 ;***************************************************************************
 
+
+;Notes for whitecross WX9020 modifications made by macihenroomfiddling@gmail.com 2019/2020.
+;The original code used a process to write the bootstrap out on each link, other than bootin.
+;On a noaml network this works because only a freshly reset node will accept the bootstrap, in which case
+; the link on the parent that did the write is marked as valid. If the node is already booted (or booting)
+; then the bootstrap won't be received on any other link. The bootstrap write by a 2nd parent will block and
+; the link won't be marked as active.
+;I _believe_ the links are buffered (via the HSL cards) so the normal mechanism won't work since all
+; writes will succeed and all links will be marked as valid. Instead, each node now writes the bootstrap out on
+; each link, then waits for reciept of a an ACK message (just a known token) on the link. When this is received
+; then the link is marked as valid.
+; Also tidied things specifically for WX9020 (an array of T425s) - removed support for T8 & 2K memory.
+
 	.t800
 ;  val definition;
 
@@ -28,7 +41,7 @@
 	.val    DELAY,100
 	.val    LOCTOP,16
 
-    ;this struct shared with flboot & ident
+    ;this struct shared with flboot & ident & main mandel code - the order is important!
 	.val    MININT,1
 	.val    MEMSTART,2
 	.val    BOOTIN,3

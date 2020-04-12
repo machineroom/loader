@@ -140,23 +140,56 @@ LOADGB *ld;
         extern int jobws[JOBWSZ/4];
         int list_index;
 
-        sr[0] = ChanAlloc();
-        so[0] = ChanAlloc();
-        ai[0] = ChanAlloc();
+        /* job worker on each node - this does iter() */
+        sr[0] = ChanAlloc();    /* sr = job request channel */
+        so[0] = ChanAlloc();    /* so = job configuration channel */
+        ai[0] = ChanAlloc();    /* ai = job results channel */
+        /* job(Channel *req_out, Channel *job_in, Channel *rsl_out) */
         PRun(PSetup(jobws,job,JOBWSZ,3,sr[0],so[0],ai[0])|1);
+        /* buffer worker for each child node */
         /* The channel lists are zero terminated. ld->dn_out may have 0, 1 or 2 links set and in any order,
            i.e [0,0,linkA], [linkB,0,linkA] & [linkA,linkB,linkC] are all valid */
         list_index=1;
+#if 0
         for (i = 0; i < 3; i++)
         {
             if (ld->dn_out[i]!=(void *)0) {
                 sr[list_index] = ChanAlloc();
                 so[list_index] = ChanAlloc();
-                ai[list_index] = ld->dn_out[i]+4;
+                ai[list_index] = ld->dn_out[i]+4;   /* input link from child */
+                /* buffer (Channel *req_out, Channel *buf_in, Channel *buf_out) */
                 PRun(PSetupA(buffer,BUFWSZ,3,sr[list_index],so[list_index],ld->dn_out[i]));
                 list_index++;
             } 
         }
+#else
+        {
+            int length = 3;
+            int i,j;
+            for (i = (length - 1); i >= 0; i--) {
+                for (j = 1; j <= i; j++) {
+                    if (ld->dn_out[j-1] > ld->dn_out[j]) {
+                        Channel *temp = ld->dn_out[j-1];
+                        ld->dn_out[j-1] = ld->dn_out[j];
+                        ld->dn_out[j] = temp;
+                    } 
+                } 
+            } 
+        }
+   
+        for (i = 0; i < 3; i++)
+        {
+            Channel *current = ld->dn_out[i];
+            if (current!=(void *)0) {
+                sr[list_index] = ChanAlloc();
+                so[list_index] = ChanAlloc();
+                ai[list_index] = current+4;   /* input link from child */
+                /* buffer (Channel *req_out, Channel *buf_in, Channel *buf_out) */
+                PRun(PSetupA(buffer,BUFWSZ,3,sr[list_index],so[list_index],current));
+                list_index++;
+            } 
+        }
+#endif
         sr[list_index] = so[list_index] = ai[list_index] = 0;
         if (ld->id)
         {
@@ -169,42 +202,22 @@ LOADGB *ld;
             si = ChanAlloc();
             PRun(PSetupA(feed,FEDWSZ,3,ld->up_in,si,fxp));
         }
+        /* arbiter(Channel **arb_in, Channel *arb_out) */
         PRun(PSetupA(arbiter,ARBWSZ,2,ai,ld->up_in-4));
+        /* selector(Channel *sel_in, Channel **req_in, Channel **dn_out) */
         PRun(PSetupA(selector,SELWSZ,3,si,sr,so));
         PStop();
     }
     /*}}}  */
 }
 /*}}}  */
-/*{{{  no_floating_point_unit*/
-#define t800_id -1
-#define t414_id -2
-int no_floating_point_unit()
-{
-      int temp1, temp2, tpid;
-                 ;
-#pragma asm
-           ldc    -1
-	   ldc    -2
-           ldc     0
-           opr    0x17c
-	   stl    [temp1]
-           stl    [temp2]
-           ldl    [temp2]
-	   cj     @nfp1
-           ldl    [temp2]
-           stl    [tpid]
-           j      @nfp2
-nfp1        ldl    [temp1]
-           stl    [tpid]
-nfp2
-#pragma endasm
-                 ;
-       return(!(tpid == t800_id));
-}
-/*}}}  */
-/*{{{  job(...)*/
 
+/*{{{  job(...)*/
+/* job calculates a slice of pixels */
+/* 1. sends a 0 on req_out to indicate it needs work
+   2. receives (on job_in) a DATCOM to setup parameters, then a JOBCOM 
+   3. sends (on rsl_out) a RSLCOM with the pixels
+*/   
 int jobws[JOBWSZ/4];
 
 job(req_out,job_in,rsl_out)
@@ -292,6 +305,8 @@ Channel *req_out,*job_in,*rsl_out;
 }
 
 /*}}}  */
+
+/* fixed point iterate used by T4 variants */
 /*{{{  int iterFIX(...)*/
 int iterFIX(cx,cy,maxcnt)
 int cx,cy,maxcnt;
@@ -389,6 +404,7 @@ RETN:
 #pragma endasm
 }
 
+/* ONLY used by T8 variants */
 /*}}}  */
 /*{{{  int iterR64(...)*/
 int iterR64(cx,cy,maxcnt)
@@ -415,6 +431,7 @@ int maxcnt;
     return(0);
 }
 
+/* ONLY used by T8 variants */
 /*}}}  */
 /*{{{  int iterR32(...)*/
 int iterR32(cx,cy,maxcnt)
@@ -443,6 +460,8 @@ int maxcnt;
 }
 
 /*}}}  */
+
+/* cast a float to fixed point variant? */
 /*{{{  int fix(x)*/
 int fix(x)
 int *x;
@@ -525,6 +544,8 @@ F5:
 
 /*}}}  */
 /*{{{  buffer(...)*/
+/* Worker to pass messages from buf_in to buf_out.
+   posts on req_out every time it's ready */
 buffer(req_out,buf_in,buf_out)
 Channel *req_out,*buf_in,*buf_out;
 {
@@ -543,6 +564,7 @@ Channel *req_out,*buf_in,*buf_out;
 
 /*}}}  */
 /*{{{  arbiter(...)*/
+/* arb_out is the output side of the parent link */
 arbiter(arb_in,arb_out)
 Channel **arb_in,*arb_out;
 {
@@ -556,8 +578,12 @@ Channel **arb_in,*arb_out;
         pri = (arb_in[pri+1]) ? pri+1 : 0;
         len = ChanInInt(arb_in[i]);
         ChanIn(arb_in[i],(char *)buf,len);
-        if (buf[0] == FLHCOM)
-	    if (arb_in[++cnt]) continue; else cnt = 0;
+        if (buf[0] == FLHCOM) {
+    	    if (arb_in[++cnt]) 
+    	        continue; 
+    	    else 
+    	        cnt = 0;
+    	}
         ChanOutInt(arb_out,len);
         ChanOut(arb_out,(char *)buf,len);
 	}
@@ -565,6 +591,9 @@ Channel **arb_in,*arb_out;
 
 /*}}}  */
 /*{{{  selector(...)*/
+/* 1. waits for a buffer from the parent
+   2. waits for a job() or a buffer() to inform they're ready (by writing a 0 on request channel)
+   3. sends the buffer to the child that's ready */
 selector(sel_in,req_in,dn_out)
 Channel *sel_in,**req_in,**dn_out;
 {
@@ -602,12 +631,13 @@ Channel *sel_in,**req_in,**dn_out;
 
 /*}}}  */
 /*{{{  feed(...)*/
+/* This runs on the root node only. Split full image into MAXPIX (or less) sized jobs */
 feed(fd_in,fd_out,fxp)
 Channel *fd_in,*fd_out;
 int fxp;
 {
     int len;
-    int buf[PRBSIZE];
+    int buf[PRBSIZE];   /* PRBSIZE = 12 */
 
     loop
     {
@@ -616,15 +646,42 @@ int fxp;
         if (buf[0] == PRBCOM)
         /*{{{  */
         {
+	        /* PRBCOM {         [buf index]
+                long com;       0 =PRBCOM
+                long width;     1
+                long height;    2
+                long maxcnt;    3
+                double lo_r;    4
+                double lo_i;    6
+                double gapx;    8
+                double gapy;    10
+            } */
             int width,height,multiple;
             width = buf[1];
             height = buf[2];
+            /* abuse buf to send parameters in a DATCOM block */
+	        /* DATCOM {         [buf index]
+                long com;       0 =DATCOM
+                long fxp;       1
+                long maxcnt;    2
+                double lo_r;    3
+                double lo_i;    5
+                double gapx;    7
+                double gapy;    9
+            } */
             buf[1] = DATCOM;
             buf[2] = fxp;
             ChanOutInt(fd_out,(PRBSIZE-1)*4);
             ChanOut(fd_out,(char *)&buf[1],(PRBSIZE-1)*4);
             buf[0] = JOBCOM;
-            multiple = width/MAXPIX*MAXPIX;
+            /* abuse buf to send parameters in a JOBCOM block */
+	        /* JOBCOM {         [buf index]
+                long com;       0 =JOBCOM
+                long x;         1
+                long y;         2
+                long width;     3
+            } */
+            multiple = width/MAXPIX*MAXPIX;         /* MAXPIX = 64 */
             for (buf[2] = 0; buf[2] < height; buf[2]++)
             {
                 for (buf[1] = 0; buf[1] < width; buf[1]+=MAXPIX)

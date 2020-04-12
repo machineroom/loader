@@ -35,6 +35,5 @@ macihenroomfiddling@gmail.com enhancements
 * Remove x86 asm/dos/int usage and replaced render & input with SDL2 so main app now builds on Linux
 * Use more memory to get better performance, especially host rendering
 * TODO:
-1. replace B004 code
-2. replace timer code that got removed
+1. replace timer code that got removed
 
