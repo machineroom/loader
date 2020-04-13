@@ -147,7 +147,7 @@ LOADGB *ld;
         /* job(Channel *req_out, Channel *job_in, Channel *rsl_out) */
         PRun(PSetup(jobws,job,JOBWSZ,3,sr[0],so[0],ai[0])|1);
         /* buffer worker for each child node */
-        /* The channel lists are zero terminated. ld->dn_out may have 0, 1 or 2 links set and in any order,
+        /* The channel lists must be zero terminated. ld->dn_out may have 0, 1 or 2 links set and in any order,
            i.e [0,0,linkA], [linkB,0,linkA] & [linkA,linkB,linkC] are all valid */
         list_index=1;
         for (i = 0; i < 3; i++)
@@ -164,6 +164,9 @@ LOADGB *ld;
         sr[list_index] = 0;
         so[list_index] = 0;
         ai[list_index] = 0;
+        /* Allocate si (selector input) chanel. For root node this is wired to the output of the feed process.
+           Normal worker nodes have their si wired to the input side of the parent link (ld->up_in) */
+        /* ld->id is set in IDENT to 0 by host and OR'd with 1 for every other node */
         if (ld->id)
         {
             /* id!=0 == worker node */
@@ -186,7 +189,7 @@ LOADGB *ld;
 /*}}}  */
 
 /*{{{  job(...)*/
-/* job calculates a slice of pixels */
+/* job calculates a slice of pixels - one instance per node */
 /* 1. sends a 0 on req_out to indicate it needs work
    2. receives (on job_in) a DATCOM to setup parameters, then a JOBCOM 
    3. sends (on rsl_out) a RSLCOM with the pixels
@@ -205,6 +208,7 @@ Channel *req_out,*job_in,*rsl_out;
 
     loop
     {
+        /* 1. tell selector that we're ready to recieve work */
         ChanOutInt(req_out,0);
         len = ChanInInt(job_in);
         ChanIn(job_in,(char *)buf,len);
@@ -515,8 +519,9 @@ F5:
 
 /*}}}  */
 /*{{{  buffer(...)*/
-/* Worker to pass messages from buf_in to buf_out.
-   posts on req_out every time it's ready */
+/* Worker to pass messages to child nodes. Receives messages from the selector
+   One instance per hard link
+   posts on req_out (to the selector) every time it's ready for more work */
 buffer(req_out,buf_in,buf_out)
 Channel *req_out,*buf_in,*buf_out;
 {
@@ -535,7 +540,9 @@ Channel *req_out,*buf_in,*buf_out;
 
 /*}}}  */
 /*{{{  arbiter(...)*/
+/* arb_in is list of channels connected to job or buffer processes */
 /* arb_out is the output side of the parent link */
+/* Receives result from worker (local job or link buffer processes) and passes result to parent */
 arbiter(arb_in,arb_out)
 Channel **arb_in,*arb_out;
 {
@@ -545,6 +552,7 @@ Channel **arb_in,*arb_out;
     cnt = pri = 0;
     loop
 	{
+	    /* 1. Wait for worker to notify result */
         i = ProcPriAltList(arb_in,pri);
         pri = (arb_in[pri+1]) ? pri+1 : 0;
         len = ChanInInt(arb_in[i]);
@@ -555,6 +563,7 @@ Channel **arb_in,*arb_out;
     	    else 
     	        cnt = 0;
     	}
+    	/* 3. Send result to parent */
         ChanOutInt(arb_out,len);
         ChanOut(arb_out,(char *)buf,len);
 	}
@@ -573,13 +582,16 @@ Channel *sel_in,**req_in,**dn_out;
 
     loop
     {
+        /* 1. wait for a job from the parent */
         len = ChanInInt(sel_in);
         ChanIn(sel_in,(char *)buf,len);
         if (buf[0] == JOBCOM)
         /*{{{  */
         {
+            /* 2. wait for any worker to become ready */
             i = ProcPriAltList(req_in,0);
-            ChanInInt(req_in[i]);
+            ChanInInt(req_in[i]);       /* discard the 0 */
+            /* 3. send the job to the worker */
             ChanOutInt(dn_out[i],len);
             ChanOut(dn_out[i],(char *)buf,len);
         }
@@ -587,9 +599,12 @@ Channel *sel_in,**req_in,**dn_out;
         else
         /*{{{  */
         {
+            /* non-JOB messages are distributed round-robin to each worker (job or buffer process) */
             for (i = 0; req_in[i]; i++)
             {
-                ChanInInt(req_in[i]);
+                /* 2. wait for the worker to become ready */
+                ChanInInt(req_in[i]);   /* discard the 0 */
+                /* 3. send the message to the worker */
                 ChanOutInt(dn_out[i],len);
                 ChanOut(dn_out[i],(char *)buf,len);
             }
@@ -638,6 +653,7 @@ int fxp;
                 double gapx;    7
                 double gapy;    9
             } */
+            /* Dispatch single DATCOM block to each worker */
             buf[1] = DATCOM;
             buf[2] = fxp;
             ChanOutInt(fd_out,(PRBSIZE-1)*4);
@@ -650,6 +666,7 @@ int fxp;
                 long y;         2
                 long width;     3
             } */
+            /* Dispatch JOBCOM blocks for each slice to the selector. The selector distributes the work */
             multiple = width/MAXPIX*MAXPIX;         /* MAXPIX = 64 */
             for (buf[2] = 0; buf[2] < height; buf[2]++)
             {
@@ -664,6 +681,7 @@ int fxp;
             len = 1*4;
         }
         /*}}}  */
+        /* inform host that work is finished */
         ChanOutInt(fd_out,len);
         ChanOut(fd_out,(char *)buf,len);
     }

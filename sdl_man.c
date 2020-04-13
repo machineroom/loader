@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
     printf("CSA Mandelzoom Version 2.1 for PC\n");
     printf("(C) Copyright 1988 Computer System Architects Provo, Utah\n");
     printf("Enhanced by Axel Muhr (geekdot.com), 2009, 2015\n");
-    printf("Enhanced by James Wilson (macihenroomfiddling@gmail.com) 2019\n");
+    printf("Enhanced by James Wilson (macihenroomfiddling@gmail.com) 2019, 2020\n");
     printf("This is a free software and you are welcome to redistribute it\n\n");
 
     for (i = 1; i < argc && argv[i][0] == '-'; i++)
@@ -440,18 +440,18 @@ void scan_tran(void) {
 	loop
 	{
 	    len = (int)word_in();       //len in bytes
-#ifdef DEBUG
-        printf ("len word = %d 0x%X\n",len,len);
-#endif
 	    assert (len < sizeof(buf));
 		chan_in ((char *)buf,len);
-		if (len == 4) break;
-		//buf=[n/a,x,y,pixels]
-		//76-(3*4)=64
 #ifdef DEBUG
 		printf ("len=0x%X, buf = 0x%X 0x%X 0x%X 0x%X...0x%X\n",len,buf[0],buf[1],buf[2],buf[3],buf[(len/4)-1]);
 #endif
-		vect((int)buf[1],(int)buf[2],len-3*4,(unsigned char *)&buf[3]);
+		if (buf[0] == FLHCOM) {
+		    break;
+		} else if (buf[0] == RSLCOM) {
+		    //buf=[RSLCOM,x,y,pixels]
+		    //76-(3*4)=64
+    		vect((int)buf[1],(int)buf[2],len-3*4,(unsigned char *)&buf[3]);
+		}
 	}
 	if (!immediate_render) {
 	    render_screen();
