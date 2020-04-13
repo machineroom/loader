@@ -42,6 +42,7 @@ April 2020. Early WX9020 results are not great... For a 640x480 image:
 * 13 nodes=151s
 * 36 nodes=145s
 * 121 nodes=142s
+
 For comparison:
 * Pi3=6s
 * Axel 13*T425=8s
