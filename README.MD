@@ -38,13 +38,13 @@ macihenroomfiddling@gmail.com enhancements
 1. replace high-precision timer code that got removed
 2. Fix race condition? that causes host to not recieve a RSLCOM message and a number of incomplete slices left (worse with more nodes)
 
-April 2020. Early WX9020 results are not great... For a 640*480 image:
-13 nodes=151s
-36 nodes=145s
-121 nodes=142s
+April 2020. Early WX9020 results are not great... For a 640x480 image:
+* 13 nodes=151s
+* 36 nodes=145s
+* 121 nodes=142s
 For comparison:
-Pi3=6s
-Axel 13*T425=8s
+* Pi3=6s
+* Axel 13*T425=8s
 
 Two problems with WX9020:
 1. I'm running the HSL cards (that connect 6x links over a fiber to connect racks together) in byte mode. This is documented to be slow but is transparent to software (i.e. it looks like a regular link).
