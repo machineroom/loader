@@ -573,7 +573,6 @@ Channel *sel_in,**req_in,**dn_out;
 
     loop
     {
-        /* XXX new code only gets here on nodes with 2 links */
         len = ChanInInt(sel_in);
         ChanIn(sel_in,(char *)buf,len);
         if (buf[0] == JOBCOM)
