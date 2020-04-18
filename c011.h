@@ -6,10 +6,6 @@ extern void c011_reset(void);
 
 extern void c011_analyse(void);
 
-extern void c011_enable_out_int(void);
-
-extern void c011_enable_in_int(void);
-
 extern uint8_t c011_read_input_status(void);
 
 extern uint8_t c011_read_output_status(void);
