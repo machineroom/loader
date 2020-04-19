@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <SDL2/SDL.h>
+#include "c011.h"
 
 #define JOBCOM 0L
 #define PRBCOM 1L
@@ -210,6 +211,7 @@ int main(int argc, char **argv) {
         boot_mandel();
         scan = scan_tran;
     }
+    c011_dump_stats("done boot");
 	if (autz) {
 	    if ((fpauto = fopen(AUTOFILE,"r")) == NULL) {
             printf(" -- can't open file: %s\n",AUTOFILE);
@@ -330,6 +332,7 @@ void com_loop(void)
             Uint64 start, compute, render;
             start = SDL_GetPerformanceCounter();
             (*scan)();
+            c011_dump_stats("done scan");
             compute = SDL_GetPerformanceCounter();
             printf ("scan took %f ms\n", (double)((compute - start)*1000) / SDL_GetPerformanceFrequency()); 
 	        if (!immediate_render) {
@@ -708,7 +711,7 @@ void boot_mandel(void)
         fxp = word_in();
         printf("\nfrom MANDEL");
         printf("\n\tnodes found: %d",nnodes);
-        printf("\n\tFXP: %d",fxp);
+        printf("\n\tFXP: %d\n",fxp);
     }
 }
 

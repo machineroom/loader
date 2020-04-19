@@ -29,10 +29,10 @@ long word_in(void) {
     uint8_t b2;
     uint8_t b3;
     uint8_t b4;     //LS byte
-    c011_read_byte (&b4, TIMEOUT);
-    c011_read_byte (&b3, TIMEOUT);
-    c011_read_byte (&b2, TIMEOUT);
-    c011_read_byte (&b1, TIMEOUT);
+    c011_read_byte (&b4, 0);
+    c011_read_byte (&b3, 0);
+    c011_read_byte (&b2, 0);
+    c011_read_byte (&b1, 0);
     long ret=0;
     ret |= b1;
     ret <<= 8;

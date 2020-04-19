@@ -15,6 +15,36 @@ static volatile uint32_t *gpio_set;
 static volatile uint32_t *gpio_fsel;
 static volatile uint32_t *gpio_lev;
 
+static uint64_t total_reads=0;
+static uint64_t total_read_waits=0;
+static uint64_t total_read_timeouts=0;
+static uint64_t total_read_success=0;
+
+static uint64_t total_writes=0;
+static uint64_t total_write_waits=0;
+static uint64_t total_write_timeouts=0;
+static uint64_t total_write_success=0;
+
+void c011_dump_stats(char *title) {
+    printf ("C011 interfaces stats for '%s'\n",title);
+    printf ("\ttotal reads %llu\n",total_reads);
+    printf ("\ttotal read waits %llu\n",total_read_waits);
+    printf ("\ttotal read timouts %llu\n",total_read_timeouts);
+    printf ("\ttotal read successes %llu\n",total_read_success);
+    printf ("\ttotal writes %llu\n",total_writes);
+    printf ("\ttotal write waits %llu\n",total_write_waits);
+    printf ("\ttotal write timouts %llu\n",total_write_timeouts);
+    printf ("\ttotal write successes %llu\n",total_write_success);
+    total_reads=0;
+    total_read_waits=0;
+    total_read_timeouts=0;
+    total_read_success=0;
+    total_writes=0;
+    total_write_waits=0;
+    total_write_timeouts=0;
+    total_write_success=0;
+}
+
 static inline void sleep_ns(int ns) {
     struct timespec s = {0,ns};
     int ret = nanosleep(&s,NULL);
@@ -105,11 +135,14 @@ int c011_write_byte(uint8_t byte, uint32_t timeout) {
     //wait for output ready
     uint64_t timeout_us = timeout*1000;
     uint32_t word;
+    total_writes++;
     while ((c011_read_output_status() & 0x01) != 0x01 && timeout_us>0) {
         bcm2835_delayMicroseconds(1);
         timeout_us--;
+        total_write_waits++;
     }
     if (timeout_us == 0) {
+        total_write_timeouts++;
         return -1;
     }
     //RS1=0, RS0=1
@@ -117,7 +150,6 @@ int c011_write_byte(uint8_t byte, uint32_t timeout) {
     //CS=1
     set_data_output_pins();
     set_gpio_bit (RS1,0);
-    set_gpio_bit (RS0,1);
     set_gpio_bit (RW,0);
     set_gpio_bit (CS,1);
     gpio_commit();
@@ -135,6 +167,7 @@ int c011_write_byte(uint8_t byte, uint32_t timeout) {
     set_gpio_bit(CS, HIGH);
     gpio_commit();
     sleep_ns (TCSHCSL);
+    total_write_success++;
     return 0;
 }
 
@@ -178,12 +211,22 @@ uint8_t c011_read_output_status(void) {
 
 int c011_read_byte(uint8_t *byte, uint32_t timeout) {
     uint64_t timeout_us = timeout*1000;
-    while ((c011_read_input_status() & 0x01) == 0x00 && timeout_us>0) {
-        bcm2835_delayMicroseconds(1);
-        timeout_us--;
-    }
-    if (timeout_us == 0) {
-        return -1;
+    total_reads++;
+    if (timeout==0) {
+        while ((c011_read_input_status() & 0x01) == 0x00) {
+            total_read_waits++;
+            sleep_ns(1);
+        }
+    } else {
+        while ((c011_read_input_status() & 0x01) == 0x00 && timeout_us>0) {
+            bcm2835_delayMicroseconds(1);
+            timeout_us--;
+            total_read_waits++;
+        }
+        if (timeout_us == 0) {
+            total_read_timeouts++;
+            return -1;
+        }
     }
     set_gpio_bit (RS1,0);
     set_gpio_bit (RS0,0);
@@ -191,6 +234,7 @@ int c011_read_byte(uint8_t *byte, uint32_t timeout) {
     set_gpio_bit (CS,1);
     gpio_commit();
     *byte = read_c011();
+    total_read_success++;
     return 0;
 }
 
