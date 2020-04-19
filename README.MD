@@ -4,6 +4,31 @@ This is the source of the "CSA Mandelzoom" tool, created by Computer System Arch
 
 It maps an existing Transputer network and loads workers onto every T4xx/T8xx found. Integer as well as floatingpoint workers are provided. Graphical output is either CGS, EGA or VGA currently at 16 colors max.
 
+
+macihenroomfiddling@gmail.com enhancements
+------------------------
+* Modified build to use GNU make and call dosbox for legacy LSC tools
+* Remove x86 asm/dos/int usage and replaced render & input with SDL2 so main app now builds on Linux
+* Use more memory to get better performance, especially host rendering
+* TODO:
+1. replace high-precision timer code that got removed
+2. Fix race condition? that causes host to not recieve a RSLCOM message and a number of incomplete slices left (worse with more nodes)
+
+April 2020. Early WX9020 results are not great... For a 640x480 image:
+* 13 nodes=151s
+* 36 nodes=145s
+* 121 nodes=142s
+
+For comparison:
+* Pi3=6s (immediate render)
+* Pi3=175ms (compute time), 3.5s (render time using delayed render)
+* Axel 13*T425=8s
+
+Two problems with WX9020:
+1. I'm running the HSL cards (that connect 6x links over a fiber to connect racks together) in byte mode. This is documented to be slow but is transparent to software (i.e. it looks like a regular link).
+2. The Pi/C011 link is also slow. ispy output gives the HSL links ~130K and the C011 link ~22K. Other links are ~1.8MB/s.
+
+(original DOS version enhanced by Axel):
 Prerequisites
 -------------
 * At least one Transputer (does not make sense without one)
@@ -29,26 +54,5 @@ Several benchmarking results can be found [here](http://www.geekdot.com/lies-dam
 
 In doubt enter "man /?" for options. 
 
-macihenroomfiddling@gmail.com enhancements
-------------------------
-* Modified build to use GNU make and call dosbox for legacy LSC tools
-* Remove x86 asm/dos/int usage and replaced render & input with SDL2 so main app now builds on Linux
-* Use more memory to get better performance, especially host rendering
-* TODO:
-1. replace high-precision timer code that got removed
-2. Fix race condition? that causes host to not recieve a RSLCOM message and a number of incomplete slices left (worse with more nodes)
-
-April 2020. Early WX9020 results are not great... For a 640x480 image:
-* 13 nodes=151s
-* 36 nodes=145s
-* 121 nodes=142s
-
-For comparison:
-* Pi3=6s
-* Axel 13*T425=8s
-
-Two problems with WX9020:
-1. I'm running the HSL cards (that connect 6x links over a fiber to connect racks together) in byte mode. This is documented to be slow but is transparent to software (i.e. it looks like a regular link).
-2. The Pi/C011 link is also slow. ispy output gives the HSL links ~130K and the C011 link ~22K. Other links are ~1.8MB/s.
 
 

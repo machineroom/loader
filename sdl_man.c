@@ -90,11 +90,10 @@ static int screen_w;
 static int screen_h;
 static void (*scan)(void) = scan_host;
 static FILE *fpauto;
-static bool use_texture = false;
 static bool immediate_render = false;
+static uint8_t *screen_buffer = NULL;
 
 SDL_Renderer *sdl_renderer;
-SDL_Texture *sdl_texture; 
 
 int get_key(void)
 {
@@ -185,9 +184,6 @@ int main(int argc, char **argv) {
                 case 'x':
                     verbose = 1;
                     break;
-                case 's':
-                    use_texture = true;
-                    break; 
                 case 'r':
                     immediate_render = true;
                     break;   
@@ -204,8 +200,7 @@ int main(int argc, char **argv) {
         printf("  -i  max. iteration count, # is iter. (default variable)\n");
         printf("  -t  use host, no transputers (default transputers)\n");
         printf("  -x  print verbose messages during initialisation\n");
-        printf("  -s  use SDL2 texture\n");
-        printf("  -r  render each vector as received\n");
+        printf("  -r  render each vector as received (slower)\n");
         printf("  -w  width\n");
         printf("  -h  height\n");
         exit(1);
@@ -229,6 +224,10 @@ int main(int argc, char **argv) {
         printf("PgDn - save coord. and iter. to file 'man.dat'\n");
         printf("End  - quit\n");
     }
+    
+    if (!immediate_render) {
+        screen_buffer = malloc(screen_w * screen_h);
+    }
 
     SDL_Window *window = SDL_CreateWindow("T-Mandel with SDL",
             SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen_w,
@@ -239,8 +238,6 @@ int main(int argc, char **argv) {
         return 2;
     }
     sdl_renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED) ;
-
-    sdl_texture = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, screen_w, screen_h);
 
     init_window();
 
@@ -281,34 +278,35 @@ BGR ega_palette[16] = {
 //buf_size - number of pixels in buf
 //buf - array of pixel colour indices (range 0-15)
 void vect (int x, int y, int buf_size, unsigned char *buf) {
-    if (use_texture) {
-        SDL_Rect dst_rect = {x,y,buf_size,1};
-        uint8_t pixels[buf_size*3];
-        uint8_t *p = pixels;
+    if (immediate_render) {
+        //immediate render looks cool, but is ultimately slower due to SDL overhead
         for (int i=0; i < buf_size; i++) {
-            BGR colour = ega_palette[buf[i]];
-            *p++ = colour.r;
-            *p++ = colour.g;
-            *p++ = colour.b;
-        }
-        SDL_UpdateTexture(sdl_texture, &dst_rect, pixels, buf_size*3);
-        if (immediate_render) {
-            SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
-        }
-    } else {
-        for (int i=0; i < buf_size; i++) {
-            SDL_SetRenderDrawColor(sdl_renderer, ega_palette[buf[i]].r, ega_palette[buf[i]].g, ega_palette[buf[i]].b, 0xFF);
+            SDL_SetRenderDrawColor(sdl_renderer,
+                                   ega_palette[buf[i]].r,
+                                   ega_palette[buf[i]].g,
+                                   ega_palette[buf[i]].b,
+                                   0xFF);
             SDL_RenderDrawPoint(sdl_renderer, x+i, y);
         }
-    }
-    if (immediate_render) {
         SDL_RenderPresent(sdl_renderer);
+    } else {
+        //delayed render just copies calculated slice to screen buffer
+        memcpy (&screen_buffer[(y*screen_w)+x], buf, buf_size);
     }
 }
 
 void render_screen(void) {
-    if (use_texture) {
-        SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+    int i=0;
+    for (int y=0; y < screen_h; y++) {
+        for (int x=0; x < screen_w; x++) {
+            SDL_SetRenderDrawColor(sdl_renderer,
+                                   ega_palette[screen_buffer[i]].r, 
+                                   ega_palette[screen_buffer[i]].g,
+                                   ega_palette[screen_buffer[i]].b,
+                                   0xFF);
+            SDL_RenderDrawPoint(sdl_renderer, x, y);
+            i++;
+         }
     }
     SDL_RenderPresent(sdl_renderer);
 }
@@ -329,11 +327,16 @@ void com_loop(void)
     loop
     {
         if (render) {
-            Uint64 start, now;
+            Uint64 start, compute, render;
             start = SDL_GetPerformanceCounter();
             (*scan)();
-            now = SDL_GetPerformanceCounter();
-            printf ("scan took %f ms\n", (double)((now - start)*1000) / SDL_GetPerformanceFrequency()); 
+            compute = SDL_GetPerformanceCounter();
+            printf ("scan took %f ms\n", (double)((compute - start)*1000) / SDL_GetPerformanceFrequency()); 
+	        if (!immediate_render) {
+	            render_screen();
+                render = SDL_GetPerformanceCounter();
+                printf ("render took %f ms\n", (double)((render - compute)*1000) / SDL_GetPerformanceFrequency()); 
+	        }
         }
         switch (get_key())
         {
@@ -450,11 +453,8 @@ void scan_tran(void) {
 		} else if (buf[0] == RSLCOM) {
 		    //buf=[RSLCOM,x,y,pixels]
 		    //76-(3*4)=64
-    		vect((int)buf[1],(int)buf[2],len-3*4,(unsigned char *)&buf[3]);
+            vect((int)buf[1],(int)buf[2],len-3*4,(unsigned char *)&buf[3]);
 		}
-	}
-	if (!immediate_render) {
-	    render_screen();
 	}
 }
 
@@ -483,9 +483,6 @@ void scan_host(void) {
             buf[x] = iterate(cx,cy,maxcnt);
         }
         vect (0,y,sizeof(buf),buf);
-	}
-	if (!immediate_render) {
-	    render_screen();
 	}
 }
 
