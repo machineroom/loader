@@ -35,14 +35,12 @@ static inline void set_data_output_pins(void) {
     //bits 9-0 output (001)
     //%00001001001001001001001001001001
     //    0   9   2   4   9   2   4   9
-    *gpio_fsel = 0x09249249;
-    *gpio_fsel = 0x09249249;
+    bcm2835_peri_write (gpio_fsel, 0x09249249);
 }
 
 static inline void set_data_input_pins(void) {
     //bits 9-0 input (000)
-    *gpio_fsel = 0;
-    *gpio_fsel = 0;
+    bcm2835_peri_write (gpio_fsel, 0);
 }
 
 static inline void set_gpio_bit(uint8_t pin, uint8_t on) {
@@ -54,7 +52,6 @@ static inline void set_gpio_bit(uint8_t pin, uint8_t on) {
 }
 
 static inline void gpio_commit(void) {
-    //direct register access doesn't seem to work... timing gremlins
     bcm2835_peri_write (gpio_clr, ~bits);
     bcm2835_peri_write (gpio_set, bits);
 }
@@ -147,7 +144,7 @@ static uint8_t read_c011(void) {
     gpio_commit();
     //must allow time for data valid after !CS
     sleep_ns (TCSLDrV);
-    uint32_t reg = *gpio_lev;
+    uint32_t reg = bcm2835_peri_read (gpio_lev);
     uint8_t byte;
     reg >>= 2;
     byte = reg & 0xFF;
