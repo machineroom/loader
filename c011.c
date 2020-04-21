@@ -46,12 +46,11 @@ void c011_dump_stats(char *title) {
 }
 
 static inline void sleep_ns(int ns) {
-    struct timespec s = {0,ns};
-    int ret = nanosleep(&s,NULL);
-    if (ret != 0) {
-        printf ("nanosleep(%d) failed\n", ret);
-    }
+    uint64_t        start;
+    start =  bcm2835_st_read();
+    bcm2835_st_delay(start, 1);
 }
+
 
 static void set_control_output_pins(void) {
     bcm2835_gpio_fsel(RS0, BCM2835_GPIO_FSEL_OUTP);

@@ -14,10 +14,10 @@ macihenroomfiddling@gmail.com enhancements
 1. replace high-precision timer code that got removed
 2. Fix race condition? that causes host to not recieve a RSLCOM message and a number of incomplete slices left (worse with more nodes)
 
-April 2020. Early WX9020 results are not great... For a 640x480 image:
-* 13 nodes=151s
-* 36 nodes=145s
-* 121 nodes=142s
+April 2020. Early WX9020 results are encouraging - scan time only, no render:
+* 13 nodes=6900ms
+* 36 nodes=3550ms
+* 121 nodes=2158ms
 
 For comparison:
 * Pi3=6s (immediate render)
