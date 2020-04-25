@@ -19,9 +19,11 @@ bcm2835 lib uses 40 pin J8 connector pin numbering
 #define RESET   RPI_V2_GPIO_P1_13    //YELLOW    (GPIO bit 27)
 #define CS      RPI_V2_GPIO_P1_22    //GREEN     (GPIO bit 25)
 #define RW      RPI_V2_GPIO_P1_23    //BLUE      (GPIO bit 11)
-#define ANALYSE RPI_V2_GPIO_P1_15    //VIOLET    (GPIO bit 22)
+//#define ANALYSE RPI_V2_GPIO_P1_15    //VIOLET    (GPIO bit 22) (currently not wired on HSL cards)
 
 #define IN_INT  RPI_V2_GPIO_P1_32    //BROWN     (GPIO bit 12)
 #define OUT_INT RPI_V2_GPIO_P1_33    //WHITE     (GPIO bit 13)
 
+// BYTE controls the BYTE signal of the HSL cards. HIGH=byte mode, LOW=word mode
+#define BYTE    RPI_V2_GPIO_P1_38    //BLUE      (GPIO bit 20)
 

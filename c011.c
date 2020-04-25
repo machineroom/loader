@@ -60,6 +60,8 @@ static void set_control_pins(void) {
     bcm2835_gpio_fsel(RESET, BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_fsel(CS, BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_fsel(RW, BCM2835_GPIO_FSEL_OUTP);
+    bcm2835_gpio_fsel(BYTE, BCM2835_GPIO_FSEL_OUTP);
+
     bcm2835_gpio_fsel(IN_INT, BCM2835_GPIO_FSEL_INPT);
     bcm2835_gpio_fsel(OUT_INT, BCM2835_GPIO_FSEL_INPT);
 }
@@ -136,13 +138,14 @@ void c011_init(void) {
     gpio_fsel = bcm2835_regbase(BCM2835_REGBASE_GPIO) + BCM2835_GPFSEL0/4;
     gpio_lev = bcm2835_regbase(BCM2835_REGBASE_GPIO) + BCM2835_GPLEV0/4;
     set_control_pins();
-    set_gpio_bit(ANALYSE, LOW);
+    //set_gpio_bit(ANALYSE, LOW);
     gpio_commit();
 }
 
 void c011_reset(void) {
-    set_gpio_bit(ANALYSE, LOW);
-    gpio_commit();
+    c011_set_byte_mode();           //enable BYTE mode on WX9020 by default
+    //set_gpio_bit(ANALYSE, LOW);
+    //gpio_commit();
     //TN29 states "Recommended pulse width is 5 ms, with a delay of 5 ms before sending anything down a link."
     set_gpio_bit(RESET, LOW);
     gpio_commit();
@@ -158,8 +161,21 @@ void c011_reset(void) {
     c011_enable_out_int();
 }
 
+void c011_set_byte_mode(void) {
+    set_gpio_bit (BYTE,HIGH);
+    gpio_commit();
+    bcm2835_delay(1000);
+}
+
+void c011_clear_byte_mode(void) {
+    set_gpio_bit (BYTE,LOW);
+    gpio_commit();
+    //The whitecross HSL takes some time to cascade
+    bcm2835_delay(1000);
+}
+
 void c011_analyse(void) {
-    set_gpio_bit(ANALYSE, LOW);
+    /*set_gpio_bit(ANALYSE, LOW);
     gpio_commit();
     bcm2835_delayMicroseconds (5*1000);
     set_gpio_bit(ANALYSE, HIGH);
@@ -173,7 +189,7 @@ void c011_analyse(void) {
     bcm2835_delayMicroseconds (5*1000);
     set_gpio_bit(ANALYSE, LOW);
     gpio_commit();
-    bcm2835_delayMicroseconds (5*1000);
+    bcm2835_delayMicroseconds (5*1000);*/
 }
 
 int c011_write_byte(uint8_t byte, uint32_t timeout) {

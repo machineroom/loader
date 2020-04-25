@@ -714,7 +714,7 @@ void boot_mandel(void)
     rst_adpt(TRUE);
     if (verbose) printf("Booting...\n");
     if (!load_buf(FLBOOT,sizeof(FLBOOT))) exit(1);
-    //daughter sends back an ACK work on the booted link
+    //daughter sends back an ACK word on the booted link
     ack = (int)word_in();
     printf("ack = 0x%X\n", ack);
     if (verbose) printf("Loading...\n");      
@@ -770,6 +770,8 @@ void boot_mandel(void)
         printf("\n\tnodes found: %d",nnodes);
         printf("\n\tFXP: %d\n",fxp);
     }
+    //mandel operates in word mode from now on. Clear BYTE mode on HSL cards for full throughput
+    c011_clear_byte_mode();
 }
 
 /* return TRUE if loaded ok, FALSE if error. */
