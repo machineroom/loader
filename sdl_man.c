@@ -388,9 +388,9 @@ void com_loop(void)
             Uint64 start, compute, render;
             start = SDL_GetPerformanceCounter();
             (*scan)();
-            c011_dump_stats("done scan");
             compute = SDL_GetPerformanceCounter();
             printf ("scan took %f ms\n", (double)((compute - start)*1000) / SDL_GetPerformanceFrequency()); 
+            c011_dump_stats("done scan");
             if (!immediate_render) {
                 render_screen();
                 render = SDL_GetPerformanceCounter();
@@ -439,6 +439,7 @@ void auto_loop(void) {
         (*scan)();              /* this does the work */
         now = SDL_GetPerformanceCounter();
         printf ("scan took %f ms\n", (double)((now - start)*1000) / SDL_GetPerformanceFrequency()); 
+        c011_dump_stats("done scan");
         run++;
         sleep(ps);
     }

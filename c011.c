@@ -219,7 +219,6 @@ int c011_read_byte(uint8_t *byte, uint32_t timeout) {
     if (timeout==0) {
         while ((c011_read_input_status() & 0x01) == 0x00) {
             total_read_waits++;
-            sleep_ns(1);
         }
     } else {
         while ((c011_read_input_status() & 0x01) == 0x00 && timeout_us>0) {
