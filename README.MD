@@ -11,6 +11,7 @@ macihenroomfiddling@gmail.com enhancements
 * Remove x86 asm/dos/int usage and replaced render & input with SDL2 so main app now builds on Linux
 * Use more memory to get better performance, especially host rendering
 * Added FB option for much faster rendering (~1000x faster than SDL2)
+* Must run as root to access timer registers on BCM chip
 * TODO:
 * Fix race condition? that causes host to not recieve a RSLCOM message and a number of incomplete slices left (worse with more nodes)
 
