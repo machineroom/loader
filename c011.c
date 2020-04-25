@@ -1,3 +1,6 @@
+
+/* MUST run code as root since BRCM timer registers used */
+
 #include <bcm2835.h>
 #include <time.h>
 #include "pins.h"
