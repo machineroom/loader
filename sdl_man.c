@@ -26,6 +26,7 @@
 #include <assert.h>
 #include <SDL2/SDL.h>
 #include "c011.h"
+#include "fb.h"
 
 #define JOBCOM 0L
 #define PRBCOM 1L
@@ -80,9 +81,9 @@ void draw_box(int,int,int,int);
 void boot_mandel(void);
 int load_buf(char *, int);
 
-static int autz;
-static int verbose;
-static int host;
+static bool autz;
+static bool verbose = false;
+static bool host = false;
 static int hicnt = 1024;
 static int locnt = 150;
 static int mxcnt;
@@ -93,8 +94,12 @@ static void (*scan)(void) = scan_host;
 static FILE *fpauto;
 static bool immediate_render = false;
 static uint8_t *screen_buffer = NULL;
+static bool use_sdl_render = true;
 
 SDL_Renderer *sdl_renderer;
+uint32_t *fbptr = NULL;
+int fb_width;
+int fb_height;
 
 int get_key(void)
 {
@@ -146,10 +151,6 @@ int main(int argc, char **argv) {
 
 	screen_w = 640; screen_h = 480;
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        return 1;
-    }
-
     printf("CSA Mandelzoom Version 2.1 for PC\n");
     printf("(C) Copyright 1988 Computer System Architects Provo, Utah\n");
     printf("Enhanced by Axel Muhr (geekdot.com), 2009, 2015\n");
@@ -165,7 +166,7 @@ int main(int argc, char **argv) {
                 case 'a':
                     if (sscanf(s+1,"%d",&ps) == 1) s++;
                     if ((ps < 0) || (ps > 9)) ps = PAUSE;
-                    autz = 1;
+                    autz = true;
                     break;
                 case 'w':
                     if (i >= argc) {aok = 0; break;}
@@ -180,10 +181,13 @@ int main(int argc, char **argv) {
                     aok &= sscanf(argv[++i],"%i",&mxcnt) == 1 && *(s+1) == '\0';
                     break;
                 case 't':
-                    host = 1;
+                    host = true;
+                    break;
+                case 'f':
+                    use_sdl_render = false;
                     break;
                 case 'x':
-                    verbose = 1;
+                    verbose = true;
                     break;
                 case 'r':
                     immediate_render = true;
@@ -204,7 +208,18 @@ int main(int argc, char **argv) {
         printf("  -r  render each vector as received (slower)\n");
         printf("  -w  width\n");
         printf("  -h  height\n");
+        printf("  -f  direct FB access (default SDL2)\n");
         exit(1);
+    }
+
+    if (use_sdl_render) {
+        if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+            return 1;
+        }
+    } else {
+        if (SDL_Init(SDL_INIT_TIMER) < 0) {
+            return 1;
+        }
     }
     if (!host) {
         init_lkio(0,0,0);
@@ -230,17 +245,22 @@ int main(int argc, char **argv) {
     if (!immediate_render) {
         screen_buffer = malloc(screen_w * screen_h);
     }
+    if (use_sdl_render) {
+        SDL_Window *window = SDL_CreateWindow("T-Mandel with SDL",
+                SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen_w,
+                screen_h, SDL_WINDOW_SHOWN);
 
-    SDL_Window *window = SDL_CreateWindow("T-Mandel with SDL",
-            SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen_w,
-            screen_h, SDL_WINDOW_SHOWN);
-
-    if (window == NULL) {
-        SDL_Quit();
-        return 2;
+        if (window == NULL) {
+            SDL_Quit();
+            return 2;
+        }
+        sdl_renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED) ;
+    } else {
+        fbptr = FB_Init(&fb_width, &fb_height);
+        if (fbptr == NULL) {
+            return 1;
+        }
     }
-    sdl_renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED) ;
-
     init_window();
 
     if (autz)
@@ -276,21 +296,47 @@ BGR ega_palette[16] = {
     {255,255,255}
 };
 
+uint32_t ega_palette_ARGB[16] = {
+    0x00000000,
+    0x007F0000,
+    0x00FF0000,     //2=red
+    0x00FF3F00,
+    0x00FF7F00,
+    0x00FFFF00,     //5=yellow
+    0x003F7F00,
+    0x0000FF00,     //7=green
+    0x0000FF7F,
+    0x0000FFFF,     //9=cyan
+    0x00007FFF,
+    0x00003FFF,
+    0x000000FF,     //12=blue
+    0x003F00FF,
+    0x00FF3FFF,     //14=magenta
+    0x00FFFFFF
+};
+
 //x,y - start point
 //buf_size - number of pixels in buf
 //buf - array of pixel colour indices (range 0-15)
 void vect (int x, int y, int buf_size, unsigned char *buf) {
     if (immediate_render) {
-        //immediate render looks cool, but is ultimately slower due to SDL overhead
-        for (int i=0; i < buf_size; i++) {
-            SDL_SetRenderDrawColor(sdl_renderer,
-                                   ega_palette[buf[i]].r,
-                                   ega_palette[buf[i]].g,
-                                   ega_palette[buf[i]].b,
-                                   0xFF);
-            SDL_RenderDrawPoint(sdl_renderer, x+i, y);
+        if (use_sdl_render) {
+            //immediate render looks cool, but is ultimately slower due to SDL overhead
+            for (int i=0; i < buf_size; i++) {
+                SDL_SetRenderDrawColor(sdl_renderer,
+                                       ega_palette[buf[i]].r,
+                                       ega_palette[buf[i]].g,
+                                       ega_palette[buf[i]].b,
+                                       0xFF);
+                SDL_RenderDrawPoint(sdl_renderer, x+i, y);
+            }
+            SDL_RenderPresent(sdl_renderer);
+        } else {
+            uint32_t *bp = &fbptr[(y*fb_width)+(x)];
+            for (int i=0; i < buf_size; i++) {
+                *bp++ = ega_palette_ARGB[buf[i]];
+            }
         }
-        SDL_RenderPresent(sdl_renderer);
     } else {
         //delayed render just copies calculated slice to screen buffer
         memcpy (&screen_buffer[(y*screen_w)+x], buf, buf_size);
@@ -299,18 +345,28 @@ void vect (int x, int y, int buf_size, unsigned char *buf) {
 
 void render_screen(void) {
     int i=0;
-    for (int y=0; y < screen_h; y++) {
-        for (int x=0; x < screen_w; x++) {
-            SDL_SetRenderDrawColor(sdl_renderer,
-                                   ega_palette[screen_buffer[i]].r, 
-                                   ega_palette[screen_buffer[i]].g,
-                                   ega_palette[screen_buffer[i]].b,
-                                   0xFF);
-            SDL_RenderDrawPoint(sdl_renderer, x, y);
-            i++;
-         }
+    if (use_sdl_render) {
+        for (int y=0; y < screen_h; y++) {
+            for (int x=0; x < screen_w; x++) {
+                SDL_SetRenderDrawColor(sdl_renderer,
+                                       ega_palette[screen_buffer[i]].r, 
+                                       ega_palette[screen_buffer[i]].g,
+                                       ega_palette[screen_buffer[i]].b,
+                                       0xFF);
+                SDL_RenderDrawPoint(sdl_renderer, x, y);
+                i++;
+             }
+        }
+        SDL_RenderPresent(sdl_renderer);
+    } else {
+        uint32_t *bp = fbptr;
+        for (int y=0; y < screen_h; y++) {
+            for (int x=0; x < screen_w; x++) {
+                *bp++ = ega_palette_ARGB[screen_buffer[i++]];
+            }
+            bp += (fb_width - screen_w);
+        }
     }
-    SDL_RenderPresent(sdl_renderer);
 }
 
 #define ASPECT_R  0.75
@@ -335,11 +391,11 @@ void com_loop(void)
             c011_dump_stats("done scan");
             compute = SDL_GetPerformanceCounter();
             printf ("scan took %f ms\n", (double)((compute - start)*1000) / SDL_GetPerformanceFrequency()); 
-	        if (!immediate_render) {
-	            render_screen();
+            if (!immediate_render) {
+                render_screen();
                 render = SDL_GetPerformanceCounter();
                 printf ("render took %f ms\n", (double)((render - compute)*1000) / SDL_GetPerformanceFrequency()); 
-	        }
+            }
         }
         switch (get_key())
         {
@@ -531,7 +587,7 @@ void save_coord(void) {
 
     if (!autz) {
         if ((fpauto = fopen(AUTOFILE,"a")) == NULL) return;
-        autz = TRUE;
+        autz = true;
     }
     xrange = scale_fac*(esw-1);
     fprintf(fpauto,"x:%17.14f y:%17.14f range:%e iter:%d\n", center_r,center_i,xrange,calc_iter(xrange));

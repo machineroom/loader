@@ -45,12 +45,16 @@ void c011_dump_stats(char *title) {
     total_write_success=0;
 }
 
+void wait_cycles(unsigned int n)
+{
+    if(n) while(n--) { asm volatile("nop"); }
+}
+
 static inline void sleep_ns(int ns) {
     uint64_t        start;
     start =  bcm2835_st_read();
     bcm2835_st_delay(start, 1);
 }
-
 
 static void set_control_output_pins(void) {
     bcm2835_gpio_fsel(RS0, BCM2835_GPIO_FSEL_OUTP);

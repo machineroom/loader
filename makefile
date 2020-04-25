@@ -55,8 +55,8 @@ LSC_BIN=$(LSC89_BIN)
 lsc_debug: 
 	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "D:" -c "cd $(LSC_BIN)"
     
-man : sdl_man.c lkio_c011.c  c011.c FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR
-	gcc -O2 sdl_man.c lkio_c011.c  c011.c -lSDL2 -lm -lbcm2835 -o $@
+man : sdl_man.c lkio_c011.c c011.c fb.c FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR
+	gcc -O2 sdl_man.c lkio_c011.c c011.c fb.c -lSDL2 -lm -lbcm2835 -o $@
 
 clean:
 	rm -f *.OBJ
