@@ -21,7 +21,7 @@ System | 1st | 2nd | notes
 Axel cube 65 T425 | 2.32s | 8.16s | Mixed 20 & 25MHz parts
 13  nodes | 6.74s | 37.34s | Each node is T425@25MHz
 36  nodes | 3.41s | 15.79s
-121 nodes | 1.77s | 5.46s
+121 nodes | 1.71s | 5.04s
 Pi3       | 0.19s | 1.00s
 
 121 nodes is _just_ the fastest operational T425 system in the world (woot). https://youtu.be/16nZVvnu3C4
