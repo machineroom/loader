@@ -19,8 +19,8 @@ Mimicing Axel's results using man.dat auto-render and on-the-fly rendering using
 System | 1st | 2nd | notes
 -------|-----|-----|------
 Axel cube 65 T425 | 2.32s | 8.16s | Mixed 20 & 25MHz parts
-13  nodes | 6.93s | 37.29s | Each node is T425@25MHz
-36  nodes | 4.97s | 19.59s
+13  nodes | 6.74s | 37.34s | Each node is T425@25MHz
+36  nodes | 3.41s | 15.79s
 121 nodes | 1.77s | 5.46s
 Pi3       | 0.19s | 1.00s
 
