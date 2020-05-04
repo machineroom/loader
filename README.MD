@@ -15,7 +15,7 @@ macihenroomfiddling@gmail.com enhancements
 * TODO:
 * Fix race condition? that causes host to not recieve a RSLCOM message and a number of incomplete slices left (worse with more nodes)
 
-Mimicing Axel's results using man.dat auto-render and on-the-fly rendering using FB:
+Mimicing Axel's results using man.dat auto-render and on-the-fly rendering using FB @ 640*480:
 System | 1st | 2nd | notes
 -------|-----|-----|------
 Axel cube 65*T425 | 2.32s | 8.16s | Mixed 20 & 25MHz parts
@@ -23,9 +23,11 @@ Axel cube 65*T425 | 2.32s | 8.16s | Mixed 20 & 25MHz parts
 36  nodes | 3.41s | 15.79s
 121 nodes | 1.71s | 5.04s
 230 nodes | 1.72s | 3.85s
+241 nodes | 1.88s | 2.81s | -5V2 fuses repaired (mostly reliable)
+241 nodes | 7.22s | 10.99s | 1280*1024
 Pi3       | 0.19s | 1.00s
 
-230 nodes is _certainly_ the fastest operational T425 system in the world (woot). (121 nodes recorded @ https://youtu.be/16nZVvnu3C4)
+241 nodes is _certainly_ the fastest operational T425 system in the world (woot). (https://youtu.be/vG2aXRZjA4E)
 
 Two problems with WX9020:
 1. I'm running the HSL cards (that connect 6x links over a fiber to connect racks together) in byte mode. This is documented to be slow but is transparent to software (i.e. it looks like a regular link).
