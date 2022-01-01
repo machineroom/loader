@@ -465,18 +465,19 @@ void memdump (char *buf, int cnt) {
 void scan_tran(void) {
     register int len;
     double xrange,yrange;
-	struct{
-        long com;
-        long width;
-        long height;
-        long maxcnt;
+    // This struct shared with transputer code (mandel.c) so type sizing & ordering is important
+    struct{
+        int32_t com;
+        int32_t width;
+        int32_t height;
+        int32_t maxcnt;
         double lo_r;
         double lo_i;
         double gapx;
         double gapy;
     } prob_st;
     
-	long buf[BUFSIZE];
+    int32_t buf[BUFSIZE];
 
     xrange = scale_fac*(esw-1);
     yrange = scale_fac*(esh-1);
