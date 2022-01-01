@@ -1,29 +1,15 @@
 #  MAKEFILE for Mandelbrot program.
-#  Set Borland C compiler and Logical System C compiler path.
-#
-# Heavily altered by Axel Muhr in 2009
-# + corrected tlink libs-order to circumvent float error
-# + added make rule for screen2.obj
-#
-# Caveat: Keep your path to the Borland tools short, else you'll
-#         reach the 128 chars-per-commandline limit quick!
-#
-#         To execute this make-file you'll need the 1989 version
-#         of the LSC compiler and use the supplied 'lscmake.exe'
-#         (from the 1993 version) for this.
 
 #macihenroomfiddling@gmail.com Oct 2019 started on Linux port
+#Uses normal GNU make on Linux with dosbox to run legacy LSC compiler
 #LSC 89 comes from http://www.classiccmp.org/transputer/software/languages/ansic/lsc/
 
 .SUFFIXES: .C .TAL .TLD .ARR .EXE
 .PHONY: lsc_debug
 all: man
 
-LSC89=/home/pi/lsc-V89.1
+LSC89=${HOME}/lsc-V89.1
 LSC89_BIN=d:\exe
-
-LSC93=/home/pi/lsc-V93.1
-LSC93_BIN=d:\bin
 
 LSC=$(LSC89)
 LSC_BIN=$(LSC89_BIN)
