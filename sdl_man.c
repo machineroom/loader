@@ -492,8 +492,8 @@ void scan_tran(void) {
     printf ("PRBCOM struct:\n\tcom:%ld\n\twidth:%ld\n\theight:%ld\n\tmaxcnt:%ld\n\tlo_r:%lf\n\tlo_i:%lf\n\tgapx:%lf\n\tgapy:%lf\n",
              prob_st.com, prob_st.width, prob_st.height, prob_st.maxcnt, prob_st.lo_r, prob_st.lo_i, prob_st.gapx, prob_st.gapy);
     memdump ((char *)&prob_st,sizeof(prob_st));
-    assert (sizeof(prob_st) == 48);
 #endif
+    assert (sizeof(prob_st) == 48);
     word_out(sizeof(prob_st));
     chan_out((char *)&prob_st,sizeof(prob_st));
 #ifdef DEBUG
