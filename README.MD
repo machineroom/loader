@@ -11,9 +11,7 @@ macihenroomfiddling@gmail.com enhancements
 * Remove x86 asm/dos/int usage and replaced render & input with SDL2 so main app now builds on Linux
 * Use more memory to get better performance, especially host rendering
 * Added FB option for much faster rendering (~1000x faster than SDL2)
-* Must run as root to access timer registers on BCM chip
-* TODO:
-* Fix race condition? that causes host to not recieve a RSLCOM message and a number of incomplete slices left (worse with more nodes)
+* *Must run as root* to access timer registers on BCM chip
 
 Mimicing Axel's results using man.dat auto-render and on-the-fly rendering using FB @ 640*480:
 System | 1st | 2nd | notes
@@ -22,7 +20,7 @@ Axel cube 65*T425 | 2.32s | 8.16s | Mixed 20 & 25MHz parts
 13  nodes | 6.74s | 37.34s | Each node is T425@25MHz
 36  nodes | 3.41s | 15.79s
 121 nodes | 1.71s | 5.04s
-230 nodes | 1.72s | 3.85s
+230 nodes | 1.72s | 3.85s | upto this point -5V2 fuses unreliable so not all nodes operational
 241 nodes | 1.88s | 2.81s | -5V2 fuses repaired (mostly reliable)
 241 nodes | 7.22s | 10.99s | 1280*1024
 Pi3       | 0.19s | 1.00s
