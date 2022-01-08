@@ -707,7 +707,7 @@ void draw_box(int x1, int y1, int x2, int y2) {
 #include "MANDEL.ARR"
 
 void boot_mandel(void)
-{   int ack, fxp, only_2k, nnodes;
+{   int ack, fxp, nnodes;
 
     rst_adpt(TRUE);
     if (verbose) printf("Booting...\n");
@@ -718,6 +718,7 @@ void boot_mandel(void)
     if (verbose) printf("Loading...\n");      
     if (!load_buf(FLLOAD,sizeof(FLLOAD))) exit(1);
     if (verbose) printf("ID'ing...\n");
+    // IDENT will give master node ID 0 and other nodes ID 1
     if (!load_buf(IDENT,sizeof(IDENT))) exit(1);
     if (!tbyte_out(0))
     {
@@ -729,19 +730,14 @@ void boot_mandel(void)
         printf(" -- timeout sending id\n");
         exit(1);
     }
-    only_2k = (int)word_in();
     nnodes  = (int)word_in();
-    fxp     = (int)word_in();
     printf("\nfrom IDENT");
-    printf("\n\tnodes found: %d",nnodes);
-    printf("\n\tnodes with only 2K RAM: %d",only_2k);
-    printf("\n\tFXP: %d",fxp);
-    printf("\n\tusing %s-point arith.\n", fxp ? "fixed" : "floating");
-    if (verbose) printf("Sending mandel-code\n");	   
+    printf("\n\tnodes found: %d\n",nnodes);
+    if (verbose) printf("\nSending mandel-code");
     if (!load_buf(MANDEL,sizeof(MANDEL))) exit(1);
     if (!tbyte_out(0))
     {
-        printf(" -- timeout sending execute\n");
+        printf("\n -- timeout sending execute");
         exit(1);
     }
     //mandel code sends these back to parent, so these will reach the host

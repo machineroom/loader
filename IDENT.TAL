@@ -12,14 +12,11 @@
 ;***************************************************************************/
 ;****************************************************************************
 ; This program  works with FLBOOT.TAL and FLLOAD.TAL. It gives all *
-; transputers an ID by first giving itself an ID and then sending a higher id
+; transputers an ID by first giving itself an ID (0) and then sending a higher id (1)
 ; to it's children. After setting the ID's it collects network info from it's
 ; children, adds it on and sends it to it's parent. The network information
-; has three fields.
+; has a single  field:
 ; 1. Total number of nodes in the subtree acting this as root. Variable:NNODES
-; 2. If any node has only 2k internal RAM memory, then a special version of
-;    mandelbrot must be loaded
-; 3. If fixed point or flaoting point mandelbrot needed.
 ;***************************************************************************
 	.all
 
@@ -27,34 +24,18 @@
     .val    TRUE,1
     .val    FALSE,0
     .val    RESERVE,12
-    .val    T805LO, 0x09     ;IDENT ARE FROM 10 TO 19
-    .val	T805HI, 0x14
-    .val    T800D, 0x60
-    .val    T414B, 0x61
 
-    .val    ID,0
-    .val    MININT,1
-    .val    DBLINK,1
-    .val    MEMSTART,2
+    .val    ID,0                    ; common fields with FLBOOT
     .val    BOOTIN,3
-    .val    BOOTOUT,4               ;5 and 6 also
-    .val    LDSTART,7
-    .val    ENTRYP,8
-    .val    WSPACE,9
-    .val    LDADDR,10
-    .val    TRANTYPE,11
+    .val    BOOTOUT,4               ; 4,5,6 contain links out (array of 3 link IDs, 0 if not connected to another transputer)
 
     .val    TMPID,0
     .val    TLINK,1
     .val    LOOPA,2
     .val    LOOPB,3
     .val    TO_PARENT,4
-    .val    ONLY_2K,5
-    .val    NNODES,6
-    .val    FIXED_POINT,7
-    .val    TEMP1,8
-    .val    TEMP2,9
-    .val    TEMP3,10
+    .val    NNODES,5
+    .val    TEMP1,6
     .val    STATIC,13
 
     .val    DFLAG,0
@@ -104,11 +85,6 @@ L3: ldc     TRUE
     stl     LOADING
 ;}}}  ;
 ;{{{  get info to send to paren;
-    ldc     1               ;no T800 (testing)
-    stl     FIXED_POINT
-	;    do initializations
-    ldc     FALSE           ;no 2k (testing)
-    stl     ONLY_2K
 ;{{{  start out assuming we are leaf node;
     ldc    1
     stl    NNODES
@@ -130,23 +106,15 @@ N1: ldl     LOOPA                   ;TLINK:= BOOTOUT[i]
     ldc     16                   ;point to input channel    (input=output+4 words)
     sum
     stl     TLINK
-    ldlp    TEMP1                ;get ONLY_2K, NNODES and FIXED_POINT
+    ldlp    TEMP1                ;get NNODES
     ldl     TLINK                ;from child
-    ldc     12
+    ldc     4
     in
 
-    ldl     ONLY_2K              ;collect number of nodes with only 2k RAM
+    ldl     NNODES               ;add node numbers
     ldl     TEMP1
     sum
-    stl     ONLY_2K
-    ldl     NNODES               ;add node numbers
-    ldl     TEMP2
-    sum
     stl     NNODES
-    ldl     FIXED_POINT          ;if any use fixed_point all use it
-    ldl     TEMP3
-    or
-    stl     FIXED_POINT
 
 N2: ldlp    LOOPA
     ldc     N3-N1
@@ -159,9 +127,9 @@ N3:
     ldc     16
     diff
     stl     TO_PARENT
-    ldlp    ONLY_2K     ;   send ONLY_2K, NNODES AND FIXED_POINT
+    ldlp    NNODES        ;   send NNODES
     ldl     TO_PARENT     ;   to parent
-    ldc     12
+    ldc     4
     out
 
 ;}}}  ;

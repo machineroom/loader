@@ -29,7 +29,7 @@
 ; writes will succeed and all links will be marked as valid. Instead, each node now writes the bootstrap out on
 ; each link, then waits for reciept of a an ACK message (just a known token) on the link. When this is received
 ; then the link is marked as valid.
-; Also tidied things specifically for WX9020 (an array of T425s) - removed support for T8 & 2K memory.
+; Also tidied things specifically for WX9020 (an array of T425s) - removed support for 2K memory.
 
 	.t800
 ;  val definition;

@@ -88,7 +88,7 @@ main will be the first byte in the code.
 #pragma endmacro
 /*}}}  */
 
-/*{{{  struct type def*/
+/*{{{  struct type def shared with loader and ident asembler code */
 typedef struct {
     int id;
     void *minint;
