@@ -19,7 +19,7 @@ Mimicing Axel's results using man.dat auto-render and on-the-fly rendering using
 System | 1st | 2nd | notes
 -------|-----|-----|------
 Axel cube 65*T425 | 2.32s | 8.16s | Mixed 20 & 25MHz parts
-13  nodes | 6.74s | 37.34s | Each node is T425@25MHz
+13  nodes | 6.74s | 37.34s | Each node is T425@25MHz (Whitecross WX9020 nodes)
 36  nodes | 3.41s | 15.79s
 121 nodes | 1.71s | 5.04s
 230 nodes | 1.72s | 3.85s | upto this point -5V2 fuses unreliable so not all nodes operational
@@ -28,6 +28,8 @@ Axel cube 65*T425 | 2.32s | 8.16s | Mixed 20 & 25MHz parts
 Pi3       | 0.19s | 1.00s
 Pi4/2GB   | 0.082s | 0.477s
 Single T425 | 82s | 474s | 25MHz TRAM 10Mbps link. no render
+Single T805 | 82s | 474s | 25MHz TRAM 10Mbps link. no render. Forced fixed-point
+Single T805 | 55s | 310s | 25MHz TRAM 10Mbps link. no render. floating-point.
 
 241 nodes is _certainly_ the fastest operational T425 system in the world (woot). (https://youtu.be/vG2aXRZjA4E)
 
