@@ -18,7 +18,7 @@
 ; has three fields.
 ; 1. Total number of nodes in the subtree acting this as root. Variable:NNODES
 ; 2. If any node has only 2k internal RAM memory, then a special version of
-;    mandelbrot must be loaded.
+;    mandelbrot must be loaded
 ; 3. If fixed point or flaoting point mandelbrot needed.
 ;***************************************************************************
 	.all

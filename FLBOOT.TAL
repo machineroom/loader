@@ -21,7 +21,7 @@
 
 ;Notes for whitecross WX9020 modifications made by macihenroomfiddling@gmail.com 2019/2020.
 ;The original code used a process to write the bootstrap out on each link, other than bootin.
-;On a noaml network this works because only a freshly reset node will accept the bootstrap, in which case
+;On a normal network this works because only a freshly reset node will accept the bootstrap, in which case
 ; the link on the parent that did the write is marked as valid. If the node is already booted (or booting)
 ; then the bootstrap won't be received on any other link. The bootstrap write by a 2nd parent will block and
 ; the link won't be marked as active.
@@ -178,17 +178,6 @@ B2: ldl     WSP
 	adc     1
 	stl     BO_IDX
 
-    ;ldtimer                         ;wait for any com. to finish
-	;adc     100
-	;tin                             ;block until timer reaches DELAY
-	;ldl     WSP
-	;ldnl    OLINK
-	;resetch
-	;ldl     WSP
-	;ldnl    OLINK
-	;adc 16
-	;resetch
-
 B3: ldlp    LOOPA
 	ldc     B4-B1
 	lend                            ;end loop
@@ -230,16 +219,6 @@ H3:
     ldl     TLINK
     ldl     CODELEN
     out            
-
-   ; HAVE (with 2 cards) = 5*2 blinks, 1*1 blink & 6*0 blink (as expected from ispy)
-   ;seterr                          ;error LED ON
-   ;ldtimer
-   ;adc    2000
-   ;tin                             ;end delay
-   ;testerr                         ;error LED OFF
-   ;ldtimer
-   ;adc    2000
-   ;tin                             ;end delay
 
 H4: ldlp    LOOPA
     ldc     H5-H3
