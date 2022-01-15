@@ -13,7 +13,7 @@
 // crudely ripped off from http://raspberrycompote.blogspot.com/2013/01/low-level-graphics-on-raspberry-pi-part_22.html
 
 
-uint32_t *FB_Init(int *width, int *height) {
+uint32_t *FB_Init(int *width, int *height, int *bpp) {
     int fbfd = 0;
     struct fb_var_screeninfo vinfo;
     struct fb_fix_screeninfo finfo;
@@ -38,11 +38,7 @@ uint32_t *FB_Init(int *width, int *height) {
         printf("Error reading variable information.\n");
         return NULL;
     }
-    if (vinfo.bits_per_pixel != 32) {
-        printf("Please implement !32bpp rendering ;)\n");
-        return NULL;
-    }
-    printf("%dx%d, %d bpp\n", vinfo.xres, vinfo.yres, 
+    printf("FB is %dx%d, %d bpp\n", vinfo.xres, vinfo.yres, 
            vinfo.bits_per_pixel );
 
     // map framebuffer to user memory 
@@ -55,11 +51,12 @@ uint32_t *FB_Init(int *width, int *height) {
                       fbfd,
                       0);
 
-    if ((int)fbp == -1) {
+    if (fbp == (void *)-1) {
         printf("Failed to mmap.\n");
         return NULL;
     }
     *width = vinfo.xres;
     *height = vinfo.yres;
+    *bpp = vinfo.bits_per_pixel;
     return fbp;
 }

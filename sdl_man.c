@@ -100,6 +100,7 @@ SDL_Renderer *sdl_renderer;
 uint32_t *fbptr = NULL;
 int fb_width;
 int fb_height;
+int fb_bpp;
 
 int get_key(void)
 {
@@ -256,9 +257,14 @@ int main(int argc, char **argv) {
         }
         sdl_renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED) ;
     } else {
-        fbptr = FB_Init(&fb_width, &fb_height);
+        fbptr = FB_Init(&fb_width, &fb_height, &fb_bpp);
         if (fbptr == NULL) {
-            return 1;
+            printf ("failed FB_Init\n");
+            return -1;
+        }
+        if (fb_bpp != 16 && fb_bpp != 32) {
+            printf ("unsupported FB BPP (%d)\n", fb_bpp);
+            return -1;
         }
     }
     init_window();
@@ -296,7 +302,7 @@ BGR ega_palette[16] = {
     {255,255,255}
 };
 
-uint32_t ega_palette_ARGB[16] = {
+uint32_t ega_palette_ARGB32[16] = {
     0x00000000,
     0x007F0000,
     0x00FF0000,     //2=red
@@ -313,6 +319,25 @@ uint32_t ega_palette_ARGB[16] = {
     0x003F00FF,
     0x00FF3FFF,     //14=magenta
     0x00FFFFFF
+};
+//RRRR RGGG GGGB BBBB
+uint16_t ega_palette_ARGB16[16] = {
+    0x0000,
+    0x7800,     //1=mid red
+    0xF800,     //2=red
+    0xF9E0,
+    0xFBE0,
+    0xFFE0,     //5=yellow
+    0x3BE0,
+    0x07E0,     //7=green
+    0x07EF,
+    0x07FF,     //9=cyan
+    0x03FF,
+    0x01FF,
+    0x001F,     //12=blue
+    0x381F,
+    0xF91F,     //14=magenta
+    0xFFFF      //15=white
 };
 
 //x,y - start point
@@ -332,9 +357,16 @@ void vect (int x, int y, int buf_size, unsigned char *buf) {
             }
             SDL_RenderPresent(sdl_renderer);
         } else {
-            uint32_t *bp = &fbptr[(y*fb_width)+(x)];
-            for (int i=0; i < buf_size; i++) {
-                *bp++ = ega_palette_ARGB[buf[i]];
+            if (fb_bpp == 16) {
+                uint16_t *bp = (uint16_t*)&fbptr[(y*fb_width)+(x)];
+                for (int i=0; i < buf_size; i++) {
+                    *bp++ = ega_palette_ARGB16[buf[i]];
+                }
+            } else if (fb_bpp == 32) {
+                uint32_t *bp = &fbptr[(y*fb_width)+(x)];
+                for (int i=0; i < buf_size; i++) {
+                    *bp++ = ega_palette_ARGB32[buf[i]];
+                }
             }
         }
     } else {
@@ -359,12 +391,22 @@ void render_screen(void) {
         }
         SDL_RenderPresent(sdl_renderer);
     } else {
-        uint32_t *bp = fbptr;
-        for (int y=0; y < screen_h; y++) {
-            for (int x=0; x < screen_w; x++) {
-                *bp++ = ega_palette_ARGB[screen_buffer[i++]];
+        if (fb_bpp == 16) {
+            uint16_t *bp = (uint16_t*)fbptr;
+            for (int y=0; y < screen_h; y++) {
+                for (int x=0; x < screen_w; x++) {
+                    *bp++ = ega_palette_ARGB16[screen_buffer[i++]];
+                }
+                bp += (fb_width - screen_w);
             }
-            bp += (fb_width - screen_w);
+        } else if (fb_bpp == 32) {
+            uint32_t *bp = fbptr;
+            for (int y=0; y < screen_h; y++) {
+                for (int x=0; x < screen_w; x++) {
+                    *bp++ = ega_palette_ARGB32[screen_buffer[i++]];
+                }
+                bp += (fb_width - screen_w);
+            }
         }
     }
 }
