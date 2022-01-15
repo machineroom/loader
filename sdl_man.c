@@ -81,20 +81,12 @@ void draw_box(int,int,int,int);
 void boot_mandel(void);
 int load_buf(char *, int);
 
-static bool autz;
-static bool verbose = false;
 static bool host = false;
 static int hicnt = 1024;
 static int locnt = 150;
-static int mxcnt;
-static int ps;
-static int screen_w;
-static int screen_h;
 static void (*scan)(void) = scan_host;
 static FILE *fpauto;
-static bool immediate_render = false;
 static uint8_t *screen_buffer = NULL;
-static bool use_sdl_render = true;
 
 SDL_Renderer *sdl_renderer;
 uint32_t *fbptr = NULL;
@@ -102,30 +94,20 @@ int fb_width;
 int fb_height;
 int fb_bpp;
 
-DEFINE_int32 (w, 640, "width");
-DEFINE_int32 (h, 480, "height");
-DEFINE_int32 (i, 0, "max. iteration count, # is iter. (default variable)");
-DEFINE_bool (v, false, "print verbose messages during initialisation");
-DEFINE_bool (r, false, "render each vector as received (slower)");
-DEFINE_bool (f, false, "direct FB access (default SDL2)");
-DEFINE_bool (t, false, "use host, no transputers (default transputers)");
-DEFINE_bool (a, false, "auto-zoom, coord. from file 'man.dat'");
-DEFINE_int32 (p, 1, "# sec. pause (for auto mode)");
+DEFINE_int32 (width, 640, "width");
+DEFINE_int32 (height, 480, "height");
+DEFINE_int32 (max_iter, 0, "max. iteration count, # is iter. (default variable)");
+DEFINE_bool (verbose, false, "print verbose messages during initialisation");
+DEFINE_bool (immediate, false, "render each vector as received (slower)");
+DEFINE_bool (sdl, true, "Use SDL2 render, otherwise direct FB");
+DEFINE_bool (host, false, "use host, no transputers (default transputers)");
+DEFINE_bool (auto, false, "auto-zoom, coord. from file 'man.dat'");
+DEFINE_int32 (pause, 1, "# sec. pause (for auto mode)");
 
 int main(int argc, char **argv) {
     int i,aok = 1;
     char *s;
     gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-	screen_w = FLAGS_w; 
-    screen_h = FLAGS_h;
-    mxcnt = FLAGS_i;
-    verbose = FLAGS_v;
-    immediate_render = FLAGS_r;
-    use_sdl_render = !FLAGS_f;
-    host = FLAGS_t;
-    ps = FLAGS_p;
-    autz = FLAGS_a;
 
     printf("CSA Mandelzoom Version 2.1 for PC\n");
     printf("(C) Copyright 1988 Computer System Architects Provo, Utah\n");
@@ -133,7 +115,7 @@ int main(int argc, char **argv) {
     printf("Enhanced by James Wilson (macihenroomfiddling@gmail.com) 2019, 2020\n");
     printf("This is a free software and you are welcome to redistribute it\n\n");
 
-    if (use_sdl_render) {
+    if (FLAGS_sdl) {
         if (SDL_Init(SDL_INIT_VIDEO) < 0) {
             return 1;
         }
@@ -142,13 +124,15 @@ int main(int argc, char **argv) {
             return 1;
         }
     }
-    if (!host) {
+    if (!FLAGS_host) {
         init_lkio(0,0,0);
         boot_mandel();
         scan = scan_tran;
     }
-    c011_dump_stats("done boot");
-	if (autz) {
+    if (FLAGS_verbose) {
+        c011_dump_stats("done boot");
+    }
+	if (FLAGS_auto) {
 	    if ((fpauto = fopen(AUTOFILE,"r")) == NULL) {
             printf(" -- can't open file: %s\n",AUTOFILE);
             exit(1);
@@ -163,13 +147,13 @@ int main(int argc, char **argv) {
         printf("End  - quit\n");
     }
     
-    if (!immediate_render) {
-        screen_buffer = (uint8_t*)malloc(screen_w * screen_h);
+    if (!FLAGS_immediate) {
+        screen_buffer = (uint8_t*)malloc(FLAGS_width * FLAGS_height);
     }
-    if (use_sdl_render) {
+    if (FLAGS_sdl) {
         SDL_Window *window = SDL_CreateWindow("T-Mandel with SDL",
-                SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen_w,
-                screen_h, SDL_WINDOW_SHOWN);
+                SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, FLAGS_width,
+                FLAGS_height, SDL_WINDOW_SHOWN);
 
         if (window == NULL) {
             SDL_Quit();
@@ -189,7 +173,7 @@ int main(int argc, char **argv) {
     }
     init_window();
 
-    if (autz)
+    if (FLAGS_auto)
         auto_loop();
     else
         com_loop();
@@ -308,8 +292,8 @@ uint16_t ega_palette_ARGB16[16] = {
 //buf_size - number of pixels in buf
 //buf - array of pixel colour indices (range 0-15)
 void vect (int x, int y, int buf_size, unsigned char *buf) {
-    if (immediate_render) {
-        if (use_sdl_render) {
+    if (FLAGS_immediate) {
+        if (FLAGS_sdl) {
             //immediate render looks cool, but is ultimately slower due to SDL overhead
             for (int i=0; i < buf_size; i++) {
                 SDL_SetRenderDrawColor(sdl_renderer,
@@ -335,15 +319,15 @@ void vect (int x, int y, int buf_size, unsigned char *buf) {
         }
     } else {
         //delayed render just copies calculated slice to screen buffer
-        memcpy (&screen_buffer[(y*screen_w)+x], buf, buf_size);
+        memcpy (&screen_buffer[(y*FLAGS_width)+x], buf, buf_size);
     }
 }
 
 void render_screen(void) {
     int i=0;
-    if (use_sdl_render) {
-        for (int y=0; y < screen_h; y++) {
-            for (int x=0; x < screen_w; x++) {
+    if (FLAGS_sdl) {
+        for (int y=0; y < FLAGS_height; y++) {
+            for (int x=0; x < FLAGS_width; x++) {
                 SDL_SetRenderDrawColor(sdl_renderer,
                                        ega_palette[screen_buffer[i]].r, 
                                        ega_palette[screen_buffer[i]].g,
@@ -357,19 +341,19 @@ void render_screen(void) {
     } else {
         if (fb_bpp == 16) {
             uint16_t *bp = (uint16_t*)fbptr;
-            for (int y=0; y < screen_h; y++) {
-                for (int x=0; x < screen_w; x++) {
+            for (int y=0; y < FLAGS_height; y++) {
+                for (int x=0; x < FLAGS_width; x++) {
                     *bp++ = ega_palette_ARGB16[screen_buffer[i++]];
                 }
-                bp += (fb_width - screen_w);
+                bp += (fb_width - FLAGS_width);
             }
         } else if (fb_bpp == 32) {
             uint32_t *bp = fbptr;
-            for (int y=0; y < screen_h; y++) {
-                for (int x=0; x < screen_w; x++) {
+            for (int y=0; y < FLAGS_height; y++) {
+                for (int x=0; x < FLAGS_width; x++) {
                     *bp++ = ega_palette_ARGB32[screen_buffer[i++]];
                 }
-                bp += (fb_width - screen_w);
+                bp += (fb_width - FLAGS_width);
             }
         }
     }
@@ -396,8 +380,10 @@ void com_loop(void)
             (*scan)();
             compute = SDL_GetPerformanceCounter();
             printf ("scan took %f ms\n", (double)((compute - start)*1000) / SDL_GetPerformanceFrequency()); 
-            c011_dump_stats("done scan");
-            if (!immediate_render) {
+            if (FLAGS_verbose) {
+                c011_dump_stats("done scan");
+            }
+            if (!FLAGS_immediate) {
                 render_screen();
                 render = SDL_GetPerformanceCounter();
                 printf ("render took %f ms\n", (double)((render - compute)*1000) / SDL_GetPerformanceFrequency()); 
@@ -432,8 +418,8 @@ void auto_loop(void) {
     
     loop
 	{
-        res = fscanf(fpauto," x:%lf y:%lf range:%lf iter:%d", &center_r,&center_i,&rng,&mxcnt);
-        printf ("start scan %lf %lf %lf %d\n", center_r, center_i, rng, mxcnt);
+        res = fscanf(fpauto," x:%lf y:%lf range:%lf iter:%d", &center_r,&center_i,&rng,&FLAGS_max_iter);
+        printf ("start scan %lf %lf %lf %d\n", center_r, center_i, rng, FLAGS_max_iter);
         if (res == EOF) {
             rewind(fpauto);
             continue;
@@ -447,7 +433,7 @@ void auto_loop(void) {
         printf ("scan took %f ms\n", (double)((now - start)*1000) / SDL_GetPerformanceFrequency()); 
         c011_dump_stats("done scan");
         run++;
-        sleep(ps);
+        sleep(FLAGS_pause);
     }
 }
 
@@ -488,13 +474,13 @@ void scan_tran(void) {
     xrange = scale_fac*(esw-1);
     yrange = scale_fac*(esh-1);
     prob_st.com = PRBCOM;
-    prob_st.width = screen_w;
-    prob_st.height = screen_h;
+    prob_st.width = FLAGS_width;
+    prob_st.height = FLAGS_height;
     prob_st.maxcnt = calc_iter(xrange);
     prob_st.lo_r = center_r - (xrange/2.0);
     prob_st.lo_i = center_i - (yrange/2.0);
-    prob_st.gapx = xrange / (screen_w-1);
-    prob_st.gapy = yrange / (screen_h-1);
+    prob_st.gapx = xrange / (FLAGS_width-1);
+    prob_st.gapy = yrange / (FLAGS_height-1);
 #ifdef DEBUG
     printf ("PRBCOM struct:\n\tcom:%ld\n\twidth:%ld\n\theight:%ld\n\tmaxcnt:%ld\n\tlo_r:%lf\n\tlo_i:%lf\n\tgapx:%lf\n\tgapy:%lf\n",
              prob_st.com, prob_st.width, prob_st.height, prob_st.maxcnt, prob_st.lo_r, prob_st.lo_i, prob_st.gapx, prob_st.gapy);
@@ -533,19 +519,19 @@ void scan_host(void) {
     double gapx;
     double gapy;
     REAL cx,cy;
-    unsigned char buf[screen_w];
+    unsigned char buf[FLAGS_width];
 
     xrange = scale_fac*(esw-1);
     yrange = scale_fac*(esh-1);
     maxcnt = calc_iter(xrange);
     lo_r = center_r - (xrange/2.0);
     lo_i = center_i - (yrange/2.0);
-    gapx = xrange / (screen_w-1);
-    gapy = yrange / (screen_h-1);
+    gapx = xrange / (FLAGS_width-1);
+    gapy = yrange / (FLAGS_height-1);
 
-    for (y = 0; y < screen_h; y++) {
+    for (y = 0; y < FLAGS_height; y++) {
         cy = y*gapy+lo_i;
-        for (x = 0; x < screen_w; x++) {
+        for (x = 0; x < FLAGS_width; x++) {
             cx = (x)*gapx+lo_r;
             buf[x] = iterate(cx,cy,maxcnt);
         }
@@ -575,15 +561,15 @@ int iterate(REAL cx, REAL cy, int maxcnt) {
 }
 
 int calc_iter(double r) {
-    if (mxcnt) return(mxcnt);
+    if (FLAGS_max_iter) return(FLAGS_max_iter);
     if (r <= LOR) return(hicnt);
     return((int)((hicnt-locnt)/(f(LOR)-f(HIR))*(f(r)-f(HIR))+locnt+0.5));
 }
 
 void init_window(void) {
-    prop_fac = (ASPECT_R/((double)screen_h/(double)screen_w));
-    esw = screen_w;
-    esh = screen_h*prop_fac;
+    prop_fac = (ASPECT_R/((double)FLAGS_height/(double)FLAGS_width));
+    esw = FLAGS_width;
+    esh = FLAGS_height*prop_fac;
     if (esh <= esw) scale_fac = MIN_SPAN/(esh-1);
     else scale_fac = MIN_SPAN/(esw-1);
     center_r = CENTER_R;
@@ -593,9 +579,9 @@ void init_window(void) {
 void save_coord(void) {
     double xrange;
 
-    if (!autz) {
+    if (!FLAGS_auto) {
         if ((fpauto = fopen(AUTOFILE,"a")) == NULL) return;
-        autz = true;
+        FLAGS_auto = true;
     }
     xrange = scale_fac*(esw-1);
     fprintf(fpauto,"x:%17.14f y:%17.14f range:%e iter:%d\n", center_r,center_i,xrange,calc_iter(xrange));
@@ -623,11 +609,11 @@ void region(int *bx, int *by, int *lx, int *ly, int *esc) {
 
     insert = 0;
     jmp = 10;
-    boxw = screen_w/10;
-    boxh = screen_h/10;
+    boxw = FLAGS_width/10;
+    boxh = FLAGS_height/10;
     *esc = FALSE;
-    *bx = ((screen_w - boxw)/2);
-    *by = ((screen_h - boxh)/2);
+    *bx = ((FLAGS_width - boxw)/2);
+    *by = ((FLAGS_height - boxh)/2);
     *lx = *bx + (boxw-1);
     *ly = *by + (boxh-1);
     draw_box(*bx,*by,*lx,*ly);
@@ -640,11 +626,11 @@ void region(int *bx, int *by, int *lx, int *ly, int *esc) {
                 *bx -= tmp; *lx -= tmp;
                 break;
             case RARW:
-                tmp = (*lx+jmp < screen_w) ? jmp : (screen_w-1) - *lx;
+                tmp = (*lx+jmp < FLAGS_width) ? jmp : (FLAGS_width-1) - *lx;
                 *bx += tmp; *lx += tmp;
                 break;
             case UARW:
-                tmp = (*ly+jmp < screen_h) ? jmp : (screen_h-1) - *ly;
+                tmp = (*ly+jmp < FLAGS_height) ? jmp : (FLAGS_height-1) - *ly;
                 *by += tmp; *ly += tmp;
                 break;
             case DARW:
@@ -655,26 +641,26 @@ void region(int *bx, int *by, int *lx, int *ly, int *esc) {
             case DARW+INSM:
                 tmp = *lx-*bx;
                 dx = (tmp > jmp) ? tmp-jmp : 1;
-                dy = (double)screen_h / (double)screen_w * (double)dx;
+                dy = (double)FLAGS_height / (double)FLAGS_width * (double)dx;
                 *bx += (tmp>>1)-(dx>>1); *lx = *bx+dx;
                 *by += ((*ly-*by)>>1)-(dy>>1); *ly = *by+dy;
                 break;
             case RARW+INSM:
             case UARW+INSM:
                 tmp = *lx-*bx;
-                dx = (tmp+jmp < screen_w) ? tmp+jmp : screen_w-1;
-                dy = (double)screen_h / (double)screen_w * (double)dx;
+                dx = (tmp+jmp < FLAGS_width) ? tmp+jmp : FLAGS_width-1;
+                dy = (double)FLAGS_height / (double)FLAGS_width * (double)dx;
                 *bx += (tmp>>1)-(dx>>1); *lx = *bx+dx;
                 *by += ((*ly-*by)>>1)-(dy>>1); *ly = *by+dy;
                 if (*bx < 0) {
                     *lx -= *bx; *bx = 0;
-                } else if (*lx >= screen_w) {
-                    *bx -= *lx-(screen_w-1); *lx = screen_w-1;
+                } else if (*lx >= FLAGS_width) {
+                    *bx -= *lx-(FLAGS_width-1); *lx = FLAGS_width-1;
                 }
                 if (*by < 0) {
                     *ly -= *by; *by = 0;
-                } else if (*ly >= screen_h) {
-                    *by -= *ly-(screen_h-1); *ly = screen_h-1;
+                } else if (*ly >= FLAGS_height) {
+                    *by -= *ly-(FLAGS_height-1); *ly = FLAGS_height-1;
                 }
                 break;
             case INS:
@@ -716,14 +702,14 @@ void boot_mandel(void)
 {   int ack, fxp, nnodes;
 
     rst_adpt(TRUE);
-    if (verbose) printf("Booting...\n");
+    if (FLAGS_verbose) printf("Booting...\n");
     if (!load_buf(FLBOOT,sizeof(FLBOOT))) exit(1);
     //daughter sends back an ACK word on the booted link
     ack = (int)word_in();
     printf("ack = 0x%X\n", ack);
-    if (verbose) printf("Loading...\n");      
+    if (FLAGS_verbose) printf("Loading...\n");      
     if (!load_buf(FLLOAD,sizeof(FLLOAD))) exit(1);
-    if (verbose) printf("ID'ing...\n");
+    if (FLAGS_verbose) printf("ID'ing...\n");
     // IDENT will give master node ID 0 and other nodes ID 1
     if (!load_buf(IDENT,sizeof(IDENT))) exit(1);
     if (!tbyte_out(0))
@@ -739,7 +725,7 @@ void boot_mandel(void)
     nnodes  = (int)word_in();
     printf("\nfrom IDENT");
     printf("\n\tnodes found: %d\n",nnodes);
-    if (verbose) printf("\nSending mandel-code");
+    if (FLAGS_verbose) printf("\nSending mandel-code");
     if (!load_buf(MANDEL,sizeof(MANDEL))) exit(1);
     if (!tbyte_out(0))
     {
