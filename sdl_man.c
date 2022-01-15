@@ -27,6 +27,7 @@
 #include <SDL2/SDL.h>
 #include "c011.h"
 #include "fb.h"
+#include <gflags/gflags.h>
 
 #define JOBCOM 0L
 #define PRBCOM 1L
@@ -57,7 +58,6 @@
 #define loop    for (;;)
 
 #define AUTOFILE "MAN.DAT"
-#define PAUSE    1
 
 #define HIR  2.5
 #define LOR  3.0e-14
@@ -87,7 +87,7 @@ static bool host = false;
 static int hicnt = 1024;
 static int locnt = 150;
 static int mxcnt;
-static int ps = PAUSE;
+static int ps;
 static int screen_w;
 static int screen_h;
 static void (*scan)(void) = scan_host;
@@ -101,6 +101,101 @@ uint32_t *fbptr = NULL;
 int fb_width;
 int fb_height;
 int fb_bpp;
+
+DEFINE_int32 (w, 640, "width");
+DEFINE_int32 (h, 480, "height");
+DEFINE_int32 (i, 0, "max. iteration count, # is iter. (default variable)");
+DEFINE_bool (v, false, "print verbose messages during initialisation");
+DEFINE_bool (r, false, "render each vector as received (slower)");
+DEFINE_bool (f, false, "direct FB access (default SDL2)");
+DEFINE_bool (t, false, "use host, no transputers (default transputers)");
+DEFINE_bool (a, false, "auto-zoom, coord. from file 'man.dat'");
+DEFINE_int32 (p, 1, "# sec. pause (for auto mode)");
+
+int main(int argc, char **argv) {
+    int i,aok = 1;
+    char *s;
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+	screen_w = FLAGS_w; 
+    screen_h = FLAGS_h;
+    mxcnt = FLAGS_i;
+    verbose = FLAGS_v;
+    immediate_render = FLAGS_r;
+    use_sdl_render = !FLAGS_f;
+    host = FLAGS_t;
+    ps = FLAGS_p;
+    autz = FLAGS_a;
+
+    printf("CSA Mandelzoom Version 2.1 for PC\n");
+    printf("(C) Copyright 1988 Computer System Architects Provo, Utah\n");
+    printf("Enhanced by Axel Muhr (geekdot.com), 2009, 2015\n");
+    printf("Enhanced by James Wilson (macihenroomfiddling@gmail.com) 2019, 2020\n");
+    printf("This is a free software and you are welcome to redistribute it\n\n");
+
+    if (use_sdl_render) {
+        if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+            return 1;
+        }
+    } else {
+        if (SDL_Init(SDL_INIT_TIMER) < 0) {
+            return 1;
+        }
+    }
+    if (!host) {
+        init_lkio(0,0,0);
+        boot_mandel();
+        scan = scan_tran;
+    }
+    c011_dump_stats("done boot");
+	if (autz) {
+	    if ((fpauto = fopen(AUTOFILE,"r")) == NULL) {
+            printf(" -- can't open file: %s\n",AUTOFILE);
+            exit(1);
+	    }
+	} else {
+        printf("\nAfter frame is displayed:\n\n");
+        printf("Home - display zoom box, use arrow keys to move & size, ");
+        printf("Home again to zoom\n");
+        printf("Ins  - toggle between size and move zoom box\n");
+        printf("PgUp - reset to outermost frame\n");
+        printf("PgDn - save coord. and iter. to file 'man.dat'\n");
+        printf("End  - quit\n");
+    }
+    
+    if (!immediate_render) {
+        screen_buffer = (uint8_t*)malloc(screen_w * screen_h);
+    }
+    if (use_sdl_render) {
+        SDL_Window *window = SDL_CreateWindow("T-Mandel with SDL",
+                SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen_w,
+                screen_h, SDL_WINDOW_SHOWN);
+
+        if (window == NULL) {
+            SDL_Quit();
+            return 2;
+        }
+        sdl_renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED) ;
+    } else {
+        fbptr = FB_Init(&fb_width, &fb_height, &fb_bpp);
+        if (fbptr == NULL) {
+            printf ("failed FB_Init\n");
+            return -1;
+        }
+        if (fb_bpp != 16 && fb_bpp != 32) {
+            printf ("unsupported FB BPP (%d)\n", fb_bpp);
+            return -1;
+        }
+    }
+    init_window();
+
+    if (autz)
+        auto_loop();
+    else
+        com_loop();
+
+    return(0);
+}
 
 int get_key(void)
 {
@@ -144,137 +239,6 @@ int get_key(void)
         }
     }
     return NONE;
-}
-
-int main(int argc, char **argv) {
-    int i,aok = 1;
-    char *s;
-
-	screen_w = 640; screen_h = 480;
-
-    printf("CSA Mandelzoom Version 2.1 for PC\n");
-    printf("(C) Copyright 1988 Computer System Architects Provo, Utah\n");
-    printf("Enhanced by Axel Muhr (geekdot.com), 2009, 2015\n");
-    printf("Enhanced by James Wilson (macihenroomfiddling@gmail.com) 2019, 2020\n");
-    printf("This is a free software and you are welcome to redistribute it\n\n");
-
-    for (i = 1; i < argc && argv[i][0] == '-'; i++)
-    {
-        for (s = argv[i]+1; *s != '\0'; s++)
-        {
-            switch (*s)
-            {
-                case 'a':
-                    if (sscanf(s+1,"%d",&ps) == 1) s++;
-                    if ((ps < 0) || (ps > 9)) ps = PAUSE;
-                    autz = true;
-                    break;
-                case 'w':
-                    if (i >= argc) {aok = 0; break;}
-                    aok &= sscanf(argv[++i],"%i",&screen_w) == 1 && *(s+1) == '\0';
-                    break;
-                case 'h':
-                    if (i >= argc) {aok = 0; break;}
-                    aok &= sscanf(argv[++i],"%i",&screen_h) == 1 && *(s+1) == '\0';
-                    break;
-                case 'i':
-                    if (i >= argc) {aok = 0; break;}
-                    aok &= sscanf(argv[++i],"%i",&mxcnt) == 1 && *(s+1) == '\0';
-                    break;
-                case 't':
-                    host = true;
-                    break;
-                case 'f':
-                    use_sdl_render = false;
-                    break;
-                case 'x':
-                    verbose = true;
-                    break;
-                case 'r':
-                    immediate_render = true;
-                    break;   
-                default:
-                    aok = 0;
-                    break;
-            }
-        }
-    }
-    aok &= i == argc;
-    if (!aok) {
-        printf("Usage: man [-b #] [-i #] [-a[#]cd#ehpt]\n");
-        printf("  -a  auto-zoom, coord. from file 'man.dat', # sec. pause\n");
-        printf("  -i  max. iteration count, # is iter. (default variable)\n");
-        printf("  -t  use host, no transputers (default transputers)\n");
-        printf("  -x  print verbose messages during initialisation\n");
-        printf("  -r  render each vector as received (slower)\n");
-        printf("  -w  width\n");
-        printf("  -h  height\n");
-        printf("  -f  direct FB access (default SDL2)\n");
-        exit(1);
-    }
-
-    if (use_sdl_render) {
-        if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-            return 1;
-        }
-    } else {
-        if (SDL_Init(SDL_INIT_TIMER) < 0) {
-            return 1;
-        }
-    }
-    if (!host) {
-        init_lkio(0,0,0);
-        boot_mandel();
-        scan = scan_tran;
-    }
-    c011_dump_stats("done boot");
-	if (autz) {
-	    if ((fpauto = fopen(AUTOFILE,"r")) == NULL) {
-            printf(" -- can't open file: %s\n",AUTOFILE);
-            exit(1);
-	    }
-	} else {
-        printf("\nAfter frame is displayed:\n\n");
-        printf("Home - display zoom box, use arrow keys to move & size, ");
-        printf("Home again to zoom\n");
-        printf("Ins  - toggle between size and move zoom box\n");
-        printf("PgUp - reset to outermost frame\n");
-        printf("PgDn - save coord. and iter. to file 'man.dat'\n");
-        printf("End  - quit\n");
-    }
-    
-    if (!immediate_render) {
-        screen_buffer = malloc(screen_w * screen_h);
-    }
-    if (use_sdl_render) {
-        SDL_Window *window = SDL_CreateWindow("T-Mandel with SDL",
-                SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen_w,
-                screen_h, SDL_WINDOW_SHOWN);
-
-        if (window == NULL) {
-            SDL_Quit();
-            return 2;
-        }
-        sdl_renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED) ;
-    } else {
-        fbptr = FB_Init(&fb_width, &fb_height, &fb_bpp);
-        if (fbptr == NULL) {
-            printf ("failed FB_Init\n");
-            return -1;
-        }
-        if (fb_bpp != 16 && fb_bpp != 32) {
-            printf ("unsupported FB BPP (%d)\n", fb_bpp);
-            return -1;
-        }
-    }
-    init_window();
-
-    if (autz)
-        auto_loop();
-    else
-        com_loop();
-
-    return(0);
 }
 
 typedef struct {
@@ -505,7 +469,7 @@ void memdump (char *buf, int cnt) {
 }
 
 void scan_tran(void) {
-    register int len;
+    int len;
     double xrange,yrange;
     // This struct shared with transputer code (mandel.c) so type sizing & ordering is important
     struct{
