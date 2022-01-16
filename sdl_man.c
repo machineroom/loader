@@ -430,7 +430,7 @@ void auto_loop(void) {
         start = SDL_GetPerformanceCounter();
         (*scan)();              /* this does the work */
         now = SDL_GetPerformanceCounter();
-        printf ("scan took %f ms\n", (double)((now - start)*1000) / SDL_GetPerformanceFrequency()); 
+        printf ("scan took %0.1f ms\n", (double)((now - start)*1000) / SDL_GetPerformanceFrequency()); 
         if (FLAGS_verbose) {
             c011_dump_stats("done scan");
         }
