@@ -28,9 +28,10 @@ Axel cube 65*T425 | 2.32s | 8.16s | Mixed 20 & 25MHz parts
 241 nodes | 7.22s | 10.99s | 1280*1024
 Pi3       | 0.19s | 1.00s
 Pi4/2GB   | 0.082s | 0.477s
-Single T425 | 82s | 474s | 25MHz TRAM 10Mbps link. no render
-Single T805 | 82s | 474s | 25MHz TRAM 10Mbps link. no render. Forced fixed-point
-Single T805 | 55s | 310s | 25MHz TRAM 10Mbps link. no render. floating-point.
+Single T425 | 82s | 474s | 25MHz TRAM 10Mbps link. no render. Transtech 2-1MB TRAM
+Single T805 | 82s | 474s | 25MHz TRAM 10Mbps link. no render. Forced fixed-point. Sundance SMT211B
+Single T805 | 55s | 310s | 25MHz TRAM 10Mbps link. no render. floating-point. Sundance SMT211B
+Single T805 | 46s | 258s | 30MHz TRAM 10Mbps link. no render. floating-point. Inmos B438
 
 241 nodes is _certainly_ the fastest operational T425 system in the world (woot). (https://youtu.be/vG2aXRZjA4E)
 
