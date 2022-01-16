@@ -124,28 +124,6 @@ int main(int argc, char **argv) {
             return 1;
         }
     }
-    if (!FLAGS_host) {
-        init_lkio();
-        boot_mandel();
-        scan = scan_tran;
-    }
-    if (FLAGS_verbose) {
-        c011_dump_stats("done boot");
-    }
-	if (FLAGS_auto) {
-	    if ((fpauto = fopen(AUTOFILE,"r")) == NULL) {
-            printf(" -- can't open file: %s\n",AUTOFILE);
-            exit(1);
-	    }
-	} else {
-        printf("\nAfter frame is displayed:\n\n");
-        printf("Home - display zoom box, use arrow keys to move & size, ");
-        printf("Home again to zoom\n");
-        printf("Ins  - toggle between size and move zoom box\n");
-        printf("PgUp - reset to outermost frame\n");
-        printf("PgDn - save coord. and iter. to file 'man.dat'\n");
-        printf("End  - quit\n");
-    }
     
     if (!FLAGS_immediate) {
         screen_buffer = (uint8_t*)malloc(FLAGS_width * FLAGS_height);
@@ -173,11 +151,31 @@ int main(int argc, char **argv) {
     }
     init_window();
 
-    if (FLAGS_auto)
+    if (!FLAGS_host) {
+        init_lkio();
+        boot_mandel();
+        scan = scan_tran;
+    }
+    if (FLAGS_verbose) {
+        c011_dump_stats("done boot");
+    }
+	if (FLAGS_auto) {
+	    if ((fpauto = fopen(AUTOFILE,"r")) == NULL) {
+            printf(" -- can't open file: %s\n",AUTOFILE);
+            exit(1);
+	    }
         auto_loop();
-    else
+	} else {
+        printf("\nAfter frame is displayed:\n\n");
+        printf("Home - display zoom box, use arrow keys to move & size, ");
+        printf("Home again to zoom\n");
+        printf("Ins  - toggle between size and move zoom box\n");
+        printf("PgUp - reset to outermost frame\n");
+        printf("PgDn - save coord. and iter. to file 'man.dat'\n");
+        printf("End  - quit\n");
         com_loop();
-
+    }
+    
     return(0);
 }
 
@@ -484,7 +482,7 @@ void scan_tran(void) {
     prob_st.gapx = xrange / (FLAGS_width-1);
     prob_st.gapy = yrange / (FLAGS_height-1);
 #ifdef DEBUG
-    printf ("PRBCOM struct:\n\tcom:%ld\n\twidth:%ld\n\theight:%ld\n\tmaxcnt:%ld\n\tlo_r:%lf\n\tlo_i:%lf\n\tgapx:%lf\n\tgapy:%lf\n",
+    printf ("PRBCOM struct:\n\tcom:%d\n\twidth:%d\n\theight:%d\n\tmaxcnt:%d\n\tlo_r:%lf\n\tlo_i:%lf\n\tgapx:%lf\n\tgapy:%lf\n",
              prob_st.com, prob_st.width, prob_st.height, prob_st.maxcnt, prob_st.lo_r, prob_st.lo_i, prob_st.gapx, prob_st.gapy);
     memdump ((char *)&prob_st,sizeof(prob_st));
 #endif
