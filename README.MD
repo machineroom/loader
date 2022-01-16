@@ -14,6 +14,7 @@ macihenroomfiddling@gmail.com enhancements
 * Use more memory to get better performance, especially host rendering
 * Added FB option for much faster rendering (~1000x faster than SDL2)
 * *Must run as root* to access timer registers on BCM chip
+* High current USB3 rpi adapter (5V 3A) is essential and don't overload the USB!
 
 Mimicing Axel's results using man.dat auto-render and on-the-fly rendering using FB @ 640*480:
 System | 1st | 2nd | notes
