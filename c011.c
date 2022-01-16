@@ -223,19 +223,17 @@ void c011_analyse(void) {
  */
 int c011_write_byte(uint8_t byte, uint32_t timeout) {
     //wait for output ready
-    uint64_t timeout_ns = timeout*1000*1000;    // 1000000ns=1000us=1ms
+    uint64_t timeout_us = timeout*1000;    // 1000us=1ms
     uint32_t word;
     total_writes++;
+    uint64_t end = bcm2835_st_read() + timeout_us;
     // wait for OutputInt pin to go high (thereby indicating ready to write)
-    while (((bcm2835_peri_read(gpio_lev) & (1<<OUT_INT)) == 0) && timeout_ns>0) {
-        sleep_ns(1);
-        timeout_ns--;
+    while (((bcm2835_peri_read(gpio_lev) & (1<<OUT_INT)) == 0)) {
+        if (bcm2835_st_read() >= end) {
+            total_write_timeouts++;
+            return -1;
+        }
         total_write_waits++;
-    }
-    if (timeout_ns == 0) {
-        printf ("timeout\n");
-        total_write_timeouts++;
-        return -1;
     }
     set_data_output_pins();
     set_gpio_bit (RS1,0);
@@ -300,10 +298,9 @@ int c011_read_byte(uint8_t *byte, uint32_t timeout) {
         }
     } else {
         uint64_t timeout_us = timeout*1000;    // 1000us=1ms
-        uint64_t start;
-        start = bcm2835_st_read();
+        uint64_t end = bcm2835_st_read() + timeout_us;
         while (((bcm2835_peri_read(gpio_lev) & (1<<IN_INT)) == 0)) {
-            if (bcm2835_st_read() - start > timeout_us) {
+            if (bcm2835_st_read() >= end) {
                 total_read_timeouts++;
                 return -1;
             }
@@ -319,25 +316,25 @@ int c011_read_byte(uint8_t *byte, uint32_t timeout) {
     return 0;
 }
 
-uint32_t c011_write_bytes (uint8_t *bytes, uint32_t num, uint32_t timeout) {
+int c011_write_bytes (uint8_t *bytes, uint32_t num, uint32_t timeout) {
     uint32_t i;
     for (i=0; i < num; i++) {
         int ret = c011_write_byte(bytes[i], timeout);
-        if (ret == -1) {
-            break;
+        if (ret != 0) {
+            return ret;
         }
     }
-    return i;
+    return 0;
 }
 
-uint32_t c011_read_bytes (uint8_t *bytes, uint32_t num, uint32_t timeout) {
+int c011_read_bytes (uint8_t *bytes, uint32_t num, uint32_t timeout) {
     uint32_t i;
     for (i=0; i < num; i++) {
         int ret = c011_read_byte(&bytes[i], timeout);
-        if (ret == -1) {
-            break;
+        if (ret != 0) {
+            return ret;
         }
     }
-    return i;
+    return 0;
 }
 

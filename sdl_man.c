@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
         }
     }
     if (!FLAGS_host) {
-        init_lkio(0,0,0);
+        init_lkio();
         boot_mandel();
         scan = scan_tran;
     }
@@ -489,17 +489,29 @@ void scan_tran(void) {
     memdump ((char *)&prob_st,sizeof(prob_st));
 #endif
     assert (sizeof(prob_st) == 48);
-    word_out(sizeof(prob_st));
-    chan_out((char *)&prob_st,sizeof(prob_st));
+    if (word_out(sizeof(prob_st)) != 0) {
+        printf(" -- timeout sending prob_st size\n");
+        exit(1);           
+    }
+    if (chan_out((char *)&prob_st,sizeof(prob_st)) != 0) {
+        printf(" -- timeout sending prob_st\n");
+        exit(1);           
+    }
 #ifdef DEBUG
     printf ("PRBCOM sent\n");
 #endif
 
 	loop
 	{
-	    len = (int)word_in();       //len in bytes
+	    if (word_in(&len) != 0) {      //len in bytes
+            printf(" -- timeout reading len vect\n");
+            exit(1);           
+        }
 	    assert (len < sizeof(buf));
-		chan_in ((char *)buf,len);
+		if (chan_in ((char *)buf,len) != 0) {
+            printf(" -- timeout reading vect\n");
+            exit(1);           
+        }
 #ifdef DEBUG
 		printf ("len=0x%X, buf = 0x%X 0x%X 0x%X 0x%X...0x%X\n",len,buf[0],buf[1],buf[2],buf[3],buf[(len/4)-1]);
 #endif
@@ -703,40 +715,52 @@ void draw_box(int x1, int y1, int x2, int y2) {
 void boot_mandel(void)
 {   int ack, fxp, nnodes;
 
-    rst_adpt(TRUE);
+    rst_adpt();
     if (FLAGS_verbose) printf("Booting...\n");
     if (!load_buf(FLBOOT,sizeof(FLBOOT))) exit(1);
     //daughter sends back an ACK word on the booted link
-    ack = (int)word_in();
+    if (word_in(&ack)) {
+        printf(" -- timeout getting ACK\n");
+        exit(1);
+    }
     printf("ack = 0x%X\n", ack);
     if (FLAGS_verbose) printf("Loading...\n");      
     if (!load_buf(FLLOAD,sizeof(FLLOAD))) exit(1);
     if (FLAGS_verbose) printf("ID'ing...\n");
     // IDENT will give master node ID 0 and other nodes ID 1
     if (!load_buf(IDENT,sizeof(IDENT))) exit(1);
-    if (!tbyte_out(0))
+    if (tbyte_out(0))
     {
-	    printf(" -- timeout sending execute\n");
+        printf(" -- timeout sending execute\n");
         exit(1);
     }
-    if (!tbyte_out(0))
+    if (tbyte_out(0))
     {
         printf(" -- timeout sending id\n");
         exit(1);
     }
-    nnodes  = (int)word_in();
+    if (word_in(&nnodes)) {
+        printf(" -- timeout getting nnodes (IDENT)\n");
+        exit(1);
+    }
     printf("\nfrom IDENT");
     printf("\n\tnodes found: %d\n",nnodes);
     if (FLAGS_verbose) printf("\nSending mandel-code");
     if (!load_buf(MANDEL,sizeof(MANDEL))) exit(1);
-    if (!tbyte_out(0))
+    if (tbyte_out(0))
     {
         printf("\n -- timeout sending execute");
         exit(1);
     }
     //mandel code sends these back to parent, so these will reach the host
-    nnodes = word_in();
-    fxp = word_in();
+    if (word_in(&nnodes)) {
+        printf(" -- timeout getting nnodes (MANDEL)\n");
+        exit(1);
+    }
+    if (word_in(&fxp)) {
+        printf(" -- timeout getting fxp\n");
+        exit(1);
+    }
     printf("\nfrom MANDEL");
     printf("\n\tnodes found: %d",nnodes);
     printf("\n\tFXP: %d\n",fxp);
@@ -751,11 +775,17 @@ int load_buf (char *buf, int bcnt) {
     do {
         len = (bcnt > 255) ? 255 : bcnt;
         bcnt -= len;
-        if ((wok = tbyte_out(len)))
-            while (len-- && (wok = tbyte_out(*buf++)));
-        } while (bcnt && wok);
-    if (!wok) printf(" -- timeout loading network\n");
-    return(wok);
+        wok = tbyte_out(len);
+        while (len-- && wok==0) {
+            wok = tbyte_out(*buf++);
+        } 
+    } while (bcnt && wok==0);
+    if (wok) {
+        printf(" -- timeout loading network\n");
+        return FALSE;
+    } else {
+        return TRUE;
+    }
 }
 
 
