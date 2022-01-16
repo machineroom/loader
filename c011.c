@@ -137,7 +137,6 @@ static void c011_enable_in_int(void) {
     set_gpio_bit (RS1,1);
     set_gpio_bit (RS0,0);
     set_gpio_bit (RW,0);
-    set_gpio_bit (CS,1);
     gpio_commit();
     c011_put_byte (0x02); // set int enable bit
 }
@@ -148,7 +147,6 @@ static void c011_enable_out_int(void) {
     set_gpio_bit (RS1,1);
     set_gpio_bit (RS0,1);
     set_gpio_bit (RW,0);
-    set_gpio_bit (CS,1);
     gpio_commit();
     c011_put_byte (0x02); // set int enable bit
 }
@@ -160,6 +158,8 @@ void c011_init(void) {
     gpio_fsel = bcm2835_regbase(BCM2835_REGBASE_GPIO) + BCM2835_GPFSEL0/4;
     gpio_lev = bcm2835_regbase(BCM2835_REGBASE_GPIO) + BCM2835_GPLEV0/4;
     set_control_pins();
+    set_gpio_bit(CS, HIGH);
+
     //set_gpio_bit(ANALYSE, LOW);
     gpio_commit();
 }
@@ -241,7 +241,6 @@ int c011_write_byte(uint8_t byte, uint32_t timeout) {
     set_gpio_bit (RS1,0);
     set_gpio_bit (RS0,1);
     set_gpio_bit (RW,0);
-    set_gpio_bit (CS,1);
     gpio_commit();
     c011_put_byte(byte);
     total_write_success++;
@@ -269,7 +268,6 @@ uint8_t c011_read_input_status(void) {
     set_gpio_bit (RS1,1);
     set_gpio_bit (RS0,0);
     set_gpio_bit (RW,1);
-    set_gpio_bit (CS,1);
     gpio_commit();
     byte = read_c011();
     return byte;
@@ -281,7 +279,6 @@ uint8_t c011_read_output_status(void) {
     set_gpio_bit (RS1,1);
     set_gpio_bit (RS0,1);
     set_gpio_bit (RW,1);
-    set_gpio_bit (CS,1);
     gpio_commit();
     byte = read_c011();
     return byte;
@@ -316,7 +313,6 @@ int c011_read_byte(uint8_t *byte, uint32_t timeout) {
     set_gpio_bit (RS1,0);
     set_gpio_bit (RS0,0);
     set_gpio_bit (RW,1);
-    set_gpio_bit (CS,1);
     gpio_commit();
     *byte = read_c011();
     total_read_success++;
