@@ -379,14 +379,14 @@ void com_loop(void)
             start = SDL_GetPerformanceCounter();
             (*scan)();
             compute = SDL_GetPerformanceCounter();
-            printf ("scan took %f ms\n", (double)((compute - start)*1000) / SDL_GetPerformanceFrequency()); 
+            printf ("scan took %0.1f ms\n", (double)((compute - start)*1000) / SDL_GetPerformanceFrequency()); 
             if (FLAGS_verbose) {
                 c011_dump_stats("done scan");
             }
             if (!FLAGS_immediate) {
                 render_screen();
                 render = SDL_GetPerformanceCounter();
-                printf ("render took %f ms\n", (double)((render - compute)*1000) / SDL_GetPerformanceFrequency()); 
+                printf ("render took %0.1f ms\n", (double)((render - compute)*1000) / SDL_GetPerformanceFrequency()); 
             }
         }
         switch (get_key())
