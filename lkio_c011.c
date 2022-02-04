@@ -67,11 +67,13 @@ int word_out(int p) {
 }
 
 int chan_in(char *p, unsigned int count) {
-    int ret = c011_read_bytes ((uint8_t *)p, count, TIMEOUT);
-    return ret;
+    uint32_t done = c011_read_bytes ((uint8_t *)p, count, TIMEOUT);
+    if (done==count) return 0;
+    else return -1;
 }
 
 int chan_out(char *p, unsigned int count) {
-    int ret = c011_write_bytes ((uint8_t *)p, count, TIMEOUT);
-    return ret;
+    uint32_t done = c011_write_bytes ((uint8_t *)p, count, TIMEOUT);
+    if (done==count) return 0;
+    else return -1;
 }

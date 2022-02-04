@@ -63,9 +63,10 @@ void c011_dump_stats(const char *title) {
  */
 static inline void sleep_ns(int ns) {
     //scope timing with rpi4 shows this is good enough for the small sleeps required by C011
-    for (int i=0; i < ns+10; i++) {
+    /*for (int i=0; i < ns; i++) {
         asm ("nop");
-    }
+    }*/
+    bcm2835_delayMicroseconds(1);
 }
 
 static void set_control_pins(void) {
@@ -78,6 +79,8 @@ static void set_control_pins(void) {
 
     bcm2835_gpio_fsel(IN_INT, BCM2835_GPIO_FSEL_INPT);
     bcm2835_gpio_fsel(OUT_INT, BCM2835_GPIO_FSEL_INPT);
+    bcm2835_gpio_set_pud(IN_INT, BCM2835_GPIO_PUD_DOWN);
+    bcm2835_gpio_set_pud(OUT_INT, BCM2835_GPIO_PUD_DOWN);
 }
 
 static inline void set_data_output_pins(void) {
@@ -108,6 +111,8 @@ static inline void set_gpio_bit(uint8_t pin, uint8_t on) {
 }
 
 //testing with scope shows gpio_commit takes ~150ns (rpi4 -O3)
+// bcm2835_peri_write ~75ns
+// bcm2835_peri_write_nb ~5ns
 static inline void gpio_commit(void) {
     bcm2835_peri_write (gpio_clr, ~bits);
     bcm2835_peri_write (gpio_set, bits);
@@ -121,6 +126,8 @@ static void c011_put_byte(uint8_t byte) {
     bits &= 0xFFFFFC03;
     word <<= 2;
     bits |= word;
+    // commit the byte to the data pins before asserting CS
+    gpio_commit();
     //CS=0
     set_gpio_bit(CS, LOW);
     gpio_commit();
@@ -132,7 +139,6 @@ static void c011_put_byte(uint8_t byte) {
 }
 
 static void c011_enable_in_int(void) {
-    bcm2835_gpio_set_pud(IN_INT, BCM2835_GPIO_PUD_DOWN);
     set_data_output_pins();
     set_gpio_bit (RS1,1);
     set_gpio_bit (RS0,0);
@@ -142,7 +148,6 @@ static void c011_enable_in_int(void) {
 }
 
 static void c011_enable_out_int(void) {
-    bcm2835_gpio_set_pud(OUT_INT, BCM2835_GPIO_PUD_DOWN);
     set_data_output_pins();
     set_gpio_bit (RS1,1);
     set_gpio_bit (RS0,1);
@@ -162,6 +167,7 @@ void c011_init(void) {
 
     //set_gpio_bit(ANALYSE, LOW);
     gpio_commit();
+
 }
 
 void c011_reset(void) {
@@ -223,13 +229,14 @@ void c011_analyse(void) {
  */
 int c011_write_byte(uint8_t byte, uint32_t timeout) {
     //wait for output ready
-    uint64_t timeout_us = timeout*1000;    // 1000us=1ms
     uint32_t word;
     total_writes++;
-    uint64_t end = bcm2835_st_read() + timeout_us;
     // wait for OutputInt pin to go high (thereby indicating ready to write)
+    uint64_t timeout_us = timeout*1000;    // 1000us=1ms
+    uint64_t start;
+    start = bcm2835_st_read();
     while (((bcm2835_peri_read(gpio_lev) & (1<<OUT_INT)) == 0)) {
-        if (bcm2835_st_read() >= end) {
+        if (bcm2835_st_read() - start > timeout_us) {
             total_write_timeouts++;
             return -1;
         }
@@ -261,27 +268,6 @@ static uint8_t read_c011(void) {
     return byte;
 }
 
-uint8_t c011_read_input_status(void) {
-    uint8_t byte;
-    set_gpio_bit (RS1,1);
-    set_gpio_bit (RS0,0);
-    set_gpio_bit (RW,1);
-    gpio_commit();
-    byte = read_c011();
-    return byte;
-}
-
-
-uint8_t c011_read_output_status(void) {
-    uint8_t byte;
-    set_gpio_bit (RS1,1);
-    set_gpio_bit (RS0,1);
-    set_gpio_bit (RW,1);
-    gpio_commit();
-    byte = read_c011();
-    return byte;
-}
-
 /**
  * @brief read a single byte from the C011 link
  * 
@@ -298,9 +284,10 @@ int c011_read_byte(uint8_t *byte, uint32_t timeout) {
         }
     } else {
         uint64_t timeout_us = timeout*1000;    // 1000us=1ms
-        uint64_t end = bcm2835_st_read() + timeout_us;
+        uint64_t start;
+        start = bcm2835_st_read();
         while (((bcm2835_peri_read(gpio_lev) & (1<<IN_INT)) == 0)) {
-            if (bcm2835_st_read() >= end) {
+            if (bcm2835_st_read() - start > timeout_us) {
                 total_read_timeouts++;
                 return -1;
             }
@@ -316,25 +303,25 @@ int c011_read_byte(uint8_t *byte, uint32_t timeout) {
     return 0;
 }
 
-int c011_write_bytes (uint8_t *bytes, uint32_t num, uint32_t timeout) {
+uint32_t c011_write_bytes (uint8_t *bytes, uint32_t num, uint32_t timeout) {
     uint32_t i;
     for (i=0; i < num; i++) {
         int ret = c011_write_byte(bytes[i], timeout);
-        if (ret != 0) {
-            return ret;
+        if (ret == -1) {
+            break;
         }
     }
-    return 0;
+    return i;
 }
 
-int c011_read_bytes (uint8_t *bytes, uint32_t num, uint32_t timeout) {
+uint32_t c011_read_bytes (uint8_t *bytes, uint32_t num, uint32_t timeout) {
     uint32_t i;
     for (i=0; i < num; i++) {
         int ret = c011_read_byte(&bytes[i], timeout);
-        if (ret != 0) {
-            return ret;
+        if (ret == -1) {
+            break;
         }
     }
-    return 0;
+    return i;
 }
 
