@@ -63,10 +63,10 @@ void c011_dump_stats(const char *title) {
  */
 static inline void sleep_ns(int ns) {
     //scope timing with rpi4 shows this is good enough for the small sleeps required by C011
-    /*for (int i=0; i < ns; i++) {
+    for (int i=0; i < ns; i++) {
         asm ("nop");
-    }*/
-    bcm2835_delayMicroseconds(1);
+    }
+    //bcm2835_delayMicroseconds(1);
 }
 
 static void set_control_pins(void) {
@@ -88,7 +88,7 @@ static inline void set_data_output_pins(void) {
         //bits 9-0 output (001)
         //%00001001001001001001001001001001
         //    0   9   2   4   9   2   4   9
-        bcm2835_peri_write (gpio_fsel, 0x09249249);
+        bcm2835_peri_write_nb (gpio_fsel, 0x09249249);
         data_pins_mode = OUTPUT;
     }
 }
@@ -96,7 +96,7 @@ static inline void set_data_output_pins(void) {
 static inline void set_data_input_pins(void) {
     if (data_pins_mode != INPUT) {
         //bits 9-0 input (000)
-        bcm2835_peri_write (gpio_fsel, 0);
+        bcm2835_peri_write_nb (gpio_fsel, 0);
         data_pins_mode = INPUT;
     }
 }
@@ -114,8 +114,8 @@ static inline void set_gpio_bit(uint8_t pin, uint8_t on) {
 // bcm2835_peri_write ~75ns
 // bcm2835_peri_write_nb ~5ns
 static inline void gpio_commit(void) {
-    bcm2835_peri_write (gpio_clr, ~bits);
-    bcm2835_peri_write (gpio_set, bits);
+    bcm2835_peri_write_nb (gpio_clr, ~bits);
+    bcm2835_peri_write_nb (gpio_set, bits);
 }
 
 //write byte to whatever register has been setup previously
@@ -171,9 +171,6 @@ void c011_init(void) {
 }
 
 void c011_reset(void) {
-    c011_set_byte_mode();           //enable BYTE mode on WX9020 by default
-    //set_gpio_bit(ANALYSE, LOW);
-    //gpio_commit();
     //TN29 states "Recommended pulse width is 5 ms, with a delay of 5 ms before sending anything down a link."
     set_gpio_bit(RESET, LOW);
     gpio_commit();
@@ -184,7 +181,7 @@ void c011_reset(void) {
     gpio_commit();
     bcm2835_delayMicroseconds (5*1000);
     //The whitecross HSL takes some time to cascade reset
-    bcm2835_delay(1500);
+    //bcm2835_delay(1500);
     c011_enable_in_int();
     c011_enable_out_int();
 }
