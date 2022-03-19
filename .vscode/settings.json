@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "MANDEL.C": "cpp"
+        "*.C": "c",
+        "MANDEL.C": "cpp",
+        "LKIO.H": "cpp"
     }
 }

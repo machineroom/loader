@@ -742,7 +742,7 @@ void boot_mandel(void)
         exit(1);
     }
     printf("\nfrom IDENT");
-    printf("\n\tnodes found: %d\n",nnodes);
+    printf("\n\tnodes found: %d (0x%X)\n",nnodes,nnodes);
     if (FLAGS_verbose) printf("\nSending mandel-code");
     if (!load_buf(MANDEL,sizeof(MANDEL))) exit(1);
     if (tbyte_out(0))
@@ -760,8 +760,8 @@ void boot_mandel(void)
         exit(1);
     }
     printf("\nfrom MANDEL");
-    printf("\n\tnodes found: %d",nnodes);
-    printf("\n\tFXP: %d\n",fxp);
+    printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
+    printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
     //mandel operates in word mode from now on. Clear BYTE mode on HSL cards for full throughput
     //seems to cause issues on 2nd loop of mandelbrot
     //c011_clear_byte_mode();
