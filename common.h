@@ -7,7 +7,7 @@
 #define RSLCOM 3L
 #define FLHCOM 4L
 
-#define MAXPIX  64 /* keep it a multiple of 4 please! TODO why can't this be <32? */
+#define MAXPIX  32 /* keep it a multiple of 4 please! TODO why can't this be <32? */
 #define MAXPIX_WORDS MAXPIX/4
 
 /* DATCOM {         [buf index]

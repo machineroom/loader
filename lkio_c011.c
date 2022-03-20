@@ -10,7 +10,7 @@
 void rst_adpt() {
     c011_reset();
     //The whitecross HSL takes some time to cascade reset
-    sleep(2);
+    sleep(3);
 }
 
 int init_lkio() {

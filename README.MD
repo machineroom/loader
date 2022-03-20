@@ -32,13 +32,13 @@ Single T425 | 82s | 474s | 25MHz TRAM 10Mbps link. no render. Transtech 2-1MB TR
 Single T805 | 82s | 474s | 25MHz TRAM 10Mbps link. no render. Forced fixed-point. Sundance SMT211B
 Single T805 | 55s | 310s | 25MHz TRAM 10Mbps link. no render. floating-point. Sundance SMT211B
 Single T805 | 46s | 258s | 30MHz TRAM 10Mbps link. no render. floating-point. Inmos B438
-127 nodes | 2.6s | 8.1s  | March 22. New (faster) rpi interface. WTF?!
-240 nodes | 2.3s | 5.3s  | March 22. New (faster) rpi interface. WTF?!
-354 nodes | 7.2s | 15.4s | March 22. New (faster) rpi interface. WTF?!
-240 nodes | 4.1s | 10.5s | March 22. With job pixels increased from 64 to 128
-127 nodes | 2.5s | 9.6s | March 22. With job pixels decreased from 64 to 32
-240 nodes | 1.6s | 3.1s | March 22. With job pixels decreased from 64 to 32
-354 nodes | 3.5s | 7.6s | March 22. With job pixels decreased from 64 to 32
+127 nodes | 3.0s | 11.1s  | March 22. New (faster) rpi interface (HSL in BYTE mode)
+231 nodes | 1.6s | 5.2s  | March 22. New (faster) rpi interface (HSL in BYTE mode)
+354 nodes | 7.2s | 15.4s | March 22. New (faster) rpi interface (HSL in WORD mode)
+353 nodes | 3.2s | 11.3s | March 22. New (faster) rpi interface (HSL in BYTE mode)
+127 nodes | 1.5s | 5.2s | As above but with job pixels decreased from 64 to 32 (and BYTE mode)
+235 nodes | 1.4s | 3.5s | As above (32,byte)
+353 nodes | 2.5s | 5.7s | As above (32,byte)
 
 
 241 nodes is _certainly_ the fastest operational T425 system in the world (woot). (https://youtu.be/vG2aXRZjA4E)
@@ -53,6 +53,7 @@ A 13 node minimal system (a system controller, 2 HSL cards and 2 processor cards
 
 The Pi4 takes 82ms and consumes max 12W, so that's ~1W per Mandelbrot-second.  
 The 13 node WX takes 6.74s and consumes 312W, so that's 2102W per Mandelbrot-second!
+A 127 node WX takes 1.5s and consumes ~1250W, so that's 1875 per Mandelbrot-second!
 
 ![Processor card](whitecross/IMG_20220320_142956.jpg)
 

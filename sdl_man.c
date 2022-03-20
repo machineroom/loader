@@ -410,6 +410,9 @@ void auto_loop(void) {
     int res;
     double rng;
     int run = 1;
+    double min=9999999;
+    double max=0;
+    double time;
     
     loop
 	{
@@ -433,7 +436,11 @@ void auto_loop(void) {
         start = SDL_GetPerformanceCounter();
         (*scan)();              /* this does the work */
         now = SDL_GetPerformanceCounter();
-        printf ("scan took %0.1f ms\n", (double)((now - start)*1000) / SDL_GetPerformanceFrequency()); 
+
+        time = (double)((now - start)*1000) / SDL_GetPerformanceFrequency();
+        if (time < min) min = time;
+        if (time > max) max = time;
+        printf ("scan took %0.1f ms ([%0.1f %0.1f]\n", time,min,max); 
         if (FLAGS_verbose) {
             c011_dump_stats("done scan");
         }
@@ -773,7 +780,8 @@ void boot_mandel(void)
     printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
     printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
     //mandel operates in word mode from now on. Clear BYTE mode on HSL cards for full throughput
-    c011_clear_byte_mode();
+    //^^^ for some reason byte mode is FASTER than word mode (2-3x faster)
+    //c011_clear_byte_mode();
 }
 
 /* return TRUE if loaded ok, FALSE if error. */
