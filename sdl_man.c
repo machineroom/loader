@@ -96,6 +96,7 @@ DEFINE_bool (immediate, false, "render each vector as received (slower)");
 DEFINE_bool (sdl, true, "Use SDL2 render, otherwise direct FB");
 DEFINE_bool (host, false, "use host, no transputers (default transputers)");
 DEFINE_bool (auto, false, "auto-zoom, coord. from file 'man.dat'");
+DEFINE_bool (keepgoing, false, "with auto will repeat forever");
 DEFINE_int32 (pause, 1, "# sec. pause (for auto mode)");
 
 int main(int argc, char **argv) {
@@ -413,12 +414,20 @@ void auto_loop(void) {
     loop
 	{
         res = fscanf(fpauto," x:%lf y:%lf range:%lf iter:%d", &center_r,&center_i,&rng,&FLAGS_max_iter);
-        printf ("start scan %lf %lf %lf %d\n", center_r, center_i, rng, FLAGS_max_iter);
         if (res == EOF) {
             rewind(fpauto);
             continue;
         }
-        if (res != 4) return;   /* End if anything else returned */
+        if (res != 4) {
+            /* Hit a non-valid line*/
+            if (FLAGS_keepgoing) {
+                rewind(fpauto);
+                continue;
+            } else {
+                return;
+            }
+        }
+        printf ("start scan %lf %lf %lf %d\n", center_r, center_i, rng, FLAGS_max_iter);
         scale_fac = rng/(esw-1);
         Uint64 start, now;
         start = SDL_GetPerformanceCounter();

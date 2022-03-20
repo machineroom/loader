@@ -46,6 +46,7 @@ Single T805 | 46s | 258s | 30MHz TRAM 10Mbps link. no render. floating-point. In
 Two problems with WX9020:
 1. ~~I'm running the HSL cards (that connect 6x links over a fiber to connect racks together) in byte mode. This is documented to be slow but is transparent to software (i.e. it looks like a regular link).~~
 2. The Pi/C011 link is also slow. ispy output gives the HSL links ~130K and the C011 link ~500K. Other links are ~1.8MB/s.
+3. Short renders in the auto mode (sub 10s) orso have a lot of variation in timings. 127 nodes can vary from <2 to >5 seconds!
 
 Just how expensive is Mandelbrot to calculate on a Whitecross Transputer network?  
 A 13 node minimal system (a system controller, 2 HSL cards and 2 processor cards) consumes 312W. There's a lot of TTL and ECL logic here.... each processor card has 6 identical processor nodes. From left is 8MB of the 16MB RAM, the ECC controller, buffers and PLD, T425, ECL backplane link chips. All this requires a fair bit of cooling.
