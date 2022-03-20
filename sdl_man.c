@@ -119,28 +119,30 @@ int main(int argc, char **argv) {
         }
     }
     
-    if (!FLAGS_immediate) {
-        screen_buffer = (uint8_t*)malloc(FLAGS_width * FLAGS_height);
-    }
-    if (FLAGS_sdl) {
-        SDL_Window *window = SDL_CreateWindow("T-Mandel with SDL",
-                SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, FLAGS_width,
-                FLAGS_height, SDL_WINDOW_SHOWN);
+    if (!FLAGS_auto) {
+        if (!FLAGS_immediate) {
+            screen_buffer = (uint8_t*)malloc(FLAGS_width * FLAGS_height);
+        }
+        if (FLAGS_sdl) {
+            SDL_Window *window = SDL_CreateWindow("T-Mandel with SDL",
+                    SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, FLAGS_width,
+                    FLAGS_height, SDL_WINDOW_SHOWN);
 
-        if (window == NULL) {
-            SDL_Quit();
-            return 2;
-        }
-        sdl_renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED) ;
-    } else {
-        fbptr = FB_Init(&fb_width, &fb_height, &fb_bpp);
-        if (fbptr == NULL) {
-            printf ("failed FB_Init\n");
-            return -1;
-        }
-        if (fb_bpp != 16 && fb_bpp != 32) {
-            printf ("unsupported FB BPP (%d)\n", fb_bpp);
-            return -1;
+            if (window == NULL) {
+                SDL_Quit();
+                return 2;
+            }
+            sdl_renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED) ;
+        } else {
+            fbptr = FB_Init(&fb_width, &fb_height, &fb_bpp);
+            if (fbptr == NULL) {
+                printf ("failed FB_Init\n");
+                return -1;
+            }
+            if (fb_bpp != 16 && fb_bpp != 32) {
+                printf ("unsupported FB BPP (%d)\n", fb_bpp);
+                return -1;
+            }
         }
     }
     init_window();
@@ -448,15 +450,6 @@ void memdump (char *buf, int cnt) {
     }
 }
 
-/* RSLCOM
-0 len
-1 x
-2 y
-3 pixels[len-3]
-*/
-#define MAXPIX  64
-#define RSLCOM_BUFSIZE 3+(MAXPIX/4)  /* 32 bit words */
-
 void scan_tran(void) {
     int len;
     double xrange,yrange;
@@ -519,9 +512,11 @@ void scan_tran(void) {
 		if (buf[0] == FLHCOM) {
 		    break;
 		} else if (buf[0] == RSLCOM) {
-		    //buf=[RSLCOM,x,y,pixels]
-		    //len-(3*4)=number of pixels
-            vect((int)buf[1],(int)buf[2],len-3*4,(unsigned char *)&buf[3]);
+            if (!FLAGS_auto) {
+                //buf=[RSLCOM,x,y,pixels]
+                //len-(3*4)=number of pixels
+                vect((int)buf[1],(int)buf[2],len-3*4,(unsigned char *)&buf[3]);
+            }
 		}
 	}
 }

@@ -30,7 +30,7 @@ LSC_BIN=$(LSC89_BIN)
 	cat LNK.OUT
 
 #tcode assemble rule
-%.TRL : %.TAL
+%.TRL : %.TAL 
 	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\tasm $* -c > ASM.OUT" -c "exit"
 	cat ASM.OUT
 
@@ -41,7 +41,7 @@ LSC_BIN=$(LSC89_BIN)
 lsc_debug: 
 	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "D:" -c "cd $(LSC_BIN)"
     
-man : sdl_man.c lkio_c011.c c011.c fb.c FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR
+man : sdl_man.c lkio_c011.c c011.c fb.c FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR common.h
 	g++ -O2 sdl_man.c lkio_c011.c c011.c fb.c -lSDL2 -lm -lbcm2835 -lgflags -o $@
 
 clean:
@@ -56,7 +56,7 @@ clean:
 	rm -f MLIBP.TAL
 	rm -f MAN.EXE
 
-MANDEL.TAL:  MANDEL.C
+MANDEL.TAL:  MANDEL.C common.h
 MANDEL.TLD:  MANDEL.TAL MLIBP.TRL MANDEL.LNK
 MANDEL.ARR:  MANDEL.TLD
 

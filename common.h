@@ -7,7 +7,8 @@
 #define RSLCOM 3L
 #define FLHCOM 4L
 
-#define MAXPIX  64
+#define MAXPIX  64 /* keep it a multiple of 4 please! TODO why can't this be <32? */
+#define MAXPIX_WORDS MAXPIX/4
 
 /* DATCOM {         [buf index]
     long com;       0 =DATCOM
@@ -18,6 +19,7 @@
     double gapx;    7
     double gapy;    9
 } */
+#define DATCOMSIZE 11
 
 /* JOBCOM {         [buf index]
     long com;       0 =JOBCOM
@@ -25,6 +27,7 @@
     long y;         2
     long width;     3
 } */
+#define JOBCOMSIZE 4
 
 /* PRBCOM {         [buf index]
     long com;       0 =PRBCOM
@@ -45,4 +48,5 @@
 3 pixels[len-3]
 */
 /* RSLCOM_BUFSIZE needs to be the largest buffer since it's reused in other places for smaller buffers. Sigh :( */
-#define RSLCOM_BUFSIZE 3+(MAXPIX/4)  /* 32 bit words */
+#define RSLCOM_BUFSIZE 3+MAXPIX_WORDS  /* 32 bit words */
+

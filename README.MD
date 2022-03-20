@@ -32,6 +32,14 @@ Single T425 | 82s | 474s | 25MHz TRAM 10Mbps link. no render. Transtech 2-1MB TR
 Single T805 | 82s | 474s | 25MHz TRAM 10Mbps link. no render. Forced fixed-point. Sundance SMT211B
 Single T805 | 55s | 310s | 25MHz TRAM 10Mbps link. no render. floating-point. Sundance SMT211B
 Single T805 | 46s | 258s | 30MHz TRAM 10Mbps link. no render. floating-point. Inmos B438
+127 nodes | 2.6s | 8.1s  | March 22. New (faster) rpi interface. WTF?!
+240 nodes | 2.3s | 5.3s  | March 22. New (faster) rpi interface. WTF?!
+354 nodes | 7.2s | 15.4s | March 22. New (faster) rpi interface. WTF?!
+240 nodes | 4.1s | 10.5s | March 22. With job pixels increased from 64 to 128
+127 nodes | 2.5s | 9.6s | March 22. With job pixels decreased from 64 to 32
+240 nodes | 1.6s | 3.1s | March 22. With job pixels decreased from 64 to 32
+354 nodes | 3.5s | 7.6s | March 22. With job pixels decreased from 64 to 32
+
 
 241 nodes is _certainly_ the fastest operational T425 system in the world (woot). (https://youtu.be/vG2aXRZjA4E)
 

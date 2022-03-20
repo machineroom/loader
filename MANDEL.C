@@ -38,10 +38,10 @@ main will be the first byte in the code.
 #define TRUE  1
 #define FALSE 0
 
-#define JOBWSZ (69*4)
+#define JOBWSZ (53*4)+MAXPIX
 #define BUFWSZ (20*4)
 #define FEDWSZ (24*4)
-#define ARBWSZ (38*4)
+#define ARBWSZ (22*4)+MAXPIX
 #define SELWSZ (29*4)
 
 #define THRESH 2.0e-7
