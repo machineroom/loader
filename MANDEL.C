@@ -22,6 +22,7 @@
 
 #include "d:\include\conc.h"
 
+#include "common.h"
 /*{{{  notes on compiling and linking*/
 /*
 This module is compiled as indicated above so it will be relocatable.
@@ -36,16 +37,6 @@ main will be the first byte in the code.
 /*{{{  define constants*/
 #define TRUE  1
 #define FALSE 0
-
-#define JOBCOM 0
-#define PRBCOM 1
-#define DATCOM 2
-#define RSLCOM 3
-#define FLHCOM 4
-
-#define MAXPIX  64
-#define BUFSIZE 19
-#define PRBSIZE 12
 
 #define JOBWSZ (69*4)
 #define BUFWSZ (20*4)
@@ -203,7 +194,7 @@ Channel *req_out,*job_in,*rsl_out;
     int i,len,pixvec,maxcnt,fxp;
     int ilox,igapx,iloy,igapy;
     double dlox,dgapx,dloy,dgapy;
-    int buf[BUFSIZE];
+    int buf[RSLCOM_BUFSIZE];
     unsigned char *pbuf = (unsigned char *)(buf+3);
 
     loop
@@ -547,7 +538,7 @@ arbiter(arb_in,arb_out)
 Channel **arb_in,*arb_out;
 {
     int i,len,cnt,pri;
-    int buf[BUFSIZE];
+    int buf[RSLCOM_BUFSIZE];
 
     cnt = pri = 0;
     loop
@@ -621,7 +612,7 @@ Channel *fd_in,*fd_out;
 int fxp;
 {
     int len;
-    int buf[PRBSIZE];   /* PRBSIZE = 12 */
+    int buf[PRBSIZE];
 
     loop
     {
@@ -630,29 +621,10 @@ int fxp;
         if (buf[0] == PRBCOM)
         /*{{{  */
         {
-	        /* PRBCOM {         [buf index]
-                long com;       0 =PRBCOM
-                long width;     1
-                long height;    2
-                long maxcnt;    3
-                double lo_r;    4
-                double lo_i;    6
-                double gapx;    8
-                double gapy;    10
-            } */
             int width,height,multiple;
             width = buf[1];
             height = buf[2];
             /* abuse buf to send parameters in a DATCOM block */
-	        /* DATCOM {         [buf index]
-                long com;       0 =DATCOM
-                long fxp;       1
-                long maxcnt;    2
-                double lo_r;    3
-                double lo_i;    5
-                double gapx;    7
-                double gapy;    9
-            } */
             /* Dispatch single DATCOM block to each worker */
             buf[1] = DATCOM;
             buf[2] = fxp;
@@ -660,14 +632,8 @@ int fxp;
             ChanOut(fd_out,(char *)&buf[1],(PRBSIZE-1)*4);
             buf[0] = JOBCOM;
             /* abuse buf to send parameters in a JOBCOM block */
-	        /* JOBCOM {         [buf index]
-                long com;       0 =JOBCOM
-                long x;         1
-                long y;         2
-                long width;     3
-            } */
             /* Dispatch JOBCOM blocks for each slice to the selector. The selector distributes the work */
-            multiple = width/MAXPIX*MAXPIX;         /* MAXPIX = 64 */
+            multiple = width/MAXPIX*MAXPIX;
             for (buf[2] = 0; buf[2] < height; buf[2]++)
             {
                 for (buf[1] = 0; buf[1] < width; buf[1]+=MAXPIX)

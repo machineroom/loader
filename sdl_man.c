@@ -28,12 +28,7 @@
 #include "c011.h"
 #include "fb.h"
 #include <gflags/gflags.h>
-
-#define JOBCOM 0L
-#define PRBCOM 1L
-#define DATCOM 2L
-#define RSLCOM 3L
-#define FLHCOM 4L
+#include "common.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -53,7 +48,6 @@
 #define NONE 0
 #define INSM    0x200
 
-#define BUFSIZE 20
 #define REAL    double
 #define loop    for (;;)
 
@@ -454,6 +448,15 @@ void memdump (char *buf, int cnt) {
     }
 }
 
+/* RSLCOM
+0 len
+1 x
+2 y
+3 pixels[len-3]
+*/
+#define MAXPIX  64
+#define RSLCOM_BUFSIZE 3+(MAXPIX/4)  /* 32 bit words */
+
 void scan_tran(void) {
     int len;
     double xrange,yrange;
@@ -469,7 +472,7 @@ void scan_tran(void) {
         double gapy;
     } prob_st;
     
-    int32_t buf[BUFSIZE];
+    int32_t buf[RSLCOM_BUFSIZE];
 
     xrange = scale_fac*(esw-1);
     yrange = scale_fac*(esh-1);
@@ -505,7 +508,7 @@ void scan_tran(void) {
             printf(" -- timeout reading len vect\n");
             exit(1);           
         }
-	    assert (len < sizeof(buf));
+	    assert (len <= sizeof(buf));
 		if (chan_in ((char *)buf,len) != 0) {
             printf(" -- timeout reading vect\n");
             exit(1);           
@@ -517,7 +520,7 @@ void scan_tran(void) {
 		    break;
 		} else if (buf[0] == RSLCOM) {
 		    //buf=[RSLCOM,x,y,pixels]
-		    //76-(3*4)=64
+		    //len-(3*4)=number of pixels
             vect((int)buf[1],(int)buf[2],len-3*4,(unsigned char *)&buf[3]);
 		}
 	}
