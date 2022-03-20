@@ -2,12 +2,15 @@
 #include "LKIO.H"
 #include <assert.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "c011.h"
 
 #define TIMEOUT 5000
 
 void rst_adpt() {
     c011_reset();
+    //The whitecross HSL takes some time to cascade reset
+    sleep(2);
 }
 
 int init_lkio() {

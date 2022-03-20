@@ -713,6 +713,9 @@ void draw_box(int x1, int y1, int x2, int y2) {
 void boot_mandel(void)
 {   int ack, fxp, nnodes;
 
+    printf ("set byte mode...\n");
+    c011_set_byte_mode();
+    printf ("reset link...\n");
     rst_adpt();
     if (FLAGS_verbose) printf("Booting...\n");
     if (!load_buf(FLBOOT,sizeof(FLBOOT))) exit(1);
@@ -763,8 +766,7 @@ void boot_mandel(void)
     printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
     printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
     //mandel operates in word mode from now on. Clear BYTE mode on HSL cards for full throughput
-    //seems to cause issues on 2nd loop of mandelbrot
-    //c011_clear_byte_mode();
+    c011_clear_byte_mode();
 }
 
 /* return TRUE if loaded ok, FALSE if error. */
