@@ -44,8 +44,20 @@ Single T805 | 46s | 258s | 30MHz TRAM 10Mbps link. no render. floating-point. In
 241 nodes is _certainly_ the fastest operational T425 system in the world (woot). (https://youtu.be/vG2aXRZjA4E)
 
 Two problems with WX9020:
-1. I'm running the HSL cards (that connect 6x links over a fiber to connect racks together) in byte mode. This is documented to be slow but is transparent to software (i.e. it looks like a regular link).
+1. ~~I'm running the HSL cards (that connect 6x links over a fiber to connect racks together) in byte mode. This is documented to be slow but is transparent to software (i.e. it looks like a regular link).~~
 2. The Pi/C011 link is also slow. ispy output gives the HSL links ~130K and the C011 link ~500K. Other links are ~1.8MB/s.
+
+Just how expensive is Mandelbrot to calculate on a Whitecross Transputer network?  
+A 13 node minimal system (a system controller, 2 HSL cards and 2 processor cards) consumes 312W. There's a lot of TTL and ECL logic here.... each processor card has 6 identical processor nodes. From left is 8MB of the 16MB RAM, the ECC controller, buffers and PLD, T425, ECL backplane link chips. All this requires a fair bit of cooling.
+
+The Pi4 takes 82ms and consumes max 12W, so that's ~1W per Mandelbrot-second.  
+The 13 node WX takes 6.74s and consumes 312W, so that's 2102W per Mandelbrot-second!
+
+![Processor card](whitecross/IMG_20220320_142956.jpg)
+
+![Processor card](whitecross/FLIR_20220320_023946.jpg)
+
+![Processor card](whitecross/FLIR_20220320_024258.jpg)
 
 <hr>
 <hr>
