@@ -80,6 +80,9 @@ static FILE *fpauto;
 static uint8_t *screen_buffer = NULL;
 
 SDL_Renderer *sdl_renderer;
+SDL_Texture *mandel_layer;
+SDL_Texture *ui_layer;
+
 uint32_t *fbptr = NULL;
 int fb_width;
 int fb_height;
@@ -124,6 +127,10 @@ int main(int argc, char **argv) {
         return 2;
     }
     sdl_renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED) ;
+    mandel_layer = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FLAGS_width, FLAGS_height);
+    ui_layer = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FLAGS_width, FLAGS_height);
+    SDL_SetTextureBlendMode(mandel_layer, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureBlendMode(ui_layer, SDL_BLENDMODE_BLEND);
 
     init_window();
 
@@ -275,16 +282,14 @@ void init_pal256(void) {
 }
 
 void render_screen(void) {
-    SDL_Texture *my_layer = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, FLAGS_width, FLAGS_height);
 
-    SDL_SetRenderDrawColor (sdl_renderer,0,0,50,255);
+    SDL_SetRenderDrawColor (sdl_renderer,0,0,0,255);
     SDL_RenderClear(sdl_renderer);
 
     unsigned char* pixels;
-    int pitch;
+    int pitch;  // TODO use pitch
 
-    SDL_LockTexture( my_layer, NULL, (void**)&pixels, &pitch );
-
+    SDL_LockTexture( mandel_layer, NULL, (void**)&pixels, &pitch );
     int i=0;
     int p=0;
     for (int y=0; y < FLAGS_height; y++) {
@@ -295,16 +300,16 @@ void render_screen(void) {
                 pixels[p++] = 20;
                 pixels[p++] = 0xFF;
             } else {
-                pixels[p++] = PAL256[screen_buffer[i]].r;
-                pixels[p++] = PAL256[screen_buffer[i]].g;
                 pixels[p++] = PAL256[screen_buffer[i]].b;
+                pixels[p++] = PAL256[screen_buffer[i]].g;
+                pixels[p++] = PAL256[screen_buffer[i]].r;
                 pixels[p++] = 0xFF;
             }
             i++;
          }
     }
-    SDL_UnlockTexture( my_layer );
-    SDL_RenderCopy(sdl_renderer, my_layer, NULL, NULL);
+    SDL_UnlockTexture( mandel_layer );
+    SDL_RenderCopy(sdl_renderer, mandel_layer, NULL, NULL);
     SDL_RenderPresent(sdl_renderer);
 
 }
@@ -587,24 +592,13 @@ void region(int *bx, int *by, int *lx, int *ly, int *esc) {
 }
 
 void draw_box(int x1, int y1, int x2, int y2) {
-/*    // To make transparency work (for non-base layers):
-SDL_SetTextureBlendMode(my_layer, SDL_BLENDMODE_BLEND);
 
+    SDL_SetRenderTarget(sdl_renderer, ui_layer);
 
-// *** Drawing TO the layer ***
-SDL_SetRenderTarget(renderer, my_layer);
+    // For non-base layers, you want to make sure you clear to *transparent* pixels.
+    SDL_SetRenderDrawColor(sdl_renderer, 0, 0, 0, 0);
+    SDL_RenderClear(sdl_renderer);
 
-// For non-base layers, you want to make sure you clear to *transparent* pixels.
-SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-SDL_RenderClear(renderer);
-
-// ... Draw to the layer ...
-
-
-// *** Drawing the layer to the screen / window ***
-SDL_SetRenderTarget(renderer, NULL);
-SDL_RenderCopy(renderer, my_layer, NULL, NULL);
-*/
     int x,y,w,h;
     if (x1 < x2) {x = x1; w = x2-x1+1;}
     else {x = x2; w = x1-x2+1;}
@@ -615,8 +609,11 @@ SDL_RenderCopy(renderer, my_layer, NULL, NULL);
     rect.y = y;
     rect.w = w;
     rect.h = h;
+    SDL_SetRenderTarget(sdl_renderer, NULL);
     SDL_SetRenderDrawColor(sdl_renderer, 0xFF, 0XFF, 0xFF, 0xFF);
     SDL_RenderDrawRect(sdl_renderer, &rect);
+    SDL_RenderCopy(sdl_renderer, mandel_layer, NULL, NULL);
+    SDL_RenderCopy(sdl_renderer, ui_layer, NULL, NULL);
     SDL_RenderPresent(sdl_renderer);
 }
 
