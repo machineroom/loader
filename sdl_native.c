@@ -70,6 +70,7 @@ void region(int *, int *, int *, int *, int *);
 void draw_box(int,int,int,int);
 void boot_mandel(void);
 int load_buf(char *, int);
+void init_pal256();
 
 static bool host = false;
 static int hicnt = 1024;
@@ -99,6 +100,7 @@ int main(int argc, char **argv) {
     int i,aok = 1;
     char *s;
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    init_pal256();
 
     printf("CSA Mandelzoom Version 2.1 for PC\n");
     printf("(C) Copyright 1988 Computer System Architects Provo, Utah\n");
@@ -256,71 +258,45 @@ uint16_t ega_palette_ARGB16[16] = {
 //buf_size - number of pixels in buf
 //buf - array of pixel colour indices (range 0-15)
 void vect (int x, int y, int buf_size, unsigned char *buf) {
-    if (FLAGS_immediate) {
-        if (FLAGS_sdl) {
-            //immediate render looks cool, but is ultimately slower due to SDL overhead
-            for (int i=0; i < buf_size; i++) {
-                SDL_SetRenderDrawColor(sdl_renderer,
-                                       ega_palette[buf[i]].r,
-                                       ega_palette[buf[i]].g,
-                                       ega_palette[buf[i]].b,
-                                       0xFF);
-                SDL_RenderDrawPoint(sdl_renderer, x+i, y);
-            }
-            SDL_RenderPresent(sdl_renderer);
-        } else {
-            if (fb_bpp == 16) {
-                uint16_t *bp = (uint16_t*)&fbptr[(y*fb_width)+(x)];
-                for (int i=0; i < buf_size; i++) {
-                    *bp++ = ega_palette_ARGB16[buf[i]];
-                }
-            } else if (fb_bpp == 32) {
-                uint32_t *bp = &fbptr[(y*fb_width)+(x)];
-                for (int i=0; i < buf_size; i++) {
-                    *bp++ = ega_palette_ARGB32[buf[i]];
-                }
-            }
-        }
-    } else {
-        //delayed render just copies calculated slice to screen buffer
-        memcpy (&screen_buffer[(y*FLAGS_width)+x], buf, buf_size);
+    //delayed render just copies calculated slice to screen buffer
+    memcpy (&screen_buffer[(y*FLAGS_width)+x], buf, buf_size);
+}
+
+BGR PAL256[256];
+
+// a somewhat satisfuying, but very ripped off palette
+void init_pal256(void) {
+    for (int i = 0; i < 256; i++)
+    {
+        PAL256[i].r = 13*(256-i) % 256;
+        PAL256[i].g = 7*(256-i) % 256;
+        PAL256[i].b = 11*(256-i) % 256;
     }
 }
 
 void render_screen(void) {
     int i=0;
-    if (FLAGS_sdl) {
-        for (int y=0; y < FLAGS_height; y++) {
-            for (int x=0; x < FLAGS_width; x++) {
+    for (int y=0; y < FLAGS_height; y++) {
+        for (int x=0; x < FLAGS_width; x++) {
+            if (screen_buffer[i] == 0) {
+                //point inside set (dark grey)
                 SDL_SetRenderDrawColor(sdl_renderer,
-                                       ega_palette[screen_buffer[i]].r, 
-                                       ega_palette[screen_buffer[i]].g,
-                                       ega_palette[screen_buffer[i]].b,
+                                       20,
+                                       20,
+                                       20,
                                        0xFF);
-                SDL_RenderDrawPoint(sdl_renderer, x, y);
-                i++;
-             }
-        }
-        SDL_RenderPresent(sdl_renderer);
-    } else {
-        if (fb_bpp == 16) {
-            uint16_t *bp = (uint16_t*)fbptr;
-            for (int y=0; y < FLAGS_height; y++) {
-                for (int x=0; x < FLAGS_width; x++) {
-                    *bp++ = ega_palette_ARGB16[screen_buffer[i++]];
-                }
-                bp += (fb_width - FLAGS_width);
+            } else {
+                SDL_SetRenderDrawColor(sdl_renderer,
+                                       PAL256[screen_buffer[i]].r, 
+                                       PAL256[screen_buffer[i]].g,
+                                       PAL256[screen_buffer[i]].b,
+                                       0xFF);
             }
-        } else if (fb_bpp == 32) {
-            uint32_t *bp = fbptr;
-            for (int y=0; y < FLAGS_height; y++) {
-                for (int x=0; x < FLAGS_width; x++) {
-                    *bp++ = ega_palette_ARGB32[screen_buffer[i++]];
-                }
-                bp += (fb_width - FLAGS_width);
-            }
-        }
+            SDL_RenderDrawPoint(sdl_renderer, x, y);
+            i++;
+         }
     }
+    SDL_RenderPresent(sdl_renderer);
 }
 
 #define ASPECT_R  0.75
@@ -438,6 +414,7 @@ void scan_host(void) {
     double gapy;
     REAL cx,cy;
     unsigned char buf[FLAGS_width];
+    int highest=0;
 
     xrange = scale_fac*(esw-1);
     yrange = scale_fac*(esh-1);
@@ -452,9 +429,13 @@ void scan_host(void) {
         for (x = 0; x < FLAGS_width; x++) {
             cx = (x)*gapx+lo_r;
             buf[x] = iterate(cx,cy,maxcnt);
+            if (buf[x] > highest) {
+                highest = buf[x];
+            }
         }
         vect (0,y,sizeof(buf),buf);
 	}
+    printf ("highest count is %d\n",highest);
 }
 
 int iterate(REAL cx, REAL cy, int maxcnt) {

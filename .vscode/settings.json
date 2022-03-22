@@ -2,6 +2,12 @@
     "files.associations": {
         "*.C": "c",
         "MANDEL.C": "cpp",
-        "LKIO.H": "cpp"
+        "LKIO.H": "cpp",
+        "algorithm": "c",
+        "chrono": "c",
+        "limits": "c",
+        "random": "c",
+        "ratio": "c",
+        "semaphore": "c"
     }
 }
