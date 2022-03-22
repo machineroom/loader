@@ -44,6 +44,9 @@ lsc_debug:
 man : sdl_man.c lkio_c011.c c011.c fb.c FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR common.h
 	g++ -O2 sdl_man.c lkio_c011.c c011.c fb.c -lSDL2 -lm -lbcm2835 -lgflags -o $@
 
+man_native : sdl_native.c common.h
+	g++ -O2 sdl_native.c -lSDL2 -lm -lgflags -o $@
+
 clean:
 	rm -f *.OBJ
 	rm -f *.BIN
