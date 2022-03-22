@@ -280,30 +280,30 @@ void render_screen(void) {
     SDL_SetRenderDrawColor (sdl_renderer,0,0,50,255);
     SDL_RenderClear(sdl_renderer);
 
-    // *** Drawing TO the layer ***
-    SDL_SetRenderTarget(sdl_renderer, my_layer);
+    unsigned char* pixels;
+    int pitch;
+
+    SDL_LockTexture( my_layer, NULL, (void**)&pixels, &pitch );
 
     int i=0;
+    int p=0;
     for (int y=0; y < FLAGS_height; y++) {
         for (int x=0; x < FLAGS_width; x++) {
             if (screen_buffer[i] == 0) {
-                //point inside set (dark grey)
-                SDL_SetRenderDrawColor(sdl_renderer,
-                                       20,
-                                       20,
-                                       20,
-                                       0xFF);
+                pixels[p++] = 20;
+                pixels[p++] = 20;
+                pixels[p++] = 20;
+                pixels[p++] = 0xFF;
             } else {
-                SDL_SetRenderDrawColor(sdl_renderer,
-                                       PAL256[screen_buffer[i]].r, 
-                                       PAL256[screen_buffer[i]].g,
-                                       PAL256[screen_buffer[i]].b,
-                                       0xFF);
+                pixels[p++] = PAL256[screen_buffer[i]].r;
+                pixels[p++] = PAL256[screen_buffer[i]].g;
+                pixels[p++] = PAL256[screen_buffer[i]].b;
+                pixels[p++] = 0xFF;
             }
-            SDL_RenderDrawPoint(sdl_renderer, x, y);
             i++;
          }
     }
+    SDL_UnlockTexture( my_layer );
     SDL_RenderCopy(sdl_renderer, my_layer, NULL, NULL);
     SDL_RenderPresent(sdl_renderer);
 
