@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
     printf("Enhanced by James Wilson (macihenroomfiddling@gmail.com) 2019, 2020\n");
     printf("This is a free software and you are welcome to redistribute it\n\n");
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
         return 1;
     }
     
@@ -123,7 +123,7 @@ int main(int argc, char **argv) {
         SDL_Quit();
         return 2;
     }
-    sdl_renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED) ;
+    sdl_renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED) ;
 
     init_window();
 
@@ -275,6 +275,14 @@ void init_pal256(void) {
 }
 
 void render_screen(void) {
+    SDL_Texture *my_layer = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, FLAGS_width, FLAGS_height);
+
+    SDL_SetRenderDrawColor (sdl_renderer,0,0,50,255);
+    SDL_RenderClear(sdl_renderer);
+
+    // *** Drawing TO the layer ***
+    SDL_SetRenderTarget(sdl_renderer, my_layer);
+
     int i=0;
     for (int y=0; y < FLAGS_height; y++) {
         for (int x=0; x < FLAGS_width; x++) {
@@ -296,7 +304,9 @@ void render_screen(void) {
             i++;
          }
     }
+    SDL_RenderCopy(sdl_renderer, my_layer, NULL, NULL);
     SDL_RenderPresent(sdl_renderer);
+
 }
 
 #define ASPECT_R  0.75
@@ -577,6 +587,24 @@ void region(int *bx, int *by, int *lx, int *ly, int *esc) {
 }
 
 void draw_box(int x1, int y1, int x2, int y2) {
+/*    // To make transparency work (for non-base layers):
+SDL_SetTextureBlendMode(my_layer, SDL_BLENDMODE_BLEND);
+
+
+// *** Drawing TO the layer ***
+SDL_SetRenderTarget(renderer, my_layer);
+
+// For non-base layers, you want to make sure you clear to *transparent* pixels.
+SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+SDL_RenderClear(renderer);
+
+// ... Draw to the layer ...
+
+
+// *** Drawing the layer to the screen / window ***
+SDL_SetRenderTarget(renderer, NULL);
+SDL_RenderCopy(renderer, my_layer, NULL, NULL);
+*/
     int x,y,w,h;
     if (x1 < x2) {x = x1; w = x2-x1+1;}
     else {x = x2; w = x1-x2+1;}
