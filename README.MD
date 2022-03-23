@@ -39,6 +39,7 @@ Single T805 | 46s | 258s | 30MHz TRAM 10Mbps link. no render. floating-point. In
 353 nodes | 3.2s | 11.3s | March 22. New (faster) rpi interface (HSL in BYTE mode)
 127 nodes | 1.5s | 5.2s | As above but with job pixels decreased from 64 to 32 (and BYTE mode)
 235 nodes | 1.4s | 3.5s | As above (32,byte)
+233 nodes | 5.8s | 9.7s | As above (32,byte) & 1280*1024
 353 nodes | 2.5s | 5.7s | As above (32,byte)
 
 
