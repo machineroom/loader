@@ -144,6 +144,8 @@ int main(int argc, char **argv) {
             ui_layer = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FLAGS_width, FLAGS_height);
             SDL_SetTextureBlendMode(mandel_layer, SDL_BLENDMODE_BLEND);
             SDL_SetTextureBlendMode(ui_layer, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor (sdl_renderer,0,0,0,255);
+            SDL_RenderClear(sdl_renderer);
         } else {
             fbptr = FB_Init(&fb_width, &fb_height, &fb_bpp);
             if (fbptr == NULL) {
@@ -295,7 +297,7 @@ uint16_t ega_palette_ARGB16[16] = {
 
 BGR PAL256[256];
 
-// a somewhat satisfuying, but very ripped off palette
+// a somewhat satisfying, but very ripped off palette
 void init_pal256(void) {
     for (int i = 0; i < 256; i++)
     {
@@ -311,15 +313,27 @@ void init_pal256(void) {
 void vect (int x, int y, int buf_size, unsigned char *buf) {
     if (FLAGS_immediate) {
         if (FLAGS_sdl) {
+            unsigned char* pixels;
+            int pitch;
+            SDL_LockTexture( mandel_layer, NULL, (void**)&pixels, &pitch );
+            int p=y*pitch+x*4;
             //immediate render looks cool, but is ultimately slower due to SDL overhead
             for (int i=0; i < buf_size; i++) {
-                SDL_SetRenderDrawColor(sdl_renderer,
-                                       ega_palette[buf[i]].r,
-                                       ega_palette[buf[i]].g,
-                                       ega_palette[buf[i]].b,
-                                       0xFF);
-                SDL_RenderDrawPoint(sdl_renderer, x+i, y);
+                if (buf[i] == 0) {
+                    pixels[p++] = 20;
+                    pixels[p++] = 20;
+                    pixels[p++] = 20;
+                    pixels[p++] = 0xFF;
+                } else {
+                    pixels[p++] = PAL256[buf[i]].b;
+                    pixels[p++] = PAL256[buf[i]].g;
+                    pixels[p++] = PAL256[buf[i]].r;
+                    pixels[p++] = 0xFF;
+                }
             }
+            SDL_UnlockTexture( mandel_layer );
+            SDL_Rect rect = {x,y,buf_size/2,1};
+            SDL_RenderCopy(sdl_renderer, mandel_layer, &rect, &rect);
             SDL_RenderPresent(sdl_renderer);
         } else {
             if (fb_bpp == 16) {
@@ -343,11 +357,12 @@ void vect (int x, int y, int buf_size, unsigned char *buf) {
 void render_screen(void) {
     int i=0;
     if (FLAGS_sdl) {
-        SDL_SetRenderDrawColor (sdl_renderer,0,0,0,255);
-        SDL_RenderClear(sdl_renderer);
 
         unsigned char* pixels;
         int pitch;  // TODO use pitch
+        SDL_SetRenderTarget(sdl_renderer, NULL);
+        SDL_SetRenderDrawColor (sdl_renderer,0,0,0,255);
+        SDL_RenderClear(sdl_renderer);
 
         SDL_LockTexture( mandel_layer, NULL, (void**)&pixels, &pitch );
         int i=0;
@@ -408,6 +423,11 @@ void com_loop(void)
     loop
     {
         if (render) {
+            if (FLAGS_immediate && FLAGS_sdl) {
+                SDL_SetRenderTarget(sdl_renderer, NULL);
+                SDL_SetRenderDrawColor(sdl_renderer, 0, 0, 0, 255);
+                SDL_RenderClear(sdl_renderer);
+            }
             Uint64 start, compute, render;
             start = SDL_GetPerformanceCounter();
             (*scan)();
@@ -745,7 +765,6 @@ void draw_box(int x1, int y1, int x2, int y2) {
 
     SDL_SetRenderTarget(sdl_renderer, ui_layer);
 
-    // For non-base layers, you want to make sure you clear to *transparent* pixels.
     SDL_SetRenderDrawColor(sdl_renderer, 0, 0, 0, 0);
     SDL_RenderClear(sdl_renderer);
 
