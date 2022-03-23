@@ -74,6 +74,8 @@ void region(int *, int *, int *, int *, int *);
 void draw_box(int,int,int,int);
 void boot_mandel(void);
 int load_buf(char *, int);
+void init_pal256(void);
+
 
 static bool host = false;
 static int hicnt = 1024;
@@ -83,6 +85,9 @@ static FILE *fpauto;
 static uint8_t *screen_buffer = NULL;
 
 SDL_Renderer *sdl_renderer;
+SDL_Texture *mandel_layer;
+SDL_Texture *ui_layer;
+
 uint32_t *fbptr = NULL;
 int fb_width;
 int fb_height;
@@ -103,6 +108,7 @@ int main(int argc, char **argv) {
     int i,aok = 1;
     char *s;
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    init_pal256();
 
     printf("CSA Mandelzoom Version 2.1 for PC\n");
     printf("(C) Copyright 1988 Computer System Architects Provo, Utah\n");
@@ -111,7 +117,7 @@ int main(int argc, char **argv) {
     printf("This is a free software and you are welcome to redistribute it\n\n");
 
     if (FLAGS_sdl) {
-        if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
             return 1;
         }
     } else {
@@ -133,7 +139,11 @@ int main(int argc, char **argv) {
                 SDL_Quit();
                 return 2;
             }
-            sdl_renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED) ;
+            sdl_renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED) ;
+            mandel_layer = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FLAGS_width, FLAGS_height);
+            ui_layer = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FLAGS_width, FLAGS_height);
+            SDL_SetTextureBlendMode(mandel_layer, SDL_BLENDMODE_BLEND);
+            SDL_SetTextureBlendMode(ui_layer, SDL_BLENDMODE_BLEND);
         } else {
             fbptr = FB_Init(&fb_width, &fb_height, &fb_bpp);
             if (fbptr == NULL) {
@@ -283,6 +293,18 @@ uint16_t ega_palette_ARGB16[16] = {
     0xFFFF      //15=white
 };
 
+BGR PAL256[256];
+
+// a somewhat satisfuying, but very ripped off palette
+void init_pal256(void) {
+    for (int i = 0; i < 256; i++)
+    {
+        PAL256[i].r = 13*(256-i) % 256;
+        PAL256[i].g = 7*(256-i) % 256;
+        PAL256[i].b = 11*(256-i) % 256;
+    }
+}
+
 //x,y - start point
 //buf_size - number of pixels in buf
 //buf - array of pixel colour indices (range 0-15)
@@ -321,17 +343,33 @@ void vect (int x, int y, int buf_size, unsigned char *buf) {
 void render_screen(void) {
     int i=0;
     if (FLAGS_sdl) {
+        SDL_SetRenderDrawColor (sdl_renderer,0,0,0,255);
+        SDL_RenderClear(sdl_renderer);
+
+        unsigned char* pixels;
+        int pitch;  // TODO use pitch
+
+        SDL_LockTexture( mandel_layer, NULL, (void**)&pixels, &pitch );
+        int i=0;
+        int p=0;
         for (int y=0; y < FLAGS_height; y++) {
             for (int x=0; x < FLAGS_width; x++) {
-                SDL_SetRenderDrawColor(sdl_renderer,
-                                       ega_palette[screen_buffer[i]].r, 
-                                       ega_palette[screen_buffer[i]].g,
-                                       ega_palette[screen_buffer[i]].b,
-                                       0xFF);
-                SDL_RenderDrawPoint(sdl_renderer, x, y);
+                if (screen_buffer[i] == 0) {
+                    pixels[p++] = 20;
+                    pixels[p++] = 20;
+                    pixels[p++] = 20;
+                    pixels[p++] = 0xFF;
+                } else {
+                    pixels[p++] = PAL256[screen_buffer[i]].b;
+                    pixels[p++] = PAL256[screen_buffer[i]].g;
+                    pixels[p++] = PAL256[screen_buffer[i]].r;
+                    pixels[p++] = 0xFF;
+                }
                 i++;
-             }
+            }
         }
+        SDL_UnlockTexture( mandel_layer );
+        SDL_RenderCopy(sdl_renderer, mandel_layer, NULL, NULL);
         SDL_RenderPresent(sdl_renderer);
     } else {
         if (fb_bpp == 16) {
@@ -704,6 +742,13 @@ void region(int *bx, int *by, int *lx, int *ly, int *esc) {
 }
 
 void draw_box(int x1, int y1, int x2, int y2) {
+
+    SDL_SetRenderTarget(sdl_renderer, ui_layer);
+
+    // For non-base layers, you want to make sure you clear to *transparent* pixels.
+    SDL_SetRenderDrawColor(sdl_renderer, 0, 0, 0, 0);
+    SDL_RenderClear(sdl_renderer);
+
     int x,y,w,h;
     if (x1 < x2) {x = x1; w = x2-x1+1;}
     else {x = x2; w = x1-x2+1;}
@@ -714,8 +759,11 @@ void draw_box(int x1, int y1, int x2, int y2) {
     rect.y = y;
     rect.w = w;
     rect.h = h;
+    SDL_SetRenderTarget(sdl_renderer, NULL);
     SDL_SetRenderDrawColor(sdl_renderer, 0xFF, 0XFF, 0xFF, 0xFF);
     SDL_RenderDrawRect(sdl_renderer, &rect);
+    SDL_RenderCopy(sdl_renderer, mandel_layer, NULL, NULL);
+    SDL_RenderCopy(sdl_renderer, ui_layer, NULL, NULL);
     SDL_RenderPresent(sdl_renderer);
 }
 
