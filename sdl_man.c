@@ -86,7 +86,6 @@ static uint8_t *screen_buffer = NULL;
 
 SDL_Renderer *sdl_renderer;
 SDL_Texture *mandel_layer;
-SDL_Texture *ui_layer;
 
 uint32_t *fbptr = NULL;
 int fb_width;
@@ -140,12 +139,10 @@ int main(int argc, char **argv) {
                 return 2;
             }
             sdl_renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED) ;
-            mandel_layer = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FLAGS_width, FLAGS_height);
-            ui_layer = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, FLAGS_width, FLAGS_height);
-            SDL_SetTextureBlendMode(mandel_layer, SDL_BLENDMODE_BLEND);
-            SDL_SetTextureBlendMode(ui_layer, SDL_BLENDMODE_BLEND);
-            SDL_SetRenderDrawColor (sdl_renderer,0,0,0,255);
-            SDL_RenderClear(sdl_renderer);
+            mandel_layer = SDL_CreateTexture(sdl_renderer,
+                                             SDL_PIXELFORMAT_RGBA8888, 
+                                             SDL_TEXTUREACCESS_STREAMING,
+                                             FLAGS_width, FLAGS_height);
         } else {
             fbptr = FB_Init(&fb_width, &fb_height, &fb_bpp);
             if (fbptr == NULL) {
@@ -238,25 +235,6 @@ typedef struct {
     unsigned char r;
 } BGR;
 
-BGR ega_palette[16] = {
-    {0,0,0},
-    {0,0,127},
-    {0,0,255},      //2=red
-    {0,63,255},
-    {0,127,255},
-    {0,255,255},    //5=yellow
-    {0,127,63},
-    {0,255,0},      //7=green
-    {127,255,0},
-    {255,255,0},    //9=cyan
-    {255,127,0},
-    {255,63,0},
-    {255,0,0},      //12=blue
-    {255,0,63},
-    {255,63,255},   //14=magenta
-    {255,255,255}
-};
-
 uint32_t ega_palette_ARGB32[16] = {
     0x00000000,
     0x007F0000,
@@ -275,6 +253,7 @@ uint32_t ega_palette_ARGB32[16] = {
     0x00FF3FFF,     //14=magenta
     0x00FFFFFF
 };
+
 //RRRR RGGG GGGB BBBB
 uint16_t ega_palette_ARGB16[16] = {
     0x0000,
@@ -313,27 +292,28 @@ void init_pal256(void) {
 void vect (int x, int y, int buf_size, unsigned char *buf) {
     if (FLAGS_immediate) {
         if (FLAGS_sdl) {
+
             unsigned char* pixels;
             int pitch;
-            SDL_LockTexture( mandel_layer, NULL, (void**)&pixels, &pitch );
-            int p=y*pitch+x*4;
+            SDL_Rect rect = {x,y,buf_size,1};
+            SDL_LockTexture( mandel_layer, &rect, (void**)&pixels, &pitch );
+            int p=0;
             //immediate render looks cool, but is ultimately slower due to SDL overhead
             for (int i=0; i < buf_size; i++) {
                 if (buf[i] == 0) {
-                    pixels[p++] = 20;
-                    pixels[p++] = 20;
-                    pixels[p++] = 20;
                     pixels[p++] = 0xFF;
+                    pixels[p++] = 20;
+                    pixels[p++] = 20;
+                    pixels[p++] = 20;
                 } else {
+                    pixels[p++] = 0xFF;
                     pixels[p++] = PAL256[buf[i]].b;
                     pixels[p++] = PAL256[buf[i]].g;
                     pixels[p++] = PAL256[buf[i]].r;
-                    pixels[p++] = 0xFF;
                 }
             }
             SDL_UnlockTexture( mandel_layer );
-            SDL_Rect rect = {x,y,buf_size/2,1};
-            SDL_RenderCopy(sdl_renderer, mandel_layer, &rect, &rect);
+            SDL_RenderCopy(sdl_renderer, mandel_layer, NULL, NULL);
             SDL_RenderPresent(sdl_renderer);
         } else {
             if (fb_bpp == 16) {
@@ -370,15 +350,15 @@ void render_screen(void) {
         for (int y=0; y < FLAGS_height; y++) {
             for (int x=0; x < FLAGS_width; x++) {
                 if (screen_buffer[i] == 0) {
-                    pixels[p++] = 20;
-                    pixels[p++] = 20;
-                    pixels[p++] = 20;
                     pixels[p++] = 0xFF;
+                    pixels[p++] = 20;
+                    pixels[p++] = 20;
+                    pixels[p++] = 20;
                 } else {
+                    pixels[p++] = 0xFF;
                     pixels[p++] = PAL256[screen_buffer[i]].b;
                     pixels[p++] = PAL256[screen_buffer[i]].g;
                     pixels[p++] = PAL256[screen_buffer[i]].r;
-                    pixels[p++] = 0xFF;
                 }
                 i++;
             }
@@ -423,11 +403,6 @@ void com_loop(void)
     loop
     {
         if (render) {
-            if (FLAGS_immediate && FLAGS_sdl) {
-                SDL_SetRenderTarget(sdl_renderer, NULL);
-                SDL_SetRenderDrawColor(sdl_renderer, 0, 0, 0, 255);
-                SDL_RenderClear(sdl_renderer);
-            }
             Uint64 start, compute, render;
             start = SDL_GetPerformanceCounter();
             (*scan)();
@@ -762,12 +737,6 @@ void region(int *bx, int *by, int *lx, int *ly, int *esc) {
 }
 
 void draw_box(int x1, int y1, int x2, int y2) {
-
-    SDL_SetRenderTarget(sdl_renderer, ui_layer);
-
-    SDL_SetRenderDrawColor(sdl_renderer, 0, 0, 0, 0);
-    SDL_RenderClear(sdl_renderer);
-
     int x,y,w,h;
     if (x1 < x2) {x = x1; w = x2-x1+1;}
     else {x = x2; w = x1-x2+1;}
@@ -779,10 +748,11 @@ void draw_box(int x1, int y1, int x2, int y2) {
     rect.w = w;
     rect.h = h;
     SDL_SetRenderTarget(sdl_renderer, NULL);
+    //rebuild the scene with mandel first
+    SDL_RenderCopy(sdl_renderer, mandel_layer, NULL, NULL);
+    //then draw box on top
     SDL_SetRenderDrawColor(sdl_renderer, 0xFF, 0XFF, 0xFF, 0xFF);
     SDL_RenderDrawRect(sdl_renderer, &rect);
-    SDL_RenderCopy(sdl_renderer, mandel_layer, NULL, NULL);
-    SDL_RenderCopy(sdl_renderer, ui_layer, NULL, NULL);
     SDL_RenderPresent(sdl_renderer);
 }
 
