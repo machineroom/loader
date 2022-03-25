@@ -236,45 +236,6 @@ typedef struct {
     unsigned char r;
 } BGR;
 
-uint32_t ega_palette_ARGB32[16] = {
-    0x00000000,
-    0x007F0000,
-    0x00FF0000,     //2=red
-    0x00FF3F00,
-    0x00FF7F00,
-    0x00FFFF00,     //5=yellow
-    0x003F7F00,
-    0x0000FF00,     //7=green
-    0x0000FF7F,
-    0x0000FFFF,     //9=cyan
-    0x00007FFF,
-    0x00003FFF,
-    0x000000FF,     //12=blue
-    0x003F00FF,
-    0x00FF3FFF,     //14=magenta
-    0x00FFFFFF
-};
-
-//RRRR RGGG GGGB BBBB
-uint16_t ega_palette_ARGB16[16] = {
-    0x0000,
-    0x7800,     //1=mid red
-    0xF800,     //2=red
-    0xF9E0,
-    0xFBE0,
-    0xFFE0,     //5=yellow
-    0x3BE0,
-    0x07E0,     //7=green
-    0x07EF,
-    0x07FF,     //9=cyan
-    0x03FF,
-    0x01FF,
-    0x001F,     //12=blue
-    0x381F,
-    0xF91F,     //14=magenta
-    0xFFFF      //15=white
-};
-
 BGR PAL256[256];
 
 // a somewhat satisfying, but very ripped off palette
@@ -301,31 +262,34 @@ void vect (int x, int y, int buf_size, unsigned char *buf) {
             int p=0;
             //immediate render looks cool, but is ultimately slower due to SDL overhead
             for (int i=0; i < buf_size; i++) {
-                if (buf[i] == 0) {
-                    pixels[p++] = 0xFF;
-                    pixels[p++] = 20;
-                    pixels[p++] = 20;
-                    pixels[p++] = 20;
-                } else {
-                    pixels[p++] = 0xFF;
-                    pixels[p++] = PAL256[buf[i]].b;
-                    pixels[p++] = PAL256[buf[i]].g;
-                    pixels[p++] = PAL256[buf[i]].r;
-                }
+                pixels[p++] = 0xFF;
+                pixels[p++] = PAL256[buf[i]].b;
+                pixels[p++] = PAL256[buf[i]].g;
+                pixels[p++] = PAL256[buf[i]].r;
             }
             SDL_UnlockTexture( mandel_layer );
             SDL_RenderCopy(sdl_renderer, mandel_layer, NULL, NULL);
             SDL_RenderPresent(sdl_renderer);
         } else {
             if (fb_bpp == 16) {
-                uint16_t *bp = (uint16_t *)&fbptr[(y*fb_width*2)+x*2];
+                uint16_t *wp = (uint16_t *)&fbptr[(y*fb_width*2)+x*2];
                 for (int i=0; i < buf_size; i++) {
-                    *bp++ = ega_palette_ARGB16[buf[i]];
+                    uint8_t r = PAL256[buf[i]].r>>3; //5 bits R
+                    uint8_t g = PAL256[buf[i]].g>>2; //6 bits G 
+                    uint8_t b = PAL256[buf[i]].b>>3; //5 bits B 
+                    uint16_t w;
+                    w=r; w<<=6; w|=g; w<<=5; w|=b;
+                    *wp++ = w;
                 }
             } else if (fb_bpp == 32) {
-                uint32_t *bp = (uint32_t *)&fbptr[(y*fb_width)+x];
+                uint32_t *wp = (uint32_t *)&fbptr[(y*fb_width*4)+x*4];
                 for (int i=0; i < buf_size; i++) {
-                    *bp++ = ega_palette_ARGB32[buf[i]];
+                    uint8_t r = PAL256[buf[i]].r;
+                    uint8_t g = PAL256[buf[i]].g; 
+                    uint8_t b = PAL256[buf[i]].b; 
+                    uint32_t w;
+                    w=r; w<<=8; w|=g; w<<=8; w|=b;
+                    *wp++ = w;
                 }
             }
         }
@@ -350,17 +314,10 @@ void render_screen(void) {
         int p=0;
         for (int y=0; y < FLAGS_height; y++) {
             for (int x=0; x < FLAGS_width; x++) {
-                if (screen_buffer[i] == 0) {
-                    pixels[p++] = 0xFF;
-                    pixels[p++] = 20;
-                    pixels[p++] = 20;
-                    pixels[p++] = 20;
-                } else {
-                    pixels[p++] = 0xFF;
-                    pixels[p++] = PAL256[screen_buffer[i]].b;
-                    pixels[p++] = PAL256[screen_buffer[i]].g;
-                    pixels[p++] = PAL256[screen_buffer[i]].r;
-                }
+                pixels[p++] = 0xFF;
+                pixels[p++] = PAL256[screen_buffer[i]].b;
+                pixels[p++] = PAL256[screen_buffer[i]].g;
+                pixels[p++] = PAL256[screen_buffer[i]].r;
                 i++;
             }
         }
@@ -369,20 +326,30 @@ void render_screen(void) {
         SDL_RenderPresent(sdl_renderer);
     } else {
         if (fb_bpp == 16) {
-            uint16_t *bp = (uint16_t*)fbptr;
+            uint16_t *wp = (uint16_t*)fbptr;
             for (int y=0; y < FLAGS_height; y++) {
                 for (int x=0; x < FLAGS_width; x++) {
-                    *bp++ = ega_palette_ARGB16[screen_buffer[i++]];
+                    uint8_t r = PAL256[screen_buffer[i]].r>>3; //5 bits R
+                    uint8_t g = PAL256[screen_buffer[i]].g>>2; //6 bits G 
+                    uint8_t b = PAL256[screen_buffer[i++]].b>>3; //5 bits B 
+                    uint16_t w;
+                    w=r; w<<=6; w|=g; w<<=5; w|=b;
+                    *wp++ = w;
                 }
-                bp += (fb_width - FLAGS_width);
+                wp += (fb_width - FLAGS_width);
             }
         } else if (fb_bpp == 32) {
-            uint32_t *bp = (uint32_t *)fbptr;
+            uint32_t *wp = (uint32_t *)fbptr;
             for (int y=0; y < FLAGS_height; y++) {
                 for (int x=0; x < FLAGS_width; x++) {
-                    *bp++ = ega_palette_ARGB32[screen_buffer[i++]];
+                    uint8_t r = PAL256[screen_buffer[i]].r;
+                    uint8_t g = PAL256[screen_buffer[i]].g; 
+                    uint8_t b = PAL256[screen_buffer[i++]].b; 
+                    uint32_t w;
+                    w=r; w<<=8; w|=g; w<<=8; w|=b;
+                    *wp++ = w;
                 }
-                bp += (fb_width - FLAGS_width);
+                wp += (fb_width - FLAGS_width);
             }
         }
     }
