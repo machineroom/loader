@@ -88,7 +88,7 @@ SDL_Renderer *sdl_renderer;
 SDL_Texture *mandel_layer;
 SDL_Window *sdl_window;
 
-uint32_t *fbptr = NULL;
+uint8_t *fbptr = NULL;
 int fb_width;
 int fb_height;
 int fb_bpp;
@@ -318,12 +318,12 @@ void vect (int x, int y, int buf_size, unsigned char *buf) {
             SDL_RenderPresent(sdl_renderer);
         } else {
             if (fb_bpp == 16) {
-                uint16_t *bp = (uint16_t*)&fbptr[(y*fb_width)+(x)];
+                uint16_t *bp = (uint16_t *)&fbptr[(y*fb_width*2)+x*2];
                 for (int i=0; i < buf_size; i++) {
                     *bp++ = ega_palette_ARGB16[buf[i]];
                 }
             } else if (fb_bpp == 32) {
-                uint32_t *bp = &fbptr[(y*fb_width)+(x)];
+                uint32_t *bp = (uint32_t *)&fbptr[(y*fb_width)+x];
                 for (int i=0; i < buf_size; i++) {
                     *bp++ = ega_palette_ARGB32[buf[i]];
                 }
@@ -377,7 +377,7 @@ void render_screen(void) {
                 bp += (fb_width - FLAGS_width);
             }
         } else if (fb_bpp == 32) {
-            uint32_t *bp = fbptr;
+            uint32_t *bp = (uint32_t *)fbptr;
             for (int y=0; y < FLAGS_height; y++) {
                 for (int x=0; x < FLAGS_width; x++) {
                     *bp++ = ega_palette_ARGB32[screen_buffer[i++]];

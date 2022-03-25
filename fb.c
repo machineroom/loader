@@ -13,12 +13,12 @@
 // crudely ripped off from http://raspberrycompote.blogspot.com/2013/01/low-level-graphics-on-raspberry-pi-part_22.html
 
 
-uint32_t *FB_Init(int *width, int *height, int *bpp) {
+uint8_t *FB_Init(int *width, int *height, int *bpp) {
     int fbfd = 0;
     struct fb_var_screeninfo vinfo;
     struct fb_fix_screeninfo finfo;
     long int screensize = 0;
-    uint32_t *fbp = NULL;
+    uint8_t *fbp = NULL;
 
     // Open the file for reading and writing
     fbfd = open("/dev/fb0", O_RDWR);
@@ -44,7 +44,7 @@ uint32_t *FB_Init(int *width, int *height, int *bpp) {
     // map framebuffer to user memory 
     screensize = finfo.smem_len;
 
-    fbp = (uint32_t*)mmap(0, 
+    fbp = (uint8_t *)mmap(0, 
                       screensize, 
                       PROT_READ | PROT_WRITE, 
                       MAP_SHARED, 
