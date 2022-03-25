@@ -86,6 +86,7 @@ static uint8_t *screen_buffer = NULL;
 
 SDL_Renderer *sdl_renderer;
 SDL_Texture *mandel_layer;
+SDL_Window *sdl_window;
 
 uint32_t *fbptr = NULL;
 int fb_width;
@@ -130,15 +131,15 @@ int main(int argc, char **argv) {
             screen_buffer = (uint8_t*)malloc(FLAGS_width * FLAGS_height);
         }
         if (FLAGS_sdl) {
-            SDL_Window *window = SDL_CreateWindow("T-Mandel with SDL",
+            sdl_window = SDL_CreateWindow("T-Mandel with SDL",
                     SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, FLAGS_width,
                     FLAGS_height, SDL_WINDOW_SHOWN);
 
-            if (window == NULL) {
+            if (sdl_window == NULL) {
                 SDL_Quit();
                 return 2;
             }
-            sdl_renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED) ;
+            sdl_renderer = SDL_CreateRenderer(sdl_window, -1, SDL_RENDERER_ACCELERATED) ;
             mandel_layer = SDL_CreateTexture(sdl_renderer,
                                              SDL_PIXELFORMAT_RGBA8888, 
                                              SDL_TEXTUREACCESS_STREAMING,
