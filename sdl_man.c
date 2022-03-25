@@ -578,7 +578,7 @@ void scan_host(void) {
     double gapx;
     double gapy;
     REAL cx,cy;
-    unsigned char buf[FLAGS_width];
+    unsigned char buf[MAXPIX];
 
     xrange = scale_fac*(esw-1);
     yrange = scale_fac*(esh-1);
@@ -590,11 +590,18 @@ void scan_host(void) {
 
     for (y = 0; y < FLAGS_height; y++) {
         cy = y*gapy+lo_i;
-        for (x = 0; x < FLAGS_width; x++) {
-            cx = (x)*gapx+lo_r;
-            buf[x] = iterate(cx,cy,maxcnt);
+        int remaining = FLAGS_width;
+        x = 0;
+        while (remaining > 0) {
+            int strip = std::min(MAXPIX,remaining);
+            for (int s = 0; s < strip; s++) {
+                cx = (x+s)*gapx+lo_r;
+                buf[s] = iterate(cx,cy,maxcnt);
+            }
+            vect (x,y,strip,buf);
+            remaining-=strip;
+            x+=strip;
         }
-        vect (0,y,sizeof(buf),buf);
 	}
 }
 
