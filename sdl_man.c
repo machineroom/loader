@@ -25,9 +25,11 @@
 #include <unistd.h>
 #include <assert.h>
 #include <SDL2/SDL.h>
+#include <gflags/gflags.h>
+#include <termios.h>
+
 #include "c011.h"
 #include "fb.h"
-#include <gflags/gflags.h>
 #include "common.h"
 
 #define TRUE 1
@@ -92,6 +94,7 @@ uint8_t *fbptr = NULL;
 int fb_width;
 int fb_height;
 int fb_bpp;
+#define BOX_COLOUR 1
 
 DEFINE_int32 (width, 640, "width");
 DEFINE_int32 (height, 480, "height");
@@ -108,6 +111,8 @@ DEFINE_int32 (pause, 1, "# sec. pause (for auto mode)");
 int main(int argc, char **argv) {
     int i,aok = 1;
     char *s;
+    struct termios org_opts,new_opts;
+    
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     init_pal256();
     if (!FLAGS_quiet) {
@@ -125,12 +130,14 @@ int main(int argc, char **argv) {
         if (SDL_Init(SDL_INIT_TIMER) < 0) {
             return 1;
         }
+        int res = tcgetattr(STDIN_FILENO, &org_opts);
+        memcpy (&new_opts, &org_opts, sizeof(new_opts));
+        new_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ECHOPRT | ECHOKE | ICRNL);
+        tcsetattr(STDIN_FILENO, TCSANOW, &new_opts);
     }
     
     if (!FLAGS_auto) {
-        if (!FLAGS_immediate) {
-            screen_buffer = (uint8_t*)malloc(FLAGS_width * FLAGS_height);
-        }
+        screen_buffer = (uint8_t*)malloc(FLAGS_width * FLAGS_height);
         if (FLAGS_sdl) {
             sdl_window = SDL_CreateWindow("T-Mandel with SDL",
                     SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, FLAGS_width,
@@ -146,7 +153,7 @@ int main(int argc, char **argv) {
                                              SDL_TEXTUREACCESS_STREAMING,
                                              FLAGS_width, FLAGS_height);
         } else {
-            fbptr = FB_Init(&fb_width, &fb_height, &fb_bpp);
+            fbptr = FB_Init(&fb_width, &fb_height, &fb_bpp, FLAGS_quiet);
             if (fbptr == NULL) {
                 printf ("failed FB_Init\n");
                 return -1;
@@ -185,49 +192,90 @@ int main(int argc, char **argv) {
         }
         com_loop();
     }
-    
+    if (!FLAGS_sdl) {
+        tcsetattr(STDIN_FILENO, TCSANOW, &org_opts);
+    } 
     return(0);
 }
 
 int get_key(void)
 {
-    SDL_Event event;
-    SDL_KeyboardEvent key;
-    int ret = SDL_WaitEvent(&event);
-    if (ret==1) {
-        if (event.type == SDL_KEYUP) {
-            key = event.key;
-            switch (key.keysym.scancode) {
-                case SDL_SCANCODE_PAGEUP:
-                    return PGUP;
-                case SDL_SCANCODE_PAGEDOWN:
-                    return PGDN;
-                case SDL_SCANCODE_HOME:
-                    return HOME;
-                case SDL_SCANCODE_END:
-                    return END;
-                case SDL_SCANCODE_DOWN:
-                    return UARW;
-                case SDL_SCANCODE_UP:
-                    return DARW;
-                case SDL_SCANCODE_LEFT:
-                    return LARW;
-                case SDL_SCANCODE_RIGHT:
-                    return RARW;
-                case SDL_SCANCODE_INSERT:
-                    return INS;
-                case SDL_SCANCODE_DELETE:
-                    return DEL;
-                case SDL_SCANCODE_ESCAPE:
-                    return ESC;
-                case SDL_SCANCODE_RETURN:
-                    return ENTR;
+    if (FLAGS_sdl) {
+        SDL_Event event;
+        SDL_KeyboardEvent key;
+        int ret = SDL_WaitEvent(&event);
+        if (ret==1) {
+            if (event.type == SDL_KEYUP) {
+                key = event.key;
+                switch (key.keysym.scancode) {
+                    case SDL_SCANCODE_PAGEUP:
+                        return PGUP;
+                    case SDL_SCANCODE_PAGEDOWN:
+                        return PGDN;
+                    case SDL_SCANCODE_HOME:
+                        return HOME;
+                    case SDL_SCANCODE_END:
+                        return END;
+                    case SDL_SCANCODE_DOWN:
+                        return UARW;
+                    case SDL_SCANCODE_UP:
+                        return DARW;
+                    case SDL_SCANCODE_LEFT:
+                        return LARW;
+                    case SDL_SCANCODE_RIGHT:
+                        return RARW;
+                    case SDL_SCANCODE_INSERT:
+                        return INS;
+                    case SDL_SCANCODE_DELETE:
+                        return DEL;
+                    case SDL_SCANCODE_ESCAPE:
+                        return ESC;
+                    case SDL_SCANCODE_RETURN:
+                        return ENTR;
+                }
+            } else if (event.type == SDL_WINDOWEVENT) {
+                switch (event.window.event) {
+                    case SDL_WINDOWEVENT_CLOSE:
+                        return END;
+                }
             }
-        } else if (event.type == SDL_WINDOWEVENT) {
-            switch (event.window.event) {
-                case SDL_WINDOWEVENT_CLOSE:
-                    return END;
-            }
+        }
+    } else {
+        int c = getchar();
+        switch (c) {
+            case 0xA:
+                return ENTR;
+            case 0x1B:
+                c = getchar();
+                if (c==0x5B) {
+                    c = getchar();
+                    switch (c) {
+                        case 0x31:
+                            return HOME;
+                        case 0x34:
+                            return END;
+                        case 0x41:
+                            return DARW;
+                        case 0x42:
+                            return UARW;
+                        case 0x43:
+                            return RARW;
+                        case 0x44:
+                            return LARW;
+                        case 0x32:
+                            getchar();
+                            return INS;
+                        case 0x33:
+                            getchar();
+                            return DEL;
+                        case 0x35:
+                            getchar();
+                            return PGUP;
+                        case 0x36:
+                            getchar();
+                            return PGDN;
+                    }
+                }
         }
     }
     return NONE;
@@ -296,10 +344,9 @@ void vect (int x, int y, int buf_size, unsigned char *buf) {
                 }
             }
         }
-    } else {
-        //delayed render just copies calculated slice to screen buffer
-        memcpy (&screen_buffer[(y*FLAGS_width)+x], buf, buf_size);
     }
+    //always update screen buffer
+    memcpy (&screen_buffer[(y*FLAGS_width)+x], buf, buf_size);
 }
 
 void render_screen(void) {
@@ -718,24 +765,67 @@ void region(int *bx, int *by, int *lx, int *ly, int *esc) {
     draw_box(*bx,*by,*lx,*ly);
 }
 
+void putpixel(int x, int y) {
+    int i=BOX_COLOUR;
+    if (fb_bpp == 16) {
+        uint16_t *wp = (uint16_t *)&fbptr[(y*fb_width*2)+x*2];
+        uint8_t r = PAL256[i].r>>3; //5 bits R
+        uint8_t g = PAL256[i].g>>2; //6 bits G 
+        uint8_t b = PAL256[i].b>>3; //5 bits B 
+        uint16_t w;
+        w=r; w<<=6; w|=g; w<<=5; w|=b;
+        *wp = w;
+    } else if (fb_bpp == 32) {
+        uint32_t *wp = (uint32_t *)&fbptr[(y*fb_width*4)+x*4];
+        uint8_t r = PAL256[i].r;
+        uint8_t g = PAL256[i].g; 
+        uint8_t b = PAL256[i].b; 
+        uint32_t w;
+        w=r; w<<=8; w|=g; w<<=8; w|=b;
+        *wp = w;
+    }
+}
+
+void h_line (int x, int y, int width) {
+    while (width) {
+        putpixel (x++,y);
+        width--;
+    }
+}
+
+void v_line (int x, int y, int height) {
+    while (height) {
+        putpixel (x,y++);
+        height--;
+    }
+}
+
 void draw_box(int x1, int y1, int x2, int y2) {
     int x,y,w,h;
     if (x1 < x2) {x = x1; w = x2-x1+1;}
     else {x = x2; w = x1-x2+1;}
     if (y1 < y2) {y = y1; h = y2-y1+1;}
     else {y = y2; h = y1-y2+1;}
-    SDL_Rect rect;
-    rect.x = x;
-    rect.y = y;
-    rect.w = w;
-    rect.h = h;
-    SDL_SetRenderTarget(sdl_renderer, NULL);
-    //rebuild the scene with mandel first
-    SDL_RenderCopy(sdl_renderer, mandel_layer, NULL, NULL);
-    //then draw box on top
-    SDL_SetRenderDrawColor(sdl_renderer, 0xFF, 0XFF, 0xFF, 0xFF);
-    SDL_RenderDrawRect(sdl_renderer, &rect);
-    SDL_RenderPresent(sdl_renderer);
+    if (FLAGS_sdl) {
+        SDL_Rect rect;
+        rect.x = x;
+        rect.y = y;
+        rect.w = w;
+        rect.h = h;
+        SDL_SetRenderTarget(sdl_renderer, NULL);
+        //rebuild the scene with mandel first
+        SDL_RenderCopy(sdl_renderer, mandel_layer, NULL, NULL);
+        //then draw box on top
+        SDL_SetRenderDrawColor(sdl_renderer, 0xFF, 0XFF, 0xFF, 0xFF);
+        SDL_RenderDrawRect(sdl_renderer, &rect);
+        SDL_RenderPresent(sdl_renderer);
+    } else {
+        render_screen();
+        h_line (x,y,w);
+        h_line (x,y+h,w);
+        v_line (x,y,h);
+        v_line (x+w,y,h);
+    }
 }
 
 #include "FLBOOT.ARR"
@@ -746,9 +836,13 @@ void draw_box(int x1, int y1, int x2, int y2) {
 void boot_mandel(void)
 {   int ack, fxp, nnodes;
 
-    printf ("set byte mode...\n");
+    if (!FLAGS_quiet) {
+        printf ("set byte mode...\n");
+    }
     c011_set_byte_mode();
-    printf ("reset link...\n");
+    if (!FLAGS_quiet) {
+        printf ("reset link...\n");
+    }
     rst_adpt();
     if (FLAGS_verbose) printf("Booting...\n");
     if (!load_buf(FLBOOT,sizeof(FLBOOT))) exit(1);
@@ -757,7 +851,9 @@ void boot_mandel(void)
         printf(" -- timeout getting ACK\n");
         exit(1);
     }
-    printf("ack = 0x%X\n", ack);
+    if (!FLAGS_quiet) {
+        printf("ack = 0x%X\n", ack);
+    }
     if (FLAGS_verbose) printf("Loading...\n");      
     if (!load_buf(FLLOAD,sizeof(FLLOAD))) exit(1);
     if (FLAGS_verbose) printf("ID'ing...\n");
@@ -777,8 +873,10 @@ void boot_mandel(void)
         printf(" -- timeout getting nnodes (IDENT)\n");
         exit(1);
     }
-    printf("\nfrom IDENT");
-    printf("\n\tnodes found: %d (0x%X)\n",nnodes,nnodes);
+    if (!FLAGS_quiet) {
+        printf("\nfrom IDENT");
+        printf("\n\tnodes found: %d (0x%X)\n",nnodes,nnodes);
+    }
     if (FLAGS_verbose) printf("\nSending mandel-code");
     if (!load_buf(MANDEL,sizeof(MANDEL))) exit(1);
     if (tbyte_out(0))
@@ -795,9 +893,11 @@ void boot_mandel(void)
         printf(" -- timeout getting fxp\n");
         exit(1);
     }
-    printf("\nfrom MANDEL");
-    printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
-    printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
+    if (!FLAGS_quiet) {
+        printf("\nfrom MANDEL");
+        printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
+        printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
+    }
     //mandel operates in word mode from now on. Clear BYTE mode on HSL cards for full throughput
     //^^^ for some reason byte mode is FASTER than word mode (2-3x faster)
     //c011_clear_byte_mode();

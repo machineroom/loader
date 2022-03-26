@@ -13,7 +13,7 @@
 // crudely ripped off from http://raspberrycompote.blogspot.com/2013/01/low-level-graphics-on-raspberry-pi-part_22.html
 
 
-uint8_t *FB_Init(int *width, int *height, int *bpp) {
+uint8_t *FB_Init(int *width, int *height, int *bpp, bool quiet) {
     int fbfd = 0;
     struct fb_var_screeninfo vinfo;
     struct fb_fix_screeninfo finfo;
@@ -38,9 +38,10 @@ uint8_t *FB_Init(int *width, int *height, int *bpp) {
         printf("Error reading variable information.\n");
         return NULL;
     }
-    printf("FB is %dx%d, %d bpp\n", vinfo.xres, vinfo.yres, 
-           vinfo.bits_per_pixel );
-
+    if (!quiet) {
+        printf("FB is %dx%d, %d bpp\n", vinfo.xres, vinfo.yres, 
+            vinfo.bits_per_pixel );
+    }
     // map framebuffer to user memory 
     screensize = finfo.smem_len;
 
