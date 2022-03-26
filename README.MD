@@ -43,7 +43,7 @@ Single T805 | 46s | 258s | 30MHz TRAM 10Mbps link. no render. floating-point. In
 353 nodes | 2.5s | 5.7s | As above (32,byte)
 
 
-241 nodes is _certainly_ the fastest operational T425 system in the world (woot). (https://youtu.be/vG2aXRZjA4E)
+241 nodes is _certainly_ the fastest operational T425 system in the world (woot). (https://youtu.be/vG2aXRZjA4E) (https://www.youtube.com/watch?v=Jta0T8I4odo)
 
 Two problems with WX9020:
 1. ~~I'm running the HSL cards (that connect 6x links over a fiber to connect racks together) in byte mode. This is documented to be slow but is transparent to software (i.e. it looks like a regular link).~~
