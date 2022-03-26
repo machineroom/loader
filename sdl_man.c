@@ -97,6 +97,7 @@ DEFINE_int32 (width, 640, "width");
 DEFINE_int32 (height, 480, "height");
 DEFINE_int32 (max_iter, 0, "max. iteration count, # is iter. (default variable)");
 DEFINE_bool (verbose, false, "print verbose messages during initialisation");
+DEFINE_bool (quiet, true, "print verbose messages during initialisation");
 DEFINE_bool (immediate, false, "render each vector as received (slower)");
 DEFINE_bool (sdl, true, "Use SDL2 render, otherwise direct FB");
 DEFINE_bool (host, false, "use host, no transputers (default transputers)");
@@ -109,13 +110,13 @@ int main(int argc, char **argv) {
     char *s;
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     init_pal256();
-
-    printf("CSA Mandelzoom Version 2.1 for PC\n");
-    printf("(C) Copyright 1988 Computer System Architects Provo, Utah\n");
-    printf("Enhanced by Axel Muhr (geekdot.com), 2009, 2015\n");
-    printf("Enhanced by James Wilson (macihenroomfiddling@gmail.com) 2019, 2020\n");
-    printf("This is a free software and you are welcome to redistribute it\n\n");
-
+    if (!FLAGS_quiet) {
+        printf("CSA Mandelzoom Version 2.1 for PC\n");
+        printf("(C) Copyright 1988 Computer System Architects Provo, Utah\n");
+        printf("Enhanced by Axel Muhr (geekdot.com), 2009, 2015\n");
+        printf("Enhanced by James Wilson (macihenroomfiddling@gmail.com) 2019, 2020\n");
+        printf("This is a free software and you are welcome to redistribute it\n\n");
+    }
     if (FLAGS_sdl) {
         if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
             return 1;
@@ -173,13 +174,15 @@ int main(int argc, char **argv) {
 	    }
         auto_loop();
 	} else {
-        printf("\nAfter frame is displayed:\n\n");
-        printf("Home - display zoom box, use arrow keys to move & size, ");
-        printf("Home again to zoom\n");
-        printf("Ins  - toggle between size and move zoom box\n");
-        printf("PgUp - reset to outermost frame\n");
-        printf("PgDn - save coord. and iter. to file 'man.dat'\n");
-        printf("End  - quit\n");
+        if (!FLAGS_quiet) {
+            printf("\nAfter frame is displayed:\n\n");
+            printf("Home - display zoom box, use arrow keys to move & size, ");
+            printf("Home again to zoom\n");
+            printf("Ins  - toggle between size and move zoom box\n");
+            printf("PgUp - reset to outermost frame\n");
+            printf("PgDn - save coord. and iter. to file 'man.dat'\n");
+            printf("End  - quit\n");
+        }
         com_loop();
     }
     
@@ -375,14 +378,18 @@ void com_loop(void)
             start = SDL_GetPerformanceCounter();
             (*scan)();
             compute = SDL_GetPerformanceCounter();
-            printf ("scan took %0.1f ms\n", (double)((compute - start)*1000) / SDL_GetPerformanceFrequency()); 
+            if (!FLAGS_quiet) {
+                printf ("scan took %0.1f ms\n", (double)((compute - start)*1000) / SDL_GetPerformanceFrequency()); 
+            }
             if (FLAGS_verbose) {
                 c011_dump_stats("done scan");
             }
             if (!FLAGS_immediate) {
                 render_screen();
                 render = SDL_GetPerformanceCounter();
-                printf ("render took %0.1f ms\n", (double)((render - compute)*1000) / SDL_GetPerformanceFrequency()); 
+                if (!FLAGS_quiet) {
+                    printf ("render took %0.1f ms\n", (double)((render - compute)*1000) / SDL_GetPerformanceFrequency()); 
+                }
             }
         }
         switch (get_key())
