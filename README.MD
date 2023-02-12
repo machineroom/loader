@@ -29,6 +29,7 @@ Axel cube 65*T425 | 2.32s | 8.16s | Mixed 20 & 25MHz parts
 Pi3       | 0.19s | 1.00s
 Pi4/2GB   | 82ms | 477ms
 Mac Pro (2.8GHz P7) | 35ms | 189ms
+Mac M1 (clang) | 28ms | 199ms
 Single T425 | 82s | 474s | 25MHz TRAM 10Mbps link. no render. Transtech 2-1MB TRAM
 Single T805 | 82s | 474s | 25MHz TRAM 10Mbps link. no render. Forced fixed-point. Sundance SMT211B
 Single T805 | 55s | 310s | 25MHz TRAM 10Mbps link. no render. floating-point. Sundance SMT211B
