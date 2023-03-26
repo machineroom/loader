@@ -19,6 +19,7 @@ macihenroomfiddling@gmail.com enhancements
 Mimicing Axel's results using man.dat auto-render and on-the-fly rendering using FB @ 640*480:
 System | 1st | 2nd | notes
 -------|-----|-----|------
+ST20TP4 | 14.8s | 83.3s | Fixed point (ST20JEI) 60MHz 
 Axel cube 65*T425 | 2.32s | 8.16s | Mixed 20 & 25MHz parts
 13  nodes | 6.74s | 37.34s | Each node is T425@25MHz (Whitecross WX9020 nodes)
 36  nodes | 3.41s | 15.79s
