@@ -184,7 +184,7 @@ void c011_reset(void) {
     gpio_commit();
     set_gpio_bit(RESET, HIGH);
     gpio_commit();
-    bcm2835_delayMicroseconds (5*1000);
+    bcm2835_delayMicroseconds (2*1000);
     set_gpio_bit(RESET, LOW);
     gpio_commit();
     c011_enable_in_int();

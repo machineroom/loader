@@ -1,12 +1,12 @@
-#  MAKEFILE for Mandelbrot program.
+#  MAKEFILE for Loader
 
-#macihenroomfiddling@gmail.com Oct 2019 started on Linux port
+#macihenroomfiddling@gmail.com
 #Uses normal GNU make on Linux with dosbox to run legacy LSC compiler
 #LSC 89 comes from http://www.classiccmp.org/transputer/software/languages/ansic/lsc/
 
 .SUFFIXES: .C .TAL .TLD .ARR .EXE
 .PHONY: lsc_debug
-all: man
+all: loader MANDEL.TLD
 
 LSC89=${HOME}/lsc-V89.1
 LSC89_BIN=d:\exe
@@ -36,16 +36,14 @@ LSC_BIN=$(LSC89_BIN)
 
 #rule to make c arrays from .tld files
 %.ARR : %.TLD
-	dosbox -c "mount C `pwd`" -c "C:" -c "ltoc $*" -c "mkarr $*" -c "exit"
+	xxd -i -n $* $*.TLD > $*.ARR
+#	dosbox -c "mount C `pwd`" -c "C:" -c "ltoc $*" -c "mkarr $*" -c "exit"
 
 lsc_debug: 
 	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "D:" -c "cd $(LSC_BIN)"
-    
-man : sdl_man.c lkio_c011.c c011.c fb.c FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR common.h
-	g++ -O2 sdl_man.c lkio_c011.c c011.c fb.c -lSDL2 -lm -lbcm2835 -lgflags -o $@
 
-man_native : sdl_native.c common.h
-	g++ -O2 sdl_native.c -lSDL2 -lm -lgflags -o $@
+loader : main.c lkio_c011.c c011.c FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR common.h
+	g++ -O2 main.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -o $@
 
 clean:
 	rm -f *.OBJ
@@ -61,7 +59,6 @@ clean:
 
 MANDEL.TAL:  MANDEL.C common.h
 MANDEL.TLD:  MANDEL.TAL MLIBP.TRL MANDEL.LNK
-MANDEL.ARR:  MANDEL.TLD
 
 MLIBP.TAL: MLIBP.C
 MLIBP.TRL: MLIBP.TAL
