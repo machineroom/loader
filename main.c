@@ -63,7 +63,48 @@ bool load_buf (uint8_t *buf, int bcnt) {
 #include "FLLOAD.ARR"
 #include "IDENT.ARR"
 
-bool boot(const char *fname)
+void get_code(uint8_t *raw, uint8_t **load_buf, int *load_size) {
+    uint8_t *raw_orig;
+    bool go = true;
+    while (go) {
+        switch (raw[0]) {
+            case 0:
+                printf ("RESERVED *NOT HANDLED*\n");
+                go = false;
+                break;
+            case 1:
+                printf ("REL_FILE: processor type = %d\n", raw[1]);
+                raw += 2;
+                break;
+            case 2:
+                printf ("LIB_FILE: processor type = %d\n", raw[1]);
+                raw += 2;
+                break;
+            case 3:
+                printf ("LD_FILE: processor type = %d\n", raw[1]);
+                raw += 2;
+                break;
+            case 4:
+                printf ("SIZE *NOT HANDLED*\n");
+                go = false;
+                break;
+            case 5:
+                *load_size = raw-raw_orig;
+                printf ("EOF size = %d\n", *load_size);
+                go = false;
+                break;
+            case 6:
+                {
+                    char tmp[256];
+                    memcpy (tmp, &raw[3], raw[2]);
+                    printf ("T_SYMBOL %d %s\n", raw[1], tmp);
+                }
+                break;
+
+        }
+    }
+}
+bool boot(const char *fname, bool lsc)
 {   int ack, fxp, nnodes;
     FILE *f = fopen (fname, "r");
     if (!f) {
@@ -75,6 +116,10 @@ bool boot(const char *fname)
     printf ("reset link...\n");
     rst_adpt();
     printf("Booting...\n");
+    // FLBOOT and friends are LSC
+    uint8_t *load_addr;
+    int load_size;
+    get_code (FLBOOT, &load_addr, &load_size);
     if (!load_buf(FLBOOT+22,sizeof(FLBOOT)-25)) {
         printf ("Failed to send FLBOOT\n");
         return false;
@@ -144,6 +189,7 @@ bool boot(const char *fname)
 
 DEFINE_bool (verbose, false, "print verbose messages during initialisation");
 DEFINE_string (code, "", "The code to load");
+DEFINE_bool (lsc, false, "LSC object format parsing");
 
 int main(int argc, char **argv) {
     int i,aok = 1;
@@ -157,7 +203,7 @@ int main(int argc, char **argv) {
     tcsetattr(STDIN_FILENO, TCSANOW, &new_opts);
     
     init_lkio();
-    boot(FLAGS_code.c_str());
+    boot(FLAGS_code.c_str(), FLAGS_lsc);
 
     return(0);
 }
