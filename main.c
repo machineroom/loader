@@ -13,6 +13,9 @@
 #include "c011.h"
 #include "common.h"
 
+#include <vector>
+
+
 //#define DEBUG
 
 int get_key(void)
@@ -21,21 +24,22 @@ int get_key(void)
     return c;
 }
 
-void memdump (char *buf, int cnt) {
-    char *p = buf;
+void memdump (uint8_t *buf, unsigned int cnt) {
+    uint8_t *p = buf;
     int byte_cnt=0;
-    char str[200] = {'\0'};
+    char str[8192] = {'\0'};
     while (cnt > 0) {
         char b[10];
-        sprintf (b, "0x%02X ", *p++);
+        sprintf (b, "%02X ", *p++);
         strcat (str,b);
-        if (byte_cnt++==16) {
+        if (++byte_cnt==8) {
             printf ("%s\n", str);
             str[0] = '\0';
             byte_cnt=0;
         }
         cnt--;
     }
+    printf ("%s\n", str);
 }
 
 /* return true if loaded ok, false if error. */
@@ -83,7 +87,7 @@ static uint16_t read2u (uint8_t *buf) {
     return tmp;
 }
 
-void get_code(uint8_t *raw, uint8_t **load_buf, int *load_size) {
+void get_code(uint8_t *raw, std::vector<uint8_t> &code) {
     uint8_t *raw_orig=raw;
     bool go = true;
     while (go) {
@@ -110,15 +114,19 @@ void get_code(uint8_t *raw, uint8_t **load_buf, int *load_size) {
                 go = false;
                 break;
             case 5:
-                *load_size = raw-raw_orig;
-                printf ("EOF size = %d\n", *load_size);
-                go = false;
+                {
+                    uint16_t line = read2u(&raw[1]);
+                    printf ("EOF line %u\n", line);
+                    go = false;
+                }
                 break;
             case 10:
                 {
                     uint16_t line = read2u(&raw[1]);
                     uint16_t size = read2u(&raw[3]);
                     printf ("T_DATA %u %u\n", line, size);
+                    //std::vector<uint8_t> data(&raw[5], &raw[5]+size);
+                    code.insert (code.end(), &raw[5], &raw[5]+size);
                     raw += 1+2+2+size;
                 }
                 break;
@@ -171,6 +179,7 @@ void get_code(uint8_t *raw, uint8_t **load_buf, int *load_size) {
         }
     }
 }
+
 bool boot(const char *fname, bool lsc)
 {   int ack, fxp, nnodes;
     FILE *f = fopen (fname, "r");
@@ -178,20 +187,15 @@ bool boot(const char *fname, bool lsc)
         printf ("Couldn't open %s\n", fname);
         return false;
     }
-    /*
     printf ("set byte mode...\n");
     c011_set_byte_mode();
     printf ("reset link...\n");
     rst_adpt();
     printf("Booting...\n");
-    */
-    // FLBOOT and friends are LSC
-    uint8_t *load_addr;
-    int load_size;
-    printf ("load FLBOOT\n");
-    get_code (FLBOOT, &load_addr, &load_size);
-    /*
-    if (!load_buf(FLBOOT+22,sizeof(FLBOOT)-25)) {
+    // FLBOOT and friends are LSCs
+    std::vector<uint8_t> load;
+    get_code (FLBOOT, load);
+    if (!load_buf(load.data(),load.size())) {
         printf ("Failed to send FLBOOT\n");
         return false;
     }
@@ -201,14 +205,20 @@ bool boot(const char *fname, bool lsc)
         exit(1);
     }
     printf("ack = 0x%X\n", ack);
-    printf("Loading...\n");      
-    if (!load_buf(FLLOAD+22,sizeof(FLLOAD)-25)) {
+
+    printf("Loading...\n");
+    load.clear();
+    get_code (FLLOAD, load);
+    if (!load_buf(load.data(),load.size())) {
         printf ("Failed to send FLLOAD\n");
         return false;
     }
+
     printf("ID'ing...\n");
     // IDENT will give master node ID 0 and other nodes ID 1
-    if (!load_buf(IDENT+22,sizeof(IDENT)-25)) {
+    load.clear();
+    get_code (IDENT, load);
+    if (!load_buf(load.data(),load.size())) {
         printf ("Failed to send IDENT\n");
         return false;
     }
@@ -228,7 +238,7 @@ bool boot(const char *fname, bool lsc)
     }
     printf("from IDENT\n");
     printf("\tnodes found: %d (0x%X)\n",nnodes,nnodes);
-    */
+    /*
     struct stat statbuf;
     stat (fname, &statbuf);
     uint8_t *code = (uint8_t *)malloc (statbuf.st_size);
@@ -238,8 +248,7 @@ bool boot(const char *fname, bool lsc)
         return false;
     }
     printf ("load %s\n", fname);
-    get_code (code, &load_addr, &load_size);
-    /*
+    get_code (code, load);
     printf("Sending %s (%ld)\n", fname, statbuf.st_size);
     int r = load_buf(code+22, statbuf.st_size-25);
     if (tbyte_out(0))
