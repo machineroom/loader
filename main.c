@@ -63,10 +63,31 @@ bool load_buf (uint8_t *buf, int bcnt) {
 #include "FLLOAD.ARR"
 #include "IDENT.ARR"
 
+static int32_t read4s (uint8_t *buf) {
+    int32_t tmp;
+    tmp = buf[3];
+    tmp <<= 8;
+    tmp |= buf[2];
+    tmp <<= 8;
+    tmp |= buf[1];
+    tmp <<= 8;
+    tmp |= buf[0];
+    return tmp;
+}
+
+static uint16_t read2u (uint8_t *buf) {
+    uint16_t tmp;
+    tmp = buf[1];
+    tmp <<= 8;
+    tmp |= buf[0];
+    return tmp;
+}
+
 void get_code(uint8_t *raw, uint8_t **load_buf, int *load_size) {
-    uint8_t *raw_orig;
+    uint8_t *raw_orig=raw;
     bool go = true;
     while (go) {
+        printf ("%4X %2d[0x%2X] ", (unsigned)(raw-raw_orig), raw[0], raw[0]);
         switch (raw[0]) {
             case 0:
                 printf ("RESERVED *NOT HANDLED*\n");
@@ -74,15 +95,15 @@ void get_code(uint8_t *raw, uint8_t **load_buf, int *load_size) {
                 break;
             case 1:
                 printf ("REL_FILE: processor type = %d\n", raw[1]);
-                raw += 2;
+                raw += 1+1;
                 break;
             case 2:
                 printf ("LIB_FILE: processor type = %d\n", raw[1]);
-                raw += 2;
+                raw += 1+1;
                 break;
             case 3:
                 printf ("LD_FILE: processor type = %d\n", raw[1]);
-                raw += 2;
+                raw += 1+1;
                 break;
             case 4:
                 printf ("SIZE *NOT HANDLED*\n");
@@ -93,12 +114,58 @@ void get_code(uint8_t *raw, uint8_t **load_buf, int *load_size) {
                 printf ("EOF size = %d\n", *load_size);
                 go = false;
                 break;
-            case 6:
+            case 10:
                 {
-                    char tmp[256];
-                    memcpy (tmp, &raw[3], raw[2]);
-                    printf ("T_SYMBOL %d %s\n", raw[1], tmp);
+                    uint16_t line = read2u(&raw[1]);
+                    uint16_t size = read2u(&raw[3]);
+                    printf ("T_DATA %u %u\n", line, size);
+                    raw += 1+2+2+size;
                 }
+                break;
+            case 15:
+                {
+                    uint16_t line = read2u(&raw[1]);
+                    int32_t size = read4s(&raw[3]);
+                    printf ("T_STORAGE %u %d\n", line, size);
+                    raw += 1+2+4;
+                }
+                break;
+            case 22:
+                {
+                    int32_t address = read4s(&raw[1]);
+                    printf ("T_LOAD %X\n", address);
+                    raw += 1+4;
+                }
+                break;
+            case 23:
+                {
+                    int32_t address = read4s(&raw[1]);
+                    printf ("T_STACK %X\n", address);
+                    raw += 1+4;
+                }
+                break;
+            case 24:
+                {
+                    int32_t address = read4s(&raw[1]);
+                    printf ("T_ENTRY %X\n", address);
+                    raw += 1+4;
+                }
+                break;
+            case 25:
+                {
+                    uint16_t line = read2u(&raw[1]);
+                    int32_t value = read4s(&raw[3]);
+                    uint16_t size = read2u(&raw[7]);
+                    uint8_t symbol_length = raw[9];
+                    char symbol[256]={0};
+                    memcpy (symbol, &raw[10], size);
+                    printf ("T_DEBUG_DATA %u 0x%x %u %s\n", line, value, size, symbol);
+                    raw += 1+2+4+2+size;
+                }
+                break;
+            default:
+                printf ("%d *NOT HANDLED*\n", raw[0]);
+                go = false;
                 break;
 
         }
@@ -111,15 +178,19 @@ bool boot(const char *fname, bool lsc)
         printf ("Couldn't open %s\n", fname);
         return false;
     }
+    /*
     printf ("set byte mode...\n");
     c011_set_byte_mode();
     printf ("reset link...\n");
     rst_adpt();
     printf("Booting...\n");
+    */
     // FLBOOT and friends are LSC
     uint8_t *load_addr;
     int load_size;
+    printf ("load FLBOOT\n");
     get_code (FLBOOT, &load_addr, &load_size);
+    /*
     if (!load_buf(FLBOOT+22,sizeof(FLBOOT)-25)) {
         printf ("Failed to send FLBOOT\n");
         return false;
@@ -157,6 +228,7 @@ bool boot(const char *fname, bool lsc)
     }
     printf("from IDENT\n");
     printf("\tnodes found: %d (0x%X)\n",nnodes,nnodes);
+    */
     struct stat statbuf;
     stat (fname, &statbuf);
     uint8_t *code = (uint8_t *)malloc (statbuf.st_size);
@@ -165,7 +237,10 @@ bool boot(const char *fname, bool lsc)
         printf ("Failed to read %s\n", fname);
         return false;
     }
-    printf("Sending %s (%d)\n", fname, statbuf.st_size);
+    printf ("load %s\n", fname);
+    get_code (code, &load_addr, &load_size);
+    /*
+    printf("Sending %s (%ld)\n", fname, statbuf.st_size);
     int r = load_buf(code+22, statbuf.st_size-25);
     if (tbyte_out(0))
     {
@@ -184,6 +259,7 @@ bool boot(const char *fname, bool lsc)
     printf("\nfrom MANDEL");
     printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
     printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
+    */
     return true;
 }
 
@@ -202,7 +278,7 @@ int main(int argc, char **argv) {
     new_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ECHOPRT | ECHOKE | ICRNL);
     tcsetattr(STDIN_FILENO, TCSANOW, &new_opts);
     
-    init_lkio();
+    //init_lkio();
     boot(FLAGS_code.c_str(), FLAGS_lsc);
 
     return(0);
