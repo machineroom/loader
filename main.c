@@ -43,7 +43,7 @@ void memdump (uint8_t *buf, unsigned int cnt) {
 }
 
 /* return true if loaded ok, false if error. */
-bool load_buf (uint8_t *buf, int bcnt) {
+bool load_buf (uint8_t *buf, int bcnt, bool debug) {
     int wok,len;
 
     do {
@@ -58,7 +58,7 @@ bool load_buf (uint8_t *buf, int bcnt) {
         printf(" -- timeout loading network\n");
         return false;
     } else {
-        printf ("Wrote bytes to network\n");
+        if (debug) printf ("Wrote bytes to network\n");
         return true;
     }
 }
@@ -83,36 +83,28 @@ static uint16_t read2u (uint8_t *buf) {
     return tmp;
 }
 
-void get_code(uint8_t *raw, std::vector<uint8_t> &code) {
+void get_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
     uint8_t *raw_orig=raw;
     bool go = true;
     while (go) {
-        printf ("%4X %2d[0x%2X] ", (unsigned)(raw-raw_orig), raw[0], raw[0]);
+        if (debug) printf ("%4X %2d[0x%2X] ", (unsigned)(raw-raw_orig), raw[0], raw[0]);
         switch (raw[0]) {
-            case 0:
-                printf ("RESERVED *NOT HANDLED*\n");
-                go = false;
-                break;
             case 1:
-                printf ("REL_FILE: processor type = %d\n", raw[1]);
+                if (debug) printf ("REL_FILE: processor type = %d\n", raw[1]);
                 raw += 1+1;
                 break;
             case 2:
-                printf ("LIB_FILE: processor type = %d\n", raw[1]);
+                if (debug) printf ("LIB_FILE: processor type = %d\n", raw[1]);
                 raw += 1+1;
                 break;
             case 3:
-                printf ("LD_FILE: processor type = %d\n", raw[1]);
+                if (debug) printf ("LD_FILE: processor type = %d\n", raw[1]);
                 raw += 1+1;
-                break;
-            case 4:
-                printf ("SIZE *NOT HANDLED*\n");
-                go = false;
                 break;
             case 5:
                 {
                     uint16_t line = read2u(&raw[1]);
-                    printf ("EOF line %u\n", line);
+                    if (debug) printf ("EOF line %u\n", line);
                     go = false;
                 }
                 break;
@@ -120,7 +112,7 @@ void get_code(uint8_t *raw, std::vector<uint8_t> &code) {
                 {
                     uint16_t line = read2u(&raw[1]);
                     uint16_t size = read2u(&raw[3]);
-                    printf ("T_DATA %u %u\n", line, size);
+                    if (debug) printf ("T_DATA %u %u\n", line, size);
                     code.insert (code.end(), &raw[5], &raw[5]+size);
                     raw += 1+2+2+size;
                 }
@@ -129,7 +121,7 @@ void get_code(uint8_t *raw, std::vector<uint8_t> &code) {
                 {
                     uint16_t line = read2u(&raw[1]);
                     int32_t size = read4s(&raw[3]);
-                    printf ("T_STORAGE %u %d\n", line, size);
+                    if (debug) printf ("T_STORAGE %u %d\n", line, size);
                     code.insert (code.end(), size, 0u);
                     raw += 1+2+4;
                 }
@@ -137,21 +129,21 @@ void get_code(uint8_t *raw, std::vector<uint8_t> &code) {
             case 22:
                 {
                     int32_t address = read4s(&raw[1]);
-                    printf ("T_LOAD %X\n", address);
+                    if (debug) printf ("T_LOAD %X\n", address);
                     raw += 1+4;
                 }
                 break;
             case 23:
                 {
                     int32_t address = read4s(&raw[1]);
-                    printf ("T_STACK %X\n", address);
+                    if (debug) printf ("T_STACK %X\n", address);
                     raw += 1+4;
                 }
                 break;
             case 24:
                 {
                     int32_t address = read4s(&raw[1]);
-                    printf ("T_ENTRY %X\n", address);
+                    if (debug) printf ("T_ENTRY %X\n", address);
                     raw += 1+4;
                 }
                 break;
@@ -163,7 +155,7 @@ void get_code(uint8_t *raw, std::vector<uint8_t> &code) {
                     uint8_t symbol_length = raw[9];
                     char symbol[256]={0};
                     memcpy (symbol, &raw[10], size);
-                    printf ("T_DEBUG_DATA %u 0x%x %u %s\n", line, value, size, symbol);
+                    if (debug) printf ("T_DEBUG_DATA %u 0x%x %u %s\n", line, value, size, symbol);
                     raw += 1+2+4+2+size;
                 }
                 break;
@@ -176,26 +168,39 @@ void get_code(uint8_t *raw, std::vector<uint8_t> &code) {
     }
 }
 
-bool boot(const char *fname, bool lsc)
+bool load_tld (const char *name, bool debug) {
+    std::vector<uint8_t> load;
+    struct stat statbuf;
+    stat (name, &statbuf);
+    uint8_t *code = (uint8_t *)malloc (statbuf.st_size);
+    FILE *f = fopen (name, "r");
+    size_t rd = fread (code, statbuf.st_size, 1, f);
+    if (rd != 1) {
+        printf ("Failed to read %s\n", name);
+        return false;
+    }
+    printf ("load %s\n", name);
+    get_code (code, load, debug);
+    if (debug) {
+        memdump(load.data(), load.size());
+        printf("Sending %s (%ld)\n", name, load.size());
+    }
+    return load_buf(load.data(), load.size(), debug);
+}
+
+bool boot(const char *fname, bool lsc, bool debug)
 {   
     int ack, fxp, nnodes;
-    std::vector<uint8_t> load;
-    FILE *f = fopen (fname, "r");
-    if (!f) {
-        printf ("Couldn't open %s\n", fname);
-        return false;
-    }/*
     c011_init();
     printf ("set byte mode...\n");
     c011_set_byte_mode();
     printf ("reset link...\n");
     rst_adpt();
     printf("Booting...\n");
-    // FLBOOT and friends are LSCs
-    get_code (FLBOOT, load);
-    if (!load_buf(load.data(),load.size())) {
-        printf ("Failed to send FLBOOT\n");
-        return false;
+    // FLBOOT and friends are LSC TLD files
+    if (!load_tld ("FLBOOT.TLD", debug))
+    {
+        exit(1);
     }
     //daughter sends back an ACK word on the booted link
     if (word_in(&ack)) {
@@ -204,21 +209,16 @@ bool boot(const char *fname, bool lsc)
     }
     printf("ack = 0x%X\n", ack);
 
-    printf("Loading...\n");
-    load.clear();
-    get_code (FLLOAD, load);
-    if (!load_buf(load.data(),load.size())) {
-        printf ("Failed to send FLLOAD\n");
-        return false;
+    if (!load_tld ("FLLOAD.TLD", debug))
+    {
+        exit(1);
     }
 
     printf("ID'ing...\n");
     // IDENT will give master node ID 0 and other nodes ID 1
-    load.clear();
-    get_code (IDENT, load);
-    if (!load_buf(load.data(),load.size())) {
-        printf ("Failed to send IDENT\n");
-        return false;
+    if (!load_tld ("IDENT.TLD", debug))
+    {
+        exit(1);
     }
     if (tbyte_out(0))
     {
@@ -236,21 +236,11 @@ bool boot(const char *fname, bool lsc)
     }
     printf("from IDENT\n");
     printf("\tnodes found: %d (0x%X)\n",nnodes,nnodes);
-    */
-    struct stat statbuf;
-    stat (fname, &statbuf);
-    uint8_t *code = (uint8_t *)malloc (statbuf.st_size);
-    size_t rd = fread (code, statbuf.st_size, 1, f);
-    if (rd != 1) {
-        printf ("Failed to read %s\n", fname);
-        return false;
+    if (!load_tld (fname, debug))
+    {
+        exit(1);
     }
-    printf ("load %s\n", fname);
-    get_code (code, load);
-    memdump(load.data(), load.size());
-    /*
-    printf("Sending %s (%ld)\n", fname, statbuf.st_size);
-    int r = load_buf(load.data(), load.size());
+
     if (tbyte_out(0))
     {
         printf("\n -- timeout sending execute");
@@ -268,13 +258,13 @@ bool boot(const char *fname, bool lsc)
     printf("\nfrom MANDEL");
     printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
     printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
-    */
     return true;
 }
 
 DEFINE_bool (verbose, false, "print verbose messages during initialisation");
 DEFINE_string (code, "", "The code to load");
 DEFINE_bool (lsc, false, "LSC object format parsing");
+DEFINE_bool (v, false, "verbose debug");
 
 int main(int argc, char **argv) {
     int i,aok = 1;
@@ -288,7 +278,7 @@ int main(int argc, char **argv) {
     tcsetattr(STDIN_FILENO, TCSANOW, &new_opts);
     
     //init_lkio();
-    boot(FLAGS_code.c_str(), FLAGS_lsc);
+    boot(FLAGS_code.c_str(), FLAGS_lsc, FLAGS_v);
 
     return(0);
 }

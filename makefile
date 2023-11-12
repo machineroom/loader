@@ -6,7 +6,7 @@
 
 .SUFFIXES: .C .TAL .TLD .ARR .EXE
 .PHONY: lsc_debug
-all: loader MANDEL.TLD
+all: loader MANDEL.TLD FLBOOT.TLD FLLOAD.TLD IDENT.TLD
 
 LSC89=${HOME}/lsc-V89.1
 LSC89_BIN=d:\exe
@@ -50,7 +50,6 @@ clean:
 	rm -f *.MAP
 	rm -f MANDEL.TAL
 	rm -f MLIBP.TAL
-	rm -f MAN.EXE
 
 MANDEL.TAL:  MANDEL.C common.h
 MANDEL.TLD:  MANDEL.TAL MLIBP.TRL MANDEL.LNK
