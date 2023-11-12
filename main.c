@@ -63,10 +63,6 @@ bool load_buf (uint8_t *buf, int bcnt) {
     }
 }
 
-#include "FLBOOT.ARR"
-#include "FLLOAD.ARR"
-#include "IDENT.ARR"
-
 static int32_t read4s (uint8_t *buf) {
     int32_t tmp;
     tmp = buf[3];
@@ -125,7 +121,6 @@ void get_code(uint8_t *raw, std::vector<uint8_t> &code) {
                     uint16_t line = read2u(&raw[1]);
                     uint16_t size = read2u(&raw[3]);
                     printf ("T_DATA %u %u\n", line, size);
-                    //std::vector<uint8_t> data(&raw[5], &raw[5]+size);
                     code.insert (code.end(), &raw[5], &raw[5]+size);
                     raw += 1+2+2+size;
                 }
@@ -181,12 +176,14 @@ void get_code(uint8_t *raw, std::vector<uint8_t> &code) {
 }
 
 bool boot(const char *fname, bool lsc)
-{   int ack, fxp, nnodes;
+{   
+    int ack, fxp, nnodes;
+    std::vector<uint8_t> load;
     FILE *f = fopen (fname, "r");
     if (!f) {
         printf ("Couldn't open %s\n", fname);
         return false;
-    }
+    }/*
     c011_init();
     printf ("set byte mode...\n");
     c011_set_byte_mode();
@@ -194,7 +191,6 @@ bool boot(const char *fname, bool lsc)
     rst_adpt();
     printf("Booting...\n");
     // FLBOOT and friends are LSCs
-    std::vector<uint8_t> load;
     get_code (FLBOOT, load);
     if (!load_buf(load.data(),load.size())) {
         printf ("Failed to send FLBOOT\n");
@@ -239,6 +235,7 @@ bool boot(const char *fname, bool lsc)
     }
     printf("from IDENT\n");
     printf("\tnodes found: %d (0x%X)\n",nnodes,nnodes);
+    */
     struct stat statbuf;
     stat (fname, &statbuf);
     uint8_t *code = (uint8_t *)malloc (statbuf.st_size);
@@ -250,6 +247,7 @@ bool boot(const char *fname, bool lsc)
     printf ("load %s\n", fname);
     get_code (code, load);
     memdump(load.data(), load.size());
+    /*
     printf("Sending %s (%ld)\n", fname, statbuf.st_size);
     int r = load_buf(load.data(), load.size());
     if (tbyte_out(0))
@@ -269,6 +267,7 @@ bool boot(const char *fname, bool lsc)
     printf("\nfrom MANDEL");
     printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
     printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
+    */
     return true;
 }
 

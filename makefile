@@ -34,16 +34,11 @@ LSC_BIN=$(LSC89_BIN)
 	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\tasm $* -c > ASM.OUT" -c "exit"
 	cat ASM.OUT
 
-#rule to make c arrays from .tld files
-%.ARR : %.TLD
-	xxd -i -n $* $*.TLD > $*.ARR
-#	dosbox -c "mount C `pwd`" -c "C:" -c "ltoc $*" -c "mkarr $*" -c "exit"
-
 lsc_debug: 
 	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "D:" -c "cd $(LSC_BIN)"
 
-loader : main.c lkio_c011.c c011.c FLBOOT.ARR FLLOAD.ARR IDENT.ARR MANDEL.ARR common.h
-	g++ -O2 main.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -o $@
+loader : main.c lkio_c011.c c011.c common.h
+	g++ -g -O0 main.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -o $@
 
 clean:
 	rm -f *.OBJ
