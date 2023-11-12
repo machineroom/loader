@@ -130,6 +130,7 @@ void get_code(uint8_t *raw, std::vector<uint8_t> &code) {
                     uint16_t line = read2u(&raw[1]);
                     int32_t size = read4s(&raw[3]);
                     printf ("T_STORAGE %u %d\n", line, size);
+                    code.insert (code.end(), size, 0u);
                     raw += 1+2+4;
                 }
                 break;
