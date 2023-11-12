@@ -187,6 +187,7 @@ bool boot(const char *fname, bool lsc)
         printf ("Couldn't open %s\n", fname);
         return false;
     }
+    c011_init();
     printf ("set byte mode...\n");
     c011_set_byte_mode();
     printf ("reset link...\n");
@@ -238,7 +239,6 @@ bool boot(const char *fname, bool lsc)
     }
     printf("from IDENT\n");
     printf("\tnodes found: %d (0x%X)\n",nnodes,nnodes);
-    /*
     struct stat statbuf;
     stat (fname, &statbuf);
     uint8_t *code = (uint8_t *)malloc (statbuf.st_size);
@@ -249,8 +249,9 @@ bool boot(const char *fname, bool lsc)
     }
     printf ("load %s\n", fname);
     get_code (code, load);
+    memdump(load.data(), load.size());
     printf("Sending %s (%ld)\n", fname, statbuf.st_size);
-    int r = load_buf(code+22, statbuf.st_size-25);
+    int r = load_buf(load.data(), load.size());
     if (tbyte_out(0))
     {
         printf("\n -- timeout sending execute");
@@ -268,7 +269,6 @@ bool boot(const char *fname, bool lsc)
     printf("\nfrom MANDEL");
     printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
     printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
-    */
     return true;
 }
 
