@@ -679,24 +679,16 @@ VAL boardRegBaseHardware IS #200000 :
 PLACE boardRegBase AT ((boardRegBaseHardware >> 2) - (#80000000 >> 2)) /\ #3FFFFFFF :
 */
 void resetB438(void) {
-    unsigned int *boardRegBase = (unsigned int *)0x200000;
+    volatile unsigned int *boardRegBase = (unsigned int *)0x200000;
     *boardRegBase = 0;
     *boardRegBase = 1;
     *boardRegBase = 0;
 }
 
-/*
-[4096]PORT OF INT32 regs :
-//VAL regsHardware IS 0 :
-//PLACE regs AT ((regsHardware >> 2) - (#80000000 >> 2)) /\ #3FFFFFFF :
-//PROC IMS_332_WriteRegister(VAL INT regno, VAL INT32 val)
-//  SEQ
-//    regs[regno] ! val
-//:
-*/
 void IMS_332_WriteRegister (int regno, unsigned int val) {
-    unsigned int *boardRegBase = (unsigned int *)0x0;
-    unsigned int *reg = boardRegBase + regno;
+    volatile unsigned int *boardRegBase = (unsigned int *)0x0;
+    volatile unsigned int *reg = boardRegBase;
+    reg += regno;
     *reg = val;
 }
 
@@ -742,16 +734,12 @@ void IMS_332_Init(void) {
     IMS_332_WriteRegister(IMS_332_REGCSRA, CSRA);
 }
 
-/*[524288]INT32 VRAM  // 4*512K=2MB
-//VAL VRAMHardware (unsigned int)#80400000
-//PLACE VRAM AT ((VRAMHardware >> 2) - (#80000000 >> 2)) /\ #3FFFFFFF
-*/
-
 void pokeWords (unsigned int addr, int count, unsigned int val) {
-    unsigned int *VRAMHardware = (unsigned int *)0x80400000;
-    int a = addr;
-    while (a < count) {
-        VRAMHardware[a++] = val;
+    volatile unsigned int *VRAMHardware = (unsigned int *)0x80400000;
+    volatile unsigned int *a = VRAMHardware;
+    a += addr;
+    while (count--) {
+        *a++ = val;
     }
 }
 
@@ -764,6 +752,7 @@ void bt709Gamma (void) {
   int c;
   for (c=0; c < 256; c++) {
     i = (float)c;
+    g = 0.5;
     /*g = powf(i/255.0, 2.2);*/
     corrected = (unsigned int)(255.0 * g);
     val = corrected;
