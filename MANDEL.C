@@ -41,7 +41,7 @@ main will be the first byte in the code.
 
 #define JOBWSZ (53*4)+MAXPIX
 #define BUFWSZ (20*4)
-#define FEDWSZ (24*4)
+#define FEDWSZ (24*4*10)
 #define ARBWSZ (22*4)+MAXPIX
 #define SELWSZ (29*4)
 
@@ -764,7 +764,7 @@ void bt709Gamma (void) {
   int c;
   for (c=0; c < 256; c++) {
     i = (float)c;
-    g = powf(i/255.0, 2.2);
+    /*g = powf(i/255.0, 2.2);*/
     corrected = (unsigned int)(255.0 * g);
     val = corrected;
     val <<= 8;
@@ -794,7 +794,7 @@ int fxp;
 {
     int len;
     int buf[PRBSIZE];
-    //setupGfx();
+    setupGfx();
     loop
     {
         len = ChanInInt(fd_in);
