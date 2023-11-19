@@ -16,8 +16,6 @@
 #include <vector>
 
 
-//#define DEBUG
-
 int get_key(void)
 {
     int c = getchar();
@@ -190,7 +188,7 @@ bool load_tld (const char *name, bool debug) {
 
 bool boot(const char *fname, bool lsc, bool debug)
 {   
-    int ack, fxp, nnodes;
+    int ack, nnodes;
     c011_init();
     printf ("set byte mode...\n");
     c011_set_byte_mode();
@@ -240,31 +238,129 @@ bool boot(const char *fname, bool lsc, bool debug)
     {
         exit(1);
     }
-
-    if (tbyte_out(0))
-    {
-        printf("\n -- timeout sending execute");
-        return false;
-    }
-    //mandel code sends these back to parent, so these will reach the host
-    if (word_in(&nnodes)) {
-        printf(" -- timeout getting nnodes (MANDEL)\n");
-        return false;
-    }
-    if (word_in(&fxp)) {
-        printf(" -- timeout getting fxp\n");
-        return false;
-    }
-    printf("\nfrom MANDEL");
-    printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
-    printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
     return true;
 }
 
+#include <math.h>
 DEFINE_bool (verbose, false, "print verbose messages during initialisation");
 DEFINE_string (code, "", "The code to load");
 DEFINE_bool (lsc, false, "LSC object format parsing");
 DEFINE_bool (v, false, "verbose debug");
+
+#define HIR  2.5
+#define LOR  3.0e-14
+#define f(x) sqrt(log(x)-log(LOR)+1.0)
+
+#define ASPECT_R  0.75
+#define MIN_SPAN  2.5
+#define CENTER_R -0.75
+#define CENTER_I  0.0
+static int hicnt = 1024;
+static int locnt = 150;
+
+int calc_iter(double r) {
+    if (r <= LOR) return(hicnt);
+    return((int)((hicnt-locnt)/(f(LOR)-f(HIR))*(f(r)-f(HIR))+locnt+0.5));
+}
+#define DEBUG
+void do_mandel(void) {
+    int fxp, nnodes;
+    if (tbyte_out(0))
+    {
+        printf("\n -- timeout sending execute");
+        exit(1);
+    }
+    //mandel code sends these back to parent, so these will reach the host
+    if (word_in(&nnodes)) {
+        printf(" -- timeout getting nnodes (MANDEL)\n");
+        exit(1);
+    }
+    if (word_in(&fxp)) {
+        printf(" -- timeout getting fxp\n");
+        exit(1);
+    }
+    printf("\nfrom MANDEL");
+    printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
+    printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
+
+    int len;
+    double xrange,yrange;
+    // This struct shared with transputer code (mandel.c) so type sizing & ordering is important
+    struct{
+        int32_t com;
+        int32_t width;
+        int32_t height;
+        int32_t maxcnt;
+        double lo_r;
+        double lo_i;
+        double gapx;
+        double gapy;
+    } prob_st;
+    
+    int32_t buf[RSLCOM_BUFSIZE];
+
+    int FLAGS_width = 640;
+    int FLAGS_height = 480;
+
+    int esw,esh;
+    double center_r,center_i;
+    double prop_fac,scale_fac;
+
+    prop_fac = (ASPECT_R/((double)FLAGS_height/(double)FLAGS_width));
+    esw = FLAGS_width;
+    esh = FLAGS_height*prop_fac;
+    if (esh <= esw) scale_fac = MIN_SPAN/(esh-1);
+    else scale_fac = MIN_SPAN/(esw-1);
+    center_r = CENTER_R;
+    center_i = CENTER_I;
+
+    xrange = scale_fac*(esw-1);
+    yrange = scale_fac*(esh-1);
+    prob_st.com = PRBCOM;
+    prob_st.width = FLAGS_width;
+    prob_st.height = FLAGS_height;
+    prob_st.maxcnt = calc_iter(xrange);
+    prob_st.lo_r = center_r - (xrange/2.0);
+    prob_st.lo_i = center_i - (yrange/2.0);
+    prob_st.gapx = xrange / (FLAGS_width-1);
+    prob_st.gapy = yrange / (FLAGS_height-1);
+#ifdef DEBUG
+    printf ("PRBCOM struct:\n\tcom:%d\n\twidth:%d\n\theight:%d\n\tmaxcnt:%d\n\tlo_r:%lf\n\tlo_i:%lf\n\tgapx:%lf\n\tgapy:%lf\n",
+             prob_st.com, prob_st.width, prob_st.height, prob_st.maxcnt, prob_st.lo_r, prob_st.lo_i, prob_st.gapx, prob_st.gapy);
+    memdump ((uint8_t *)&prob_st,sizeof(prob_st));
+#endif
+    assert (sizeof(prob_st) == 48);
+    if (word_out(sizeof(prob_st)) != 0) {
+        printf(" -- timeout sending prob_st size\n");
+        exit(1);           
+    }
+    if (chan_out((char *)&prob_st,sizeof(prob_st)) != 0) {
+        printf(" -- timeout sending prob_st\n");
+        exit(1);           
+    }
+#ifdef DEBUG
+    printf ("PRBCOM sent\n");
+#endif
+	while (1)
+	{
+	    if (word_in(&len) != 0) {      //len in bytes
+            printf(" -- timeout reading len vect\n");
+            exit(1);           
+        }
+	    assert (len <= sizeof(buf));
+		if (chan_in ((char *)buf,len) != 0) {
+            printf(" -- timeout reading vect\n");
+            exit(1);           
+        }
+#ifdef DEBUG
+		printf ("len=0x%X, buf = 0x%X 0x%X 0x%X 0x%X...0x%X\n",len,buf[0],buf[1],buf[2],buf[3],buf[(len/4)-1]);
+#endif
+		if (buf[0] == FLHCOM) {
+		    break;
+		} 
+	}
+
+}
 
 int main(int argc, char **argv) {
     int i,aok = 1;
@@ -277,8 +373,9 @@ int main(int argc, char **argv) {
     new_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ECHOPRT | ECHOKE | ICRNL);
     tcsetattr(STDIN_FILENO, TCSANOW, &new_opts);
     
-    //init_lkio();
     boot(FLAGS_code.c_str(), FLAGS_lsc, FLAGS_v);
+
+    do_mandel();
 
     return(0);
 }

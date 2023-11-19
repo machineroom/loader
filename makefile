@@ -10,13 +10,15 @@ all: loader MANDEL.TLD FLBOOT.TLD FLLOAD.TLD IDENT.TLD
 
 LSC89=${HOME}/lsc-V89.1
 LSC89_BIN=d:\exe
+LSC89_INCLUDE=d:\include
 
 LSC=$(LSC89)
 LSC_BIN=$(LSC89_BIN)
+LSC_INCLUDE=$(LSC89_INCLUDE)
 
 #lsc c rule
 %.TAL : %.C
-	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\pp.exe $*.C > PP.OUT" -c "exit"
+	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\pp.exe $*.C -I $(LSC_INCLUDE) > PP.OUT" -c "exit"
 	cat PP.OUT
 	#-c (no debugging information), -f1(ANSI f.p), -p0 (for any processor), -r(relocatable)
 	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\tcx $* -f1 -p0 -r > CC.OUT" -c "exit"
