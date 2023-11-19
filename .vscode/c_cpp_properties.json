@@ -3,12 +3,13 @@
         {
             "name": "Linux",
             "includePath": [
+                "${HOME}/lsc-V89.1/include",
                 "${workspaceFolder}/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/g++",
-            "cStandard": "gnu17",
-            "cppStandard": "c++17",
+            "cStandard": "c89",
+            "cppStandard": "c++98",
             "intelliSenseMode": "${default}"
         }
     ],
