@@ -672,12 +672,6 @@ Channel *sel_in,**req_in,**dn_out;
 #define	IMS_332_BOOTCLOCKPLL            (unsigned int)0x000020	/* else xternal */
 #define IMS_332_BOOT64BITMODE           (unsigned int)0x000040	/* else 32 */
 
-/* See Inmos TN66. Occam addresses are not Hardware addresses. Oh no, that would be 
- way too simple, wouldn't it. Oh no, we're Inmos and we know better. #FFS
-PORT OF INT32 boardRegBase :
-VAL boardRegBaseHardware IS #200000 :
-PLACE boardRegBase AT ((boardRegBaseHardware >> 2) - (#80000000 >> 2)) /\ #3FFFFFFF :
-*/
 void resetB438(void) {
     volatile unsigned int *boardRegBase = (unsigned int *)0x200000;
     *boardRegBase = 0;
@@ -686,8 +680,8 @@ void resetB438(void) {
 }
 
 void IMS_332_WriteRegister (int regno, unsigned int val) {
-    volatile unsigned int *boardRegBase = (unsigned int *)0x0;
-    volatile unsigned int *reg = boardRegBase;
+    volatile unsigned int *IMS332RegBase = (unsigned int *)0x0;
+    volatile unsigned int *reg = IMS332RegBase;
     reg += regno;
     *reg = val;
 }
@@ -734,9 +728,9 @@ void IMS_332_Init(void) {
     IMS_332_WriteRegister(IMS_332_REGCSRA, CSRA);
 }
 
-void pokeWords (unsigned int addr, int count, unsigned int val) {
-    volatile unsigned int *VRAMHardware = (unsigned int *)0x80400000;
-    volatile unsigned int *a = VRAMHardware;
+void poke_words (unsigned int addr, int count, unsigned int val) {
+    const unsigned int VRAMHardware = 0x80400000;
+    volatile unsigned int *a = (unsigned int *)VRAMHardware;
     a += addr;
     while (count--) {
         *a++ = val;
@@ -744,17 +738,16 @@ void pokeWords (unsigned int addr, int count, unsigned int val) {
 }
 
 /* Thanks again, Inmos. Somewhere deep in the data sheet is a one liner about the palette being used for
-// gamma correction in true colour modes. #FFS
+// gamma correction in true colour modes.
 //some sort of gamma correction*/
 void bt709Gamma (void) {
   unsigned int val, corrected;
   float g,i;
   int c;
   for (c=0; c < 256; c++) {
-    i = (float)c;
-    g = 0.5;
+    /*i = (float)c;*/
     /*g = powf(i/255.0, 2.2);*/
-    corrected = (unsigned int)(255.0 * g);
+    corrected = 255;/*(unsigned int)(255.0 * g);*/
     val = corrected;
     val <<= 8;
     val |= corrected;
@@ -767,10 +760,12 @@ void bt709Gamma (void) {
 void setupGfx(void) {
     resetB438();
     IMS_332_Init();
-    bt709Gamma();
-    pokeWords(0000, 640*480, 0x00000000);  /* black */
-    pokeWords(640*10, 640*10, 0x0000FF00); /* green */
-    pokeWords(640*20, 640*10, 0x000000FF); /* blue */
+    /*bt709Gamma();*/
+    poke_words(0, 640*480, 0);
+    poke_words(0,640*20,0xFF);/*blue*/
+    poke_words(640*20,640*20,0xFF00);/*green*/
+    poke_words(640*40,640*20,0xFF0000);/*red*/
+    poke_words(640*60,640*20,0xFF00FF);/*pink*/
 }
 
 
