@@ -737,6 +737,16 @@ void poke_words (unsigned int addr, int count, unsigned int val) {
     }
 }
 
+void write_pixels (unsigned int addr, int count, unsigned int *pixels) {
+    const unsigned int VRAMHardware = 0x80400000;
+    volatile unsigned int *a = (unsigned int *)VRAMHardware;
+    int i;
+    a += addr;
+    for (i=0; i < count; i++) {
+        *a++ = pixels[i];
+    }
+}
+
 /* Thanks again, Inmos. Somewhere deep in the data sheet is a one liner about the palette being used for
 // gamma correction in true colour modes.
 //some sort of gamma correction*/
@@ -807,6 +817,7 @@ int fxp;
                     ChanOutInt(fd_out,4*4);
                     ChanOut(fd_out,(char *)buf,4*4);
                 }
+                write_pixels (buf[2]*640, width, buf);
             }
             buf[0] = FLHCOM;
             len = 1*4;

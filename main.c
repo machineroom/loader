@@ -299,8 +299,8 @@ void do_mandel(void) {
     
     int32_t buf[RSLCOM_BUFSIZE];
 
-    int FLAGS_width = 640;
-    int FLAGS_height = 480;
+    int FLAGS_width = 120;
+    int FLAGS_height = 100;
 
     int esw,esh;
     double center_r,center_i;
