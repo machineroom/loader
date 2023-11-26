@@ -1,5 +1,5 @@
 FLAG c
 LIST mandel.map
-INPUT mandel.trl mlibp.trl
+INPUT mandel.trl mlibp.trl b438.trl
 ENTRY main
 LIB D:\library\t8lib.tll

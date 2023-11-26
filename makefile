@@ -45,16 +45,19 @@ loader : main.c lkio_c011.c c011.c common.h
 clean:
 	rm -f *.OBJ
 	rm -f *.BIN
-	rm -f *.ARR
 	rm -f *.PP
 	rm -f *.TRL
 	rm -f *.TLD
 	rm -f *.MAP
 	rm -f MANDEL.TAL
 	rm -f MLIBP.TAL
+	rm -f B438.TAL
 
-MANDEL.TAL:  MANDEL.C common.h
-MANDEL.TLD:  MANDEL.TAL MLIBP.TRL MANDEL.LNK
+MANDEL.TAL:  MANDEL.C common.h B438.h
+MANDEL.TLD:  MANDEL.TAL MLIBP.TRL B438.TRL MANDEL.LNK
+
+B438.TAL: B438.C B438.h
+B438.TRL:  B438.TAL
 
 MLIBP.TAL: MLIBP.C
 MLIBP.TRL: MLIBP.TAL
