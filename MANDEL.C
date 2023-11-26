@@ -567,12 +567,12 @@ int root;
             if (buf[0] == RSLCOM) {
                 /*write_pixels (buf[0], buf[1], len-2, &buf[2]);*/
                 {
-                    char *a = (char *)0x80400000;
+                    int *a = (int *)0x80400000;
                     int i;
-                    char *pixels = (char *)&buf[3];
+                    int *pixels = (int *)&buf[3];
                     int count = len-3*4;
-                    a += (buf[2]*640)+buf[1];
-                    for (i=0; i < count; i++) {
+                    a += (buf[2]*640/4)+buf[1]/4;
+                    for (i=0; i < count/4; i++) {
                         *a++ = pixels[i];
                     }
                 }
