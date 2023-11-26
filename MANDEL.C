@@ -605,6 +605,8 @@ Channel *sel_in,**req_in,**dn_out;
     }
 }
 
+/*#define TRUE_COLOUR*/
+
 #define mon_frequency       (unsigned int)25
 #define mon_lineTime        (unsigned int)202
 #define mon_halfSync        (unsigned int)8
@@ -617,7 +619,11 @@ Channel *sel_in,**req_in,**dn_out;
 #define mon_vPreEqualize    (unsigned int)4
 #define mon_vPostEqualize   (unsigned int)4
 #define mon_broadPulse      (unsigned int)75
+#ifdef TRUE_COLOUR
 #define mon_memInit         (unsigned int)128
+#else
+#define mon_memInit         (unsigned int)512
+#endif
 #define mon_xferDelay       (unsigned int)1
 #define mon_lineStart       (unsigned int)0
 
@@ -666,6 +672,7 @@ Channel *sel_in,**req_in,**dn_out;
 #define IMS_332_CSRA_BITSPERPIXEL   	(unsigned int)0x700000
 #define IMS_332_CSRA_DISABLECURSOR	    (unsigned int)0x800000
 
+#define IMS_332_BPP_8		            0x300000
 #define IMS_335_BPP24		            (unsigned int)0x600000 
 
 #define	IMS_332_BOOTPLL                 (unsigned int)0x00001F	/* xPLL, binary */
@@ -695,30 +702,39 @@ void IMS_332_Init(void) {
     unsigned int clock;
     unsigned int pllMultiplier;
     unsigned int CSRA;
+#ifdef TRUE_COLOUR
+    int multiplier = 2;
+#else
+    int multiplier = 1;
+#endif
     clock = 5; /* 5MHz from TRAM */
     pllMultiplier = mon_frequency/clock;
-    pllMultiplier = pllMultiplier * 2; /* 24bpp interleaved mode -> clock=2*dot rate */
+    pllMultiplier = pllMultiplier * multiplier; /* 24bpp interleaved mode -> clock=2*dot rate */
     IMS_332_WriteRegister (IMS_332_REGBOOT,         pllMultiplier | IMS_332_BOOTCLOCKPLL);
     IMS_332_WriteRegister (IMS_332_REGCSRA,         0);
     IMS_332_WriteRegister (IMS_332_REGCSRB,         0xB); /* 1011 Split SAM, Sync on green, External pixel sampling */
-    IMS_332_WriteRegister (IMS_332_REGLINETIME,	    mon_lineTime*2);
-    IMS_332_WriteRegister (IMS_332_REGHALFSYNCH,    mon_halfSync*2);
-    IMS_332_WriteRegister (IMS_332_REGBACKPORCH,    mon_backPorch*2);
-    IMS_332_WriteRegister (IMS_332_REGDISPLAY,      mon_display*2);
-    IMS_332_WriteRegister (IMS_332_REGSHORTDIS,	    mon_shortDisplay*2);
+    IMS_332_WriteRegister (IMS_332_REGLINETIME,	    mon_lineTime*multiplier);
+    IMS_332_WriteRegister (IMS_332_REGHALFSYNCH,    mon_halfSync*multiplier);
+    IMS_332_WriteRegister (IMS_332_REGBACKPORCH,    mon_backPorch*multiplier);
+    IMS_332_WriteRegister (IMS_332_REGDISPLAY,      mon_display*multiplier);
+    IMS_332_WriteRegister (IMS_332_REGSHORTDIS,	    mon_shortDisplay*multiplier);
     IMS_332_WriteRegister (IMS_332_REGVDISPLAY,     mon_vDisplay);
     IMS_332_WriteRegister (IMS_332_REGVBLANK,	    mon_vBlank);
     IMS_332_WriteRegister (IMS_332_REGVSYNC,		mon_vSync);
     IMS_332_WriteRegister (IMS_332_REGVPREEQUALIZE, mon_vPreEqualize);
     IMS_332_WriteRegister (IMS_332_REGVPOSTEQUALIZE,mon_vPostEqualize);
-    IMS_332_WriteRegister (IMS_332_REGBROADPULSE,	mon_broadPulse*2);
-    IMS_332_WriteRegister (IMS_332_REGMEMINIT, 	    mon_memInit*2);
-    IMS_332_WriteRegister (IMS_332_REGXFERDELAY,	mon_xferDelay*2);
-    IMS_332_WriteRegister (IMS_332_REGLINESTART,	mon_lineStart*2);
+    IMS_332_WriteRegister (IMS_332_REGBROADPULSE,	mon_broadPulse*multiplier);
+    IMS_332_WriteRegister (IMS_332_REGMEMINIT, 	    mon_memInit*multiplier);
+    IMS_332_WriteRegister (IMS_332_REGXFERDELAY,	mon_xferDelay*multiplier);
+    IMS_332_WriteRegister (IMS_332_REGLINESTART,	mon_lineStart*multiplier);
     IMS_332_WriteRegister (IMS_332_REGCOLORMASK,    0xFFFFFFFF);
     CSRA = 0;
     CSRA |= IMS_332_CSRA_DISABLECURSOR;
+#ifdef TRUE_COLOUR
     CSRA |= IMS_335_BPP24;
+#else
+    CSRA |= IMS_332_BPP_8;
+#endif
     CSRA |= IMS_332_CSRA_PIXELINTERLEAVE;
     CSRA |= IMS_332_VRAMINC1024;
     CSRA |= IMS_332_CSRA_PLAINSYNC;
@@ -766,16 +782,42 @@ void bt709Gamma (void) {
     IMS_332_WriteRegister (IMS_332_REGLUTBASE + c, val);
   }
 }
-      
+
+void set_palette (int index, unsigned char red, unsigned char green, unsigned char blue) {
+    unsigned int red32 = red;
+    unsigned int green32 = green;
+    IMS_332_WriteRegister(IMS_332_REGLUTBASE + (index & 0xff),
+                (red32 << 16) |
+                (green32 << 8) |
+                blue);
+}
+
 void setupGfx(void) {
     resetB438();
     IMS_332_Init();
+#ifdef TRUE_COLOUR
     /*bt709Gamma();*/
     poke_words(0, 640*480, 0);
     poke_words(0,640*20,0xFF);/*blue*/
     poke_words(640*20,640*20,0xFF00);/*green*/
     poke_words(640*40,640*20,0xFF0000);/*red*/
     poke_words(640*60,640*20,0xFF00FF);/*pink*/
+#else
+    set_palette (0, 20, 20, 20);
+    set_palette (1, 255, 0, 0);
+    set_palette (2, 0, 255, 0);
+    set_palette (3, 0, 0, 255);
+    set_palette (4, 255, 255, 0);
+    set_palette (5, 255, 255, 255);
+
+    poke_words(0x80400000, 640*480/4, 0);
+    poke_words(0x80400000+(640*2*4),640/2,0x02020202);
+    poke_words(0x80400000+(640*4*4),640/2,0x01010101);
+    poke_words(0x80400000+(640*6*4),640/2,0x03030303);
+    poke_words(0x80400000+(640*8*4),640/2,0x04040404);
+    poke_words(0x80400000+(640*10*4),640/2,0x05050505);
+#endif
+
 }
 
 
@@ -817,7 +859,7 @@ int fxp;
                     ChanOutInt(fd_out,4*4);
                     ChanOut(fd_out,(char *)buf,4*4);
                 }
-                write_pixels (buf[2]*640, width, buf);
+                /*write_pixels (buf[2]*640, width, buf);*/
             }
             buf[0] = FLHCOM;
             len = 1*4;
