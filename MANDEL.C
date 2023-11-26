@@ -42,8 +42,8 @@ main will be the first byte in the code.
 
 #define JOBWSZ (53*4)+MAXPIX
 #define BUFWSZ (20*4)
-#define FEDWSZ (24*4*10)
-#define ARBWSZ (22*4)+MAXPIX
+#define FEDWSZ (24*4)
+#define ARBWSZ (22*4*10)+MAXPIX
 #define SELWSZ (29*4)
 
 #define THRESH 2.0e-7
@@ -168,15 +168,17 @@ LOADGB *ld;
         {
             /* id!=0 == worker node */
             si = ld->up_in;
+            /* arbiter(Channel **arb_in, Channel *arb_out) */
+            PRun(PSetupA(arbiter,ARBWSZ,3,ai,ld->up_in-4,0));
         }
         else
         {
             /* id=0 == root node */
             si = ChanAlloc();
             PRun(PSetupA(feed,FEDWSZ,3,ld->up_in,si,fxp));
+            /* arbiter(Channel **arb_in, Channel *arb_out) */
+            PRun(PSetupA(arbiter,ARBWSZ,3,ai,ld->up_in-4,1));
         }
-        /* arbiter(Channel **arb_in, Channel *arb_out) */
-        PRun(PSetupA(arbiter,ARBWSZ,2,ai,ld->up_in-4));
         /* selector(Channel *sel_in, Channel **req_in, Channel **dn_out) */
         PRun(PSetupA(selector,SELWSZ,3,si,sr,so));
         PStop();
@@ -540,8 +542,9 @@ Channel *req_out,*buf_in,*buf_out;
 /* arb_in is list of channels connected to job or buffer processes */
 /* arb_out is the output side of the parent link */
 /* Receives result from worker (local job or link buffer processes) and passes result to parent */
-arbiter(arb_in,arb_out)
+arbiter(arb_in,arb_out,root)
 Channel **arb_in,*arb_out;
+int root;
 {
     int i,len,cnt,pri;
     int buf[RSLCOM_BUFSIZE];
@@ -559,6 +562,21 @@ Channel **arb_in,*arb_out;
                 continue; 
             else 
                 cnt = 0;
+        }
+        if (root) {
+            lon();
+            if (buf[0] == RSLCOM) {
+                /*write_pixels (buf[0], buf[1], len-2, &buf[2]);*/
+                {
+                    int *a = (int *)0x80400000;
+                    int i;
+                    int *pixels = &buf[3];
+                    a += (buf[2]*640)+buf[1];
+                    for (i=0; i < len-3; i++) {
+                        *a++ = pixels[i];
+                    }
+                }
+           }
         }
         /* 3. Send result to parent */
         ChanOutInt(arb_out,len);
