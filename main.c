@@ -299,8 +299,8 @@ void do_mandel(void) {
     
     int32_t buf[RSLCOM_BUFSIZE];
 
-    int FLAGS_width = 120;
-    int FLAGS_height = 100;
+    int FLAGS_width = 640;
+    int FLAGS_height = 480;
 
     int esw,esh;
     double center_r,center_i;
@@ -353,7 +353,7 @@ void do_mandel(void) {
             exit(1);           
         }
 #ifdef DEBUG
-		printf ("len=0x%X, buf = 0x%X 0x%X 0x%X 0x%X...0x%X\n",len,buf[0],buf[1],buf[2],buf[3],buf[(len/4)-1]);
+		//printf ("len=0x%X, buf = 0x%X 0x%X 0x%X 0x%X...0x%X\n",len,buf[0],buf[1],buf[2],buf[3],buf[(len/4)-1]);
 #endif
 		if (buf[0] == FLHCOM) {
 		    break;

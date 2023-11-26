@@ -158,7 +158,7 @@ void poke_words (unsigned int addr, int count, unsigned int val) {
 void write_pixels (x, y, count, pixels)
 int x, y, count, *pixels;
 {
-    int *a = (unsigned int *)0x80400000;
+    int *a = (int *)0x80400000;
     int i;
     a += (y*640)+x;
     for (i=0; i < count; i++) {
@@ -196,6 +196,8 @@ void set_palette (int index, unsigned char red, unsigned char green, unsigned ch
 }
 
 void setupGfx(void) {
+    int i;
+    unsigned char r,g,b;
     resetB438();
     IMS_332_Init();
 #ifdef TRUE_COLOUR
@@ -206,12 +208,14 @@ void setupGfx(void) {
     poke_words(640*40,640*20,0xFF0000);/*red*/
     poke_words(640*60,640*20,0xFF00FF);/*pink*/
 #else
-    set_palette (0, 20, 20, 20);
-    set_palette (1, 255, 0, 0);
-    set_palette (2, 0, 255, 0);
-    set_palette (3, 0, 0, 255);
-    set_palette (4, 255, 255, 0);
-    set_palette (5, 255, 255, 255);
+    /* a somewhat satisfying, but very ripped off palette */
+    for (i = 0; i < 256; i++)
+    {
+        r = 13*(256-i) % 256;
+        g = 7*(256-i) % 256;
+        b = 11*(256-i) % 256;
+        set_palette(i,r,g,b);
+    }
 
     poke_words(0x80400000, 640*480/4, 0);
     poke_words(0x80400000+(640*2*4),640/2,0x02020202);

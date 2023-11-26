@@ -571,8 +571,8 @@ int root;
                     int *a = (int *)0x80400000;
                     int i;
                     int *pixels = &buf[3];
-                    a += (buf[2]*640)+buf[1];
-                    for (i=0; i < len-3; i++) {
+                    a += (buf[2]*(640/4))+(buf[1]/4);
+                    for (i=0; i < (len-4)/4; i++) {
                         *a++ = pixels[i];
                     }
                 }
