@@ -1,6 +1,11 @@
 #include <conc.h>
 #include <math.h>
 
+#pragma asm
+    .T800
+    .NOEMULATE
+#pragma endasm
+
 /*#define TRUE_COLOUR*/
 
 #define mon_frequency       (unsigned int)25
@@ -190,6 +195,7 @@ void set_palette (int index, unsigned char red, unsigned char green, unsigned ch
 
 void setupGfx(void) {
     resetB438();
+#if 1
     IMS_332_Init();
 #ifdef TRUE_COLOUR
     /*bt709Gamma();*/
@@ -213,5 +219,5 @@ void setupGfx(void) {
     poke_words(0x80400000+(640*8*4),640/2,0x04040404);
     poke_words(0x80400000+(640*10*4),640/2,0x05050505);
 #endif
-
+#endif
 }

@@ -103,6 +103,9 @@ main(ld)
 LOADGB *ld;
 {
     int i,fxp;
+    if (ld->id == 0) {
+        setupGfx();
+    }
 
     /*{{{  get num nodes and whether floating point*/
     {
@@ -618,7 +621,6 @@ int fxp;
 {
     int len;
     int buf[PRBSIZE];
-    /*setupGfx();*/
     loop
     {
         len = ChanInInt(fd_in);
