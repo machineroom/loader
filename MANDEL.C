@@ -564,15 +564,15 @@ int root;
                 cnt = 0;
         }
         if (root) {
-            lon();
             if (buf[0] == RSLCOM) {
                 /*write_pixels (buf[0], buf[1], len-2, &buf[2]);*/
                 {
-                    int *a = (int *)0x80400000;
+                    char *a = (char *)0x80400000;
                     int i;
-                    int *pixels = &buf[3];
-                    a += (buf[2]*(640/4))+(buf[1]/4);
-                    for (i=0; i < (len-4)/4; i++) {
+                    char *pixels = (char *)&buf[3];
+                    int count = len-3*4;
+                    a += (buf[2]*640)+buf[1];
+                    for (i=0; i < count; i++) {
                         *a++ = pixels[i];
                     }
                 }
