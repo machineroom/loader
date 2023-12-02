@@ -566,7 +566,7 @@ int root;
         if (root) {
             if (buf[0] == RSLCOM) {
                 /*write_pixels (buf[0], buf[1], len-2, &buf[2]);*/
-                {
+                if (0) {
                     int *a = (int *)0x80400000;
                     int i;
                     int *pixels = (int *)&buf[3];

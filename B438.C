@@ -166,29 +166,16 @@ int x, y, count, *pixels;
     }
 }
 
-/* Thanks again, Inmos. Somewhere deep in the data sheet is a one liner about the palette being used for
-// gamma correction in true colour modes.
-//some sort of gamma correction*/
-void bt709Gamma (void) {
-  unsigned int val, corrected;
-  float g,i;
-  int c;
-  for (c=0; c < 256; c++) {
-    /*i = (float)c;*/
-    /*g = powf(i/255.0, 2.2);*/
-    corrected = 255;/*(unsigned int)(255.0 * g);*/
-    val = corrected;
-    val <<= 8;
-    val |= corrected;
-    val <<= 8;
-    val |= corrected;
-    IMS_332_WriteRegister (IMS_332_REGLUTBASE + c, val);
-  }
-}
+static unsigned char gamma[256] = {0,0,0,0,0,0,1,1,1,1,2,2,2,3,3,4,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,13,13,14,14,15,15,16,17,17,18,19,19,20,21,21,22,23,23,24,25,25,26,27,28,28,29,30,31,31,32,33,34,34,35,36,37,38,38,39,40,41,42,43,43,44,45,46,47,48,48,49,50,51,52,53,54,55,56,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,100,101,102,103,104,105,106,107,108,109,111,112,113,114,115,116,117,118,120,121,122,123,124,125,127,128,129,130,131,132,134,135,136,137,138,140,141,142,143,145,146,147,148,149,151,152,153,154,156,157,158,159,161,162,163,164,166,167,168,170,171,172,173,175,176,177,179,180,181,183,184,185,186,188,189,190,192,193,194,196,197,198,200,201,203,204,205,207,208,209,211,212,213,215,216,218,219,220,222,223,225,226,227,229,230,232,233,234,236,237,239,240,242,243,244,246,247,249,250,252,253,255};
 
 void set_palette (int index, unsigned char red, unsigned char green, unsigned char blue) {
-    unsigned int red32 = red;
-    unsigned int green32 = green;
+    unsigned int red32;
+    unsigned int green32;
+    /*red = gamma[red];
+    green = gamma[green];
+    blue = gamma[blue];*/
+    red32 = red;
+    green32 = green;
     IMS_332_WriteRegister(IMS_332_REGLUTBASE + (index & 0xff),
                 (red32 << 16) |
                 (green32 << 8) |
@@ -197,7 +184,9 @@ void set_palette (int index, unsigned char red, unsigned char green, unsigned ch
 
 void setupGfx(void) {
     int i;
-    unsigned char r,g,b;
+    int  r,g,b;
+    int c = 0x00000000;
+    unsigned int a = 0x80400000;
     resetB438();
     IMS_332_Init();
 #ifdef TRUE_COLOUR
@@ -214,14 +203,20 @@ void setupGfx(void) {
         r = 13*(256-i) % 256;
         g = 7*(256-i) % 256;
         b = 11*(256-i) % 256;
-        set_palette(i,r,g,b);
+        set_palette(i,i,0,0);
+    }
+    /* dump palette */
+    for (i=0; i<240; i++) {
+        poke_words(a, 640/2, c);
+        a += 640/2;
+        c += 0x01010101;
     }
 
-    poke_words(0x80400000, 640*480/4, 0);
+    /*poke_words(0x80400000, 640*480/4, 0);
     poke_words(0x80400000+(640*2*4),640/2,0x02020202);
     poke_words(0x80400000+(640*4*4),640/2,0x01010101);
     poke_words(0x80400000+(640*6*4),640/2,0x03030303);
     poke_words(0x80400000+(640*8*4),640/2,0x04040404);
-    poke_words(0x80400000+(640*10*4),640/2,0x05050505);
+    poke_words(0x80400000+(640*10*4),640/2,0x05050505);*/
 #endif
 }
