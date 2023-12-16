@@ -262,27 +262,8 @@ int calc_iter(double r) {
     if (r <= LOR) return(hicnt);
     return((int)((hicnt-locnt)/(f(LOR)-f(HIR))*(f(r)-f(HIR))+locnt+0.5));
 }
-#define DEBUG
-void do_mandel(void) {
-    int fxp, nnodes;
-    if (tbyte_out(0))
-    {
-        printf("\n -- timeout sending execute");
-        exit(1);
-    }
-    //mandel code sends these back to parent, so these will reach the host
-    if (word_in(&nnodes)) {
-        printf(" -- timeout getting nnodes (MANDEL)\n");
-        exit(1);
-    }
-    if (word_in(&fxp)) {
-        printf(" -- timeout getting fxp\n");
-        exit(1);
-    }
-    printf("\nfrom MANDEL");
-    printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
-    printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
 
+void send_PRBCOM (double center_r, double center_i, double rng, int max_iter) {
     int len;
     double xrange,yrange;
     // This struct shared with transputer code (mandel.c) so type sizing & ordering is important
@@ -297,22 +278,18 @@ void do_mandel(void) {
         double gapy;
     } prob_st;
     
-    int32_t buf[RSLCOM_BUFSIZE];
-
     int FLAGS_width = 640;
     int FLAGS_height = 480;
 
     int esw,esh;
-    double center_r,center_i;
     double prop_fac,scale_fac;
 
     prop_fac = (ASPECT_R/((double)FLAGS_height/(double)FLAGS_width));
     esw = FLAGS_width;
     esh = FLAGS_height*prop_fac;
-    if (esh <= esw) scale_fac = MIN_SPAN/(esh-1);
-    else scale_fac = MIN_SPAN/(esw-1);
-    center_r = CENTER_R;
-    center_i = CENTER_I;
+
+    if (esh <= esw) scale_fac = rng/(esh-1);
+    else scale_fac = rng/(esw-1);
 
     xrange = scale_fac*(esw-1);
     yrange = scale_fac*(esh-1);
@@ -340,24 +317,56 @@ void do_mandel(void) {
     }
 #ifdef DEBUG
     printf ("PRBCOM sent\n");
-#endif
+#endif    
+}
+
+#define DEBUG
+void do_mandel(void) {
+    int fxp, nnodes;
+    // BOOT
+    if (tbyte_out(0))
+    {
+        printf("\n -- timeout sending execute");
+        exit(1);
+    }
+    //mandel code sends these back to parent, so these will reach the host
+    if (word_in(&nnodes)) {
+        printf(" -- timeout getting nnodes (MANDEL)\n");
+        exit(1);
+    }
+    if (word_in(&fxp)) {
+        printf(" -- timeout getting fxp\n");
+        exit(1);
+    }
+    printf("\nfrom MANDEL");
+    printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
+    printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
+    //RENDER
+    double center_r = CENTER_R;
+    double center_i = CENTER_I;
+    double rng = 3.335073;
+    int max_iter = 145;
+
 	while (1)
 	{
-	    if (word_in(&len) != 0) {      //len in bytes
-            printf(" -- timeout reading len vect\n");
-            exit(1);           
-        }
-	    assert (len <= sizeof(buf));
-		if (chan_in ((char *)buf,len) != 0) {
-            printf(" -- timeout reading vect\n");
-            exit(1);           
-        }
+        int len;
+        send_PRBCOM (center_r, center_i, rng, max_iter);
+        // wait for finish
+        while (1) {
+            if (word_in(&len) == 0) {      //len in bytes
+                int32_t buf[RSLCOM_BUFSIZE];
+                if (chan_in ((char *)buf,len) == 0) {
 #ifdef DEBUG
-		//printf ("len=0x%X, buf = 0x%X 0x%X 0x%X 0x%X...0x%X\n",len,buf[0],buf[1],buf[2],buf[3],buf[(len/4)-1]);
+                    printf ("len=0x%X, buf = 0x%X 0x%X 0x%X 0x%X...0x%X\n",len,buf[0],buf[1],buf[2],buf[3],buf[(len/4)-1]);
 #endif
-		if (buf[0] == FLHCOM) {
-		    break;
-		} 
+                    if (buf[0] == FLHCOM) {
+                        printf ("Finished\n");
+                        break;
+                    } 
+                }
+            }
+        }
+        rng -= 0.5;
 	}
 
 }
