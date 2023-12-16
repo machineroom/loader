@@ -366,6 +366,7 @@ void do_mandel(void) {
                 }
             }
         }
+        // zoom
         rng -= 0.5;
 	}
 
