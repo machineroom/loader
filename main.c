@@ -61,8 +61,40 @@ bool load_buf (uint8_t *buf, int bcnt, bool debug) {
     }
 }
 
+static int64_t read8s (uint8_t *buf) {
+    int64_t tmp;
+    tmp = buf[7];
+    tmp <<= 8;
+    tmp |= buf[6];
+    tmp <<= 8;
+    tmp |= buf[5];
+    tmp <<= 8;
+    tmp = buf[4];
+    tmp <<= 8;
+    tmp |= buf[3];
+    tmp <<= 8;
+    tmp |= buf[2];
+    tmp <<= 8;
+    tmp |= buf[1];
+    tmp <<= 8;
+    tmp |= buf[0];
+    return tmp;
+}
+
 static int32_t read4s (uint8_t *buf) {
     int32_t tmp;
+    tmp = buf[3];
+    tmp <<= 8;
+    tmp |= buf[2];
+    tmp <<= 8;
+    tmp |= buf[1];
+    tmp <<= 8;
+    tmp |= buf[0];
+    return tmp;
+}
+
+static uint32_t read4u (uint8_t *buf) {
+    uint32_t tmp;
     tmp = buf[3];
     tmp <<= 8;
     tmp |= buf[2];
@@ -81,7 +113,15 @@ static uint16_t read2u (uint8_t *buf) {
     return tmp;
 }
 
-void get_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
+static int16_t read2s (uint8_t *buf) {
+    int16_t tmp;
+    tmp = buf[1];
+    tmp <<= 8;
+    tmp |= buf[0];
+    return tmp;
+}
+
+void get_TLD_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
     uint8_t *raw_orig=raw;
     bool go = true;
     while (go) {
@@ -161,7 +201,6 @@ void get_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 printf ("%d *NOT HANDLED*\n", raw[0]);
                 go = false;
                 break;
-
         }
     }
 }
@@ -177,8 +216,8 @@ bool load_tld (const char *name, bool debug) {
         printf ("Failed to read %s\n", name);
         return false;
     }
-    printf ("load %s\n", name);
-    get_code (code, load, debug);
+    printf ("load (LSC) %s\n", name);
+    get_TLD_code (code, load, debug);
     if (debug) {
         memdump(load.data(), load.size());
         printf("Sending %s (%ld)\n", name, load.size());
@@ -186,8 +225,103 @@ bool load_tld (const char *name, bool debug) {
     return load_buf(load.data(), load.size(), debug);
 }
 
-bool boot(const char *fname, bool lsc, bool debug)
+// TCOFF uses VL numbers (like transputer PFIX)
+int get_number (uint8_t *raw, int64_t *value) {
+    if (raw[0] <= 250) {
+        *value = (int64_t)raw[0];
+        return 1;
+    } else if (raw[0] == 251) {
+        //PFX1 (BYTE)
+        *value = (int64_t)raw[0];
+        return 1;
+    } else if (raw[0] == 252) {
+        //PFX2 (SHORT)
+        *value = (int64_t)read2s(&raw[1]);
+        return 2;
+    } else if (raw[0] == 253) {
+        //PFX3 (INT)
+        *value = (int64_t)read4s(&raw[1]);
+        return 4;
+    } else if (raw[0] == 254) {
+        //PFX4 (LONG)
+        *value = (int64_t)read8s(&raw[1]);
+        return 8;
+    } else if (raw[0] == 255) {
+        //SIGN
+        return 1 + get_number(&raw[1], value);
+    }
+    return 0;
+}
+
+void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
+    uint8_t *raw_orig=raw;
+    bool go = true;
+    while (go) {
+        uint8_t tag;
+        uint8_t length;
+        tag = raw[0];
+        length = raw[1];
+        int r;
+        if (debug) printf ("%4X T %2d[0x%2X] L %4d: ", (unsigned)(raw-raw_orig), tag, tag, length);
+        raw += 2;   //skip TAG, length
+        switch (tag) {
+            case 28:
+                if (debug) printf ("LINKED_UNIT\n");
+                raw+=length;
+                break;
+            case 2:
+                if (debug) printf ("START MODULE\n");
+                int64_t sm_cpus;
+                r = get_number(raw, &sm_cpus);
+                length -= r;
+                assert (length>0);
+                raw += r;
+                printf ("\tsm_cpus = 0x%lx\n", sm_cpus);
+                int64_t sm_attrib;
+                r = get_number(raw, &sm_attrib);
+                length -= r;
+                assert (length>0);
+                raw += r;
+                printf ("\tsm_attrib = 0x%lx\n", sm_attrib);
+                int64_t sm_language;
+                r = get_number(raw, &sm_language);
+                length -= r;
+                assert (length>0);
+                raw += r;
+                printf ("\tsm_language = 0x%lx\n", sm_language);
+                // TODO name
+                break;
+            default:
+                printf ("%d *NOT HANDLED*\n", raw[0]);
+                go = false;
+                break;
+        }
+    }
+}
+
+bool load_tcoff (const char *name, bool debug) {
+    std::vector<uint8_t> load;
+    struct stat statbuf;
+    stat (name, &statbuf);
+    uint8_t *code = (uint8_t *)malloc (statbuf.st_size);
+    FILE *f = fopen (name, "r");
+    size_t rd = fread (code, statbuf.st_size, 1, f);
+    if (rd != 1) {
+        printf ("Failed to read %s\n", name);
+        return false;
+    }
+    printf ("load (TCOFF) %s\n", name);
+    get_TCOFF_code (code, load, debug);
+    if (debug) {
+        memdump(load.data(), load.size());
+        printf("Sending %s (%ld)\n", name, load.size());
+    }
+    return load_buf(load.data(), load.size(), debug);
+}
+
+bool boot(const char *fname, bool lsc, bool tcoff, bool debug)
 {   
+    #if 0
     int ack, nnodes;
     c011_init();
     printf ("set byte mode...\n");
@@ -234,18 +368,31 @@ bool boot(const char *fname, bool lsc, bool debug)
     }
     printf("from IDENT\n");
     printf("\tnodes found: %d (0x%X)\n",nnodes,nnodes);
-    if (!load_tld (fname, debug))
-    {
+    #endif
+    if (lsc) {
+        if (!load_tld (fname, debug))
+        {
+            exit(1);
+        }
+    } else if (tcoff) {
+        if (!load_tcoff (fname, debug))
+        {
+            exit(1);
+        }
+    } else {
+        fprintf (stderr, "TLD or TCOFF\n");
         exit(1);
     }
     return true;
 }
 
 #include <math.h>
-DEFINE_bool (verbose, false, "print verbose messages during initialisation");
 DEFINE_string (code, "", "The code to load");
-DEFINE_bool (lsc, false, "LSC object format parsing");
+DEFINE_bool (lsc, false, "Load an LSC object");
+DEFINE_bool (tcoff, false, "Load a TCOFF object");
 DEFINE_bool (v, false, "verbose debug");
+DEFINE_bool (m, false, "Mandelbrot");
+DEFINE_bool (r, false, "Raytrace");
 
 #define HIR  2.5
 #define LOR  3.0e-14
@@ -372,20 +519,38 @@ void do_mandel(void) {
 
 }
 
+void do_raytrace(void) {
+    while (1) {
+        int x;
+        if (word_in(&x) == 0) {      //len in bytes
+#ifdef DEBUG
+            printf ("from RT 0x%X\n", x);
+#endif
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     int i,aok = 1;
     char *s;
     struct termios org_opts,new_opts;
     
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    /*
     int res = tcgetattr(STDIN_FILENO, &org_opts);
     memcpy (&new_opts, &org_opts, sizeof(new_opts));
     new_opts.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ECHOPRT | ECHOKE | ICRNL);
     tcsetattr(STDIN_FILENO, TCSANOW, &new_opts);
-    
-    boot(FLAGS_code.c_str(), FLAGS_lsc, FLAGS_v);
+    */
 
-    do_mandel();
+    boot(FLAGS_code.c_str(), FLAGS_lsc, FLAGS_tcoff, FLAGS_v);
+    if (FLAGS_m) {
+        do_mandel();
+    } else if (FLAGS_r) {
+        do_raytrace();
+    } else {
+        fprintf (stderr, "Not doing any host code!\n");
+    }
 
     return(0);
 }
