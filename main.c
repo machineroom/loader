@@ -242,41 +242,36 @@ bool load_tld (const char *name, bool debug) {
 }
 
 // TCOFF uses VL numbers (like transputer PFIX)
-int get_number (uint8_t **raw, uint8_t *length, int64_t *value) {
+void get_number (uint8_t **raw, uint8_t *length, int64_t *value) {
     if (**raw <= 250) {
         assert (*length >= 1);
         *value = (int64_t)**raw;
         *length -= 1;
         *raw += 1;
-        return 1;
     } else if (**raw == 251) {
         //PFX1 (BYTE)
         assert (*length >= 1);
         *value = (int64_t)**raw;
         *length -= 1;
         *raw += 1;
-        return 1;
     } else if (**raw == 252) {
         //PFX2 (SHORT)
         assert (*length >= 3);
         *value = (int64_t)read2s((*raw)+1);
         *length -= 3;
         *raw += 3;
-        return 1+2;
     } else if (**raw == 253) {
         //PFX3 (INT)
         assert (*length >= 5);
         *value = (int64_t)read4s((*raw)+1);
         *length -= 5;
         *raw += 5;
-        return 1+4;
     } else if (**raw == 254) {
         //PFX4 (LONG)
         assert (*length >= 9);
         *value = (int64_t)read8s((*raw)+1);
         *length -= 9;
         *raw += 9;
-        return 1+8;
     } else if (**raw == 255) {
         //SIGN
         assert (false);//TODO
@@ -285,21 +280,32 @@ int get_number (uint8_t **raw, uint8_t *length, int64_t *value) {
     }
 }
 
-int get_string (uint8_t **raw, uint8_t *length, std::string &s) {
+void get_string (uint8_t **raw, uint8_t *length, std::string &s) {
     int64_t l;
-    int r = get_number(raw,length,&l);
+    get_number(raw,length,&l);
     s.assign((*raw), (*raw)+l);
     *length -= l;
     *raw += l;
-    return l;
 }
 
-int get_bool (uint8_t **raw, uint8_t *length, bool *b) {
+void get_bool (uint8_t **raw, uint8_t *length, bool *b) {
     int64_t intb;
-    int r = get_number(raw,length,&intb);
-    assert(r==1);
+    get_number(raw,length,&intb);
     *b = (bool)intb;
-    return r;
+}
+
+void get_value (uint8_t **raw, uint8_t *length, int64_t *value) {
+    int64_t value_tag;
+    get_number(raw, length, &value_tag);
+    switch (value_tag) {
+        case 1: // CO_VALUE_TAG
+            get_number (raw, length, value);
+            break;
+        default:
+            printf ("unhandled value TAG %ld\n", value_tag);
+            assert(false);
+            break;
+    }
 }
 
 void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
@@ -310,7 +316,6 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
         uint8_t length;
         tag = raw[0];
         length = raw[1];
-        int r;
         if (debug) printf ("%4X T %2d[0x%2X] L %4d: ", (unsigned)(raw-raw_orig), tag, tag, length);
         raw += 2;   //skip TAG, length
         switch (tag) {
@@ -318,16 +323,16 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
             {
                 if (debug) printf ("START MODULE\n");
                 int64_t sm_cpus;
-                r = get_number(&raw, &length, &sm_cpus);
+                get_number(&raw, &length, &sm_cpus);
                 printf ("\tsm_cpus = 0x%lx\n", sm_cpus);
                 int64_t sm_attrib;
-                r = get_number(&raw, &length, &sm_attrib);
+                get_number(&raw, &length, &sm_attrib);
                 printf ("\tsm_attrib = 0x%lx\n", sm_attrib);
                 int64_t sm_language;
-                r = get_number(&raw, &length, &sm_language);
+                get_number(&raw, &length, &sm_language);
                 printf ("\tsm_language = 0x%lx\n", sm_language);
                 std::string sm_name;
-                r = get_string(&raw, &length, sm_name);
+                get_string(&raw, &length, sm_name);
                 printf ("\tsm_name = %s\n", sm_name.c_str());
             }
             break;
@@ -335,21 +340,29 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
             {
                 if (debug) printf ("SET_LOAD_POINT\n");
                 int64_t sl_location;
-                r = get_number(&raw, &length, &sl_location);
+                get_number(&raw, &length, &sl_location);
                 printf ("\tsl_location = 0x%lx\n", sl_location);
+            }
+            break;
+            case 5:
+            {
+                if (debug) printf ("ADJUST_POINT\n");
+                int64_t aj_offset;
+                get_value(&raw, &length, &aj_offset);
+                printf ("\taj_offset = 0x%lx\n", aj_offset);
             }
             break;
             case 11:
             {
                 if (debug) printf ("SECTION\n");
                 int64_t se_section;
-                r = get_number(&raw, &length, &se_section);
+                get_number(&raw, &length, &se_section);
                 printf ("\tse_section = 0x%lx\n", se_section);
                 int64_t se_usage;
-                r = get_number(&raw, &length, &se_usage);
+                get_number(&raw, &length, &se_usage);
                 printf ("\tse_usage = 0x%lx\n", se_usage);
                 std::string se_symbol;
-                r = get_string(&raw, &length, se_symbol);
+                get_string(&raw, &length, se_symbol);
                 printf ("\tse_symbol = %s\n", se_symbol.c_str());
             }
             break;
@@ -357,13 +370,13 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
             {
                 if (debug) printf ("COMMENT\n");
                 bool cm_copy;
-                r = get_bool (&raw, &length, &cm_copy);
+                get_bool (&raw, &length, &cm_copy);
                 printf ("\tcm_copy = %d\n", cm_copy);
                 bool cm_print;
-                r = get_bool (&raw, &length, &cm_print);
+                get_bool (&raw, &length, &cm_print);
                 printf ("\tcm_print = %d\n", cm_print);
                 std::string cm_text;
-                r = get_string (&raw, &length, cm_text);
+                get_string (&raw, &length, cm_text);
                 printf ("\tcm_text = %s\n", cm_text.c_str());
             }
             break;
@@ -371,10 +384,10 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
             {
                 if (debug) printf ("VERSION\n");
                 std::string vn_tool_id;
-                r = get_string(&raw, &length, vn_tool_id);
+                get_string(&raw, &length, vn_tool_id);
                 printf ("\tvn_tool_id = %s\n", vn_tool_id.c_str());
                 std::string vn_origin;
-                r = get_string(&raw, &length, vn_origin);
+                get_string(&raw, &length, vn_origin);
                 printf ("\tvn_origin = %s\n", vn_origin.c_str());
             }
             break;
@@ -388,10 +401,10 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
             {
                 if (debug) printf ("SYMBOL\n");
                 int64_t sy_usage;
-                r = get_number(&raw, &length, &sy_usage);
+                get_number(&raw, &length, &sy_usage);
                 printf ("\tsy_usage = 0x%lx\n", sy_usage);
                 std::string sy_symbol;
-                r = get_string(&raw, &length, sy_symbol);
+                get_string(&raw, &length, sy_symbol);
                 printf ("\tsy_symbol = %s\n", sy_symbol.c_str());
 
             }
