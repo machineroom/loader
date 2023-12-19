@@ -288,10 +288,6 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
         if (debug) printf ("%4X T %2d[0x%2X] L %4d: ", (unsigned)(raw-raw_orig), tag, tag, length);
         raw += 2;   //skip TAG, length
         switch (tag) {
-            case 28:
-                if (debug) printf ("LINKED_UNIT\n");
-                raw+=length;
-                break;
             case 2:
             {
                 if (debug) printf ("START MODULE\n");
@@ -322,8 +318,31 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 printf ("\tsm_name = %s\n", hexstring (sm_name.data(), sm_name.size()).c_str());
             }
             break;
+            case 27:
+            {
+                if (debug) printf ("VERSION\n");
+                std::vector<uint8_t> vn_tool_id;
+                r = get_string(raw, vn_tool_id);
+                length -= r;
+                assert (length > 0);
+                raw += r;
+                printf ("\tvn_tool_id = %s\n", hexstring (vn_tool_id.data(), vn_tool_id.size()).c_str());
+                std::vector<uint8_t> vn_origin;
+                r = get_string(raw, vn_origin);
+                length -= r;
+                assert (length >= 0);
+                raw += r;
+                printf ("\tvn_origin = %s\n", hexstring (vn_origin.data(), vn_origin.size()).c_str());
+                // should have read everything, so length will be 0
+                assert (length==0);
+            }
+            break;
+            case 28:
+                if (debug) printf ("LINKED_UNIT\n");
+                raw+=length;
+                break;
             default:
-                printf ("%d *NOT HANDLED*\n", raw[0]);
+                printf ("TAG %d *NOT HANDLED*\n", tag);
                 go = false;
                 break;
         }
