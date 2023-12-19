@@ -269,11 +269,19 @@ int get_number (uint8_t *raw, int64_t *value) {
     return 0;
 }
 
-int get_string (uint8_t *raw, std::vector<uint8_t> &s) {
+int get_string (uint8_t *raw, std::string &s) {
     int64_t length;
     int r = get_number(raw,&length);
     s.assign(&raw[1], &raw[1+length]);
     return 1+length;
+}
+
+int get_bool (uint8_t *raw, bool *b) {
+    int64_t intb;
+    int r = get_number(raw,&intb);
+    assert(r==1);
+    *b = (bool)intb;
+    return r;
 }
 
 void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
@@ -309,30 +317,53 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 assert (length>=0);
                 raw += r;
                 printf ("\tsm_language = 0x%lx\n", sm_language);
-                std::vector<uint8_t> sm_name;
+                std::string sm_name;
                 r = get_string(raw, sm_name);
                 length -= r;
                 // should have read everything, so length will be 0
                 assert (length==0);
                 raw += r;
-                printf ("\tsm_name = %s\n", hexstring (sm_name.data(), sm_name.size()).c_str());
+                printf ("\tsm_name = %s\n", sm_name.c_str());
+            }
+            break;
+            case 20:
+            {
+                if (debug) printf ("COMMENT\n");
+                bool cm_copy;
+                r = get_bool (raw, &cm_copy);
+                length -= r;
+                assert (length > 0);
+                raw += r;
+                printf ("\tcm_copy = %d\n", cm_copy);
+                bool cm_print;
+                r = get_bool (raw, &cm_print);
+                length -= r;
+                assert (length > 0);
+                raw += r;
+                printf ("\tcm_print = %d\n", cm_print);
+                std::string cm_text;
+                r = get_string (raw, cm_text);
+                length -= r;
+                assert (length == 0);
+                raw += r;
+                printf ("\tcm_text = %s\n", cm_text.c_str());
             }
             break;
             case 27:
             {
                 if (debug) printf ("VERSION\n");
-                std::vector<uint8_t> vn_tool_id;
+                std::string vn_tool_id;
                 r = get_string(raw, vn_tool_id);
                 length -= r;
                 assert (length > 0);
                 raw += r;
-                printf ("\tvn_tool_id = %s\n", hexstring (vn_tool_id.data(), vn_tool_id.size()).c_str());
-                std::vector<uint8_t> vn_origin;
+                printf ("\tvn_tool_id = %s\n", vn_tool_id.c_str());
+                std::string vn_origin;
                 r = get_string(raw, vn_origin);
                 length -= r;
                 assert (length >= 0);
                 raw += r;
-                printf ("\tvn_origin = %s\n", hexstring (vn_origin.data(), vn_origin.size()).c_str());
+                printf ("\tvn_origin = %s\n", vn_origin.c_str());
                 // should have read everything, so length will be 0
                 assert (length==0);
             }
