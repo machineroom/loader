@@ -326,6 +326,30 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 printf ("\tsm_name = %s\n", sm_name.c_str());
             }
             break;
+            case 11:
+            {
+                if (debug) printf ("SECTION\n");
+                int64_t se_section;
+                r = get_number(raw, &se_section);
+                length -= r;
+                assert (length>=0);
+                raw += r;
+                printf ("\tse_section = 0x%lx\n", se_section);
+                int64_t se_usage;
+                r = get_number(raw, &se_usage);
+                length -= r;
+                assert (length>=0);
+                raw += r;
+                printf ("\tse_usage = 0x%lx\n", se_usage);
+                std::string se_symbol;
+                r = get_string(raw, se_symbol);
+                length -= r;
+                assert (length==0);
+                raw += r;
+                printf ("\tse_symbol = %s\n", se_symbol.c_str());
+
+            }
+            break;
             case 20:
             {
                 if (debug) printf ("COMMENT\n");
