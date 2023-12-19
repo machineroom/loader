@@ -288,7 +288,7 @@ int get_number (uint8_t **raw, uint8_t *length, int64_t *value) {
 int get_string (uint8_t **raw, uint8_t *length, std::string &s) {
     int64_t l;
     int r = get_number(raw,length,&l);
-    s.assign((*raw)+1, (*raw)+1+l);
+    s.assign((*raw), (*raw)+l);
     *length -= l;
     *raw += l;
     return l;
