@@ -369,9 +369,29 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
             }
             break;
             case 28:
+            {
                 if (debug) printf ("LINKED_UNIT\n");
                 raw+=length;
-                break;
+            }
+            break;
+            case 30:
+            {
+                if (debug) printf ("SYMBOL\n");
+                int64_t sy_usage;
+                r = get_number(raw, &sy_usage);
+                length -= r;
+                assert (length>=0);
+                raw += r;
+                printf ("\tsy_usage = 0x%lx\n", sy_usage);
+                std::string sy_symbol;
+                r = get_string(raw, sy_symbol);
+                length -= r;
+                assert (length == 0);
+                raw += r;
+                printf ("\tsy_symbol = %s\n", sy_symbol.c_str());
+
+            }
+            break;
             default:
                 printf ("TAG %d *NOT HANDLED*\n", tag);
                 go = false;
