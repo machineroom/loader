@@ -400,6 +400,21 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 printf ("\tcm_text = %s\n", cm_text.c_str());
             }
             break;
+            case 26:
+            {
+                if (debug) printf ("DESCRIPTOR\n");
+                int64_t de_symbol;
+                get_value (&raw, &length, &de_symbol);
+                printf ("\tde_symbol = %ld\n", de_symbol);
+                int64_t de_language;
+                get_value (&raw, &length, &de_language);
+                printf ("\tde_language = %ld\n", de_language);
+                std::string de_string;
+                get_string (&raw, &length, de_string);
+                printf ("\tde_string = %s\n", de_string.c_str());
+
+            }
+            break;
             case 27:
             {
                 if (debug) printf ("VERSION\n");
