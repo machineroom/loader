@@ -237,15 +237,15 @@ int get_number (uint8_t *raw, int64_t *value) {
     } else if (raw[0] == 252) {
         //PFX2 (SHORT)
         *value = (int64_t)read2s(&raw[1]);
-        return 2;
+        return 1+2;
     } else if (raw[0] == 253) {
         //PFX3 (INT)
         *value = (int64_t)read4s(&raw[1]);
-        return 4;
+        return 1+4;
     } else if (raw[0] == 254) {
         //PFX4 (LONG)
         *value = (int64_t)read8s(&raw[1]);
-        return 8;
+        return 1+8;
     } else if (raw[0] == 255) {
         //SIGN
         return 1 + get_number(&raw[1], value);
@@ -274,19 +274,19 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 int64_t sm_cpus;
                 r = get_number(raw, &sm_cpus);
                 length -= r;
-                assert (length>0);
+                assert (length>=0);
                 raw += r;
                 printf ("\tsm_cpus = 0x%lx\n", sm_cpus);
                 int64_t sm_attrib;
                 r = get_number(raw, &sm_attrib);
                 length -= r;
-                assert (length>0);
+                assert (length>=0);
                 raw += r;
                 printf ("\tsm_attrib = 0x%lx\n", sm_attrib);
                 int64_t sm_language;
                 r = get_number(raw, &sm_language);
                 length -= r;
-                assert (length>0);
+                assert (length>=0);
                 raw += r;
                 printf ("\tsm_language = 0x%lx\n", sm_language);
                 // TODO name
