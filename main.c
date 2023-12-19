@@ -242,7 +242,7 @@ bool load_tld (const char *name, bool debug) {
 }
 
 // TCOFF uses VL numbers (like transputer PFIX)
-void get_number (uint8_t **raw, uint8_t *length, int64_t *value) {
+void get_number (uint8_t **raw, int64_t *length, int64_t *value) {
     if (**raw <= 250) {
         assert (*length >= 1);
         *value = (int64_t)**raw;
@@ -280,7 +280,7 @@ void get_number (uint8_t **raw, uint8_t *length, int64_t *value) {
     }
 }
 
-void get_string (uint8_t **raw, uint8_t *length, std::string &s) {
+void get_string (uint8_t **raw, int64_t *length, std::string &s) {
     int64_t l;
     get_number(raw,length,&l);
     s.assign((*raw), (*raw)+l);
@@ -288,13 +288,13 @@ void get_string (uint8_t **raw, uint8_t *length, std::string &s) {
     *raw += l;
 }
 
-void get_bool (uint8_t **raw, uint8_t *length, bool *b) {
+void get_bool (uint8_t **raw, int64_t *length, bool *b) {
     int64_t intb;
     get_number(raw,length,&intb);
     *b = (bool)intb;
 }
 
-void get_value (uint8_t **raw, uint8_t *length, int64_t *value) {
+void get_value (uint8_t **raw, int64_t *length, int64_t *value) {
     int64_t value_tag;
     get_number(raw, length, &value_tag);
     switch (value_tag) {
@@ -312,12 +312,13 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
     uint8_t *raw_orig=raw;
     bool go = true;
     while (go) {
-        uint8_t tag;
-        uint8_t length;
-        tag = raw[0];
-        length = raw[1];
-        if (debug) printf ("%4X T %2d[0x%2X] L %4d: ", (unsigned)(raw-raw_orig), tag, tag, length);
-        raw += 2;   //skip TAG, length
+        int64_t tag;
+        int64_t length;
+        int64_t l;
+        
+        get_number(&raw,&l,&tag);
+        get_number(&raw,&l,&length);
+        if (debug) printf ("%4X T %2d[0x%2X] L %4ld: ", (unsigned)(raw-raw_orig), (uint8_t)tag, (uint8_t)tag, length);
         switch (tag) {
             case 2:
             {
@@ -350,6 +351,14 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 int64_t aj_offset;
                 get_value(&raw, &length, &aj_offset);
                 printf ("\taj_offset = 0x%lx\n", aj_offset);
+            }
+            break;
+            case 6:
+            {
+                if (debug) printf ("LOAD_TEXT\n");
+                std::string lt_text;
+                get_string(&raw, &length, lt_text);
+                printf ("\tlt_text = <code>(%ld bytes)\n", lt_text.size());
             }
             break;
             case 11:
@@ -410,7 +419,7 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
             }
             break;
             default:
-                printf ("TAG %d *NOT HANDLED*\n", tag);
+                printf ("TAG %ld *NOT HANDLED*\n", tag);
                 go = false;
                 break;
         }
