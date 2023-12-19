@@ -342,7 +342,7 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 if (debug) printf ("SET_LOAD_POINT\n");
                 int64_t sl_location;
                 get_number(&raw, &length, &sl_location);
-                printf ("\tsl_location = 0x%lx\n", sl_location);
+                printf ("\tsl_location = %ld\n", sl_location);
             }
             break;
             case 5:
@@ -350,7 +350,7 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 if (debug) printf ("ADJUST_POINT\n");
                 int64_t aj_offset;
                 get_value(&raw, &length, &aj_offset);
-                printf ("\taj_offset = 0x%lx\n", aj_offset);
+                printf ("\taj_offset = %ld\n", aj_offset);
             }
             break;
             case 6:
@@ -366,13 +366,24 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 if (debug) printf ("SECTION\n");
                 int64_t se_section;
                 get_number(&raw, &length, &se_section);
-                printf ("\tse_section = 0x%lx\n", se_section);
+                printf ("\tse_section = %ld\n", se_section);
                 int64_t se_usage;
                 get_number(&raw, &length, &se_usage);
                 printf ("\tse_usage = 0x%lx\n", se_usage);
                 std::string se_symbol;
                 get_string(&raw, &length, se_symbol);
                 printf ("\tse_symbol = %s\n", se_symbol.c_str());
+            }
+            break;
+            case 15:
+            {
+                if (debug) printf ("DEFINE_SYMBOL\n");
+                int64_t ds_ident;
+                get_number(&raw, &length, &ds_ident);
+                printf ("\tds_ident = %ld\n", ds_ident);
+                int64_t ds_value;
+                get_value (&raw, &length, &ds_value);
+                printf ("\tds_value = %ld\n", ds_value);
             }
             break;
             case 20:
