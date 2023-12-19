@@ -331,6 +331,14 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 printf ("\tsm_name = %s\n", sm_name.c_str());
             }
             break;
+            case 4:
+            {
+                if (debug) printf ("SET_LOAD_POINT\n");
+                int64_t sl_location;
+                r = get_number(&raw, &length, &sl_location);
+                printf ("\tsl_location = 0x%lx\n", sl_location);
+            }
+            break;
             case 11:
             {
                 if (debug) printf ("SECTION\n");
