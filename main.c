@@ -14,6 +14,8 @@
 #include "common.h"
 
 #include <vector>
+#include <sstream>
+#include <iomanip>
 
 
 int get_key(void)
@@ -38,6 +40,20 @@ void memdump (uint8_t *buf, unsigned int cnt) {
         cnt--;
     }
     printf ("%s\n", str);
+}
+
+std::string hexstring (uint8_t *buf, unsigned int cnt) {
+    std::ostringstream s;
+    int byte_cnt=0;
+    while (cnt > 0) {
+        s << std::setw(2) << std::hex << *buf++;
+        if (++byte_cnt==8) {
+            s << "\n";
+            byte_cnt=0;
+        }
+        cnt--;
+    }
+    return s.str();
 }
 
 /* return true if loaded ok, false if error. */
@@ -253,6 +269,13 @@ int get_number (uint8_t *raw, int64_t *value) {
     return 0;
 }
 
+int get_string (uint8_t *raw, std::vector<uint8_t> &s) {
+    int64_t length;
+    int r = get_number(raw,&length);
+    s.assign(&raw[1], &raw[1+length]);
+    return 1+length;
+}
+
 void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
     uint8_t *raw_orig=raw;
     bool go = true;
@@ -270,6 +293,7 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 raw+=length;
                 break;
             case 2:
+            {
                 if (debug) printf ("START MODULE\n");
                 int64_t sm_cpus;
                 r = get_number(raw, &sm_cpus);
@@ -289,8 +313,15 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 assert (length>=0);
                 raw += r;
                 printf ("\tsm_language = 0x%lx\n", sm_language);
-                // TODO name
-                break;
+                std::vector<uint8_t> sm_name;
+                r = get_string(raw, sm_name);
+                length -= r;
+                // should have read everything, so length will be 0
+                assert (length==0);
+                raw += r;
+                printf ("\tsm_name = %s\n", hexstring (sm_name.data(), sm_name.size()).c_str());
+            }
+            break;
             default:
                 printf ("%d *NOT HANDLED*\n", raw[0]);
                 go = false;
