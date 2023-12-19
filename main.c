@@ -235,7 +235,7 @@ bool load_tld (const char *name, bool debug) {
     printf ("load (LSC) %s\n", name);
     get_TLD_code (code, load, debug);
     if (debug) {
-        memdump(load.data(), load.size());
+        //memdump(load.data(), load.size());
         printf("Sending %s (%ld)\n", name, load.size());
     }
     return load_buf(load.data(), load.size(), debug);
@@ -308,14 +308,18 @@ void get_value (uint8_t **raw, int64_t *length, int64_t *value) {
     }
 }
 
-void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
+void get_TCOFF_code(uint8_t *raw, off64_t raw_size, std::vector<uint8_t> &code, bool debug) {
     uint8_t *raw_orig=raw;
     bool go = true;
     while (go) {
         int64_t tag;
         int64_t length;
         int64_t l;
-        
+        if (raw>=raw_orig+raw_size) {
+            printf ("read all tags\n");
+            go = false;
+            break;
+        }
         get_number(&raw,&l,&tag);
         get_number(&raw,&l,&length);
         if (debug) printf ("%4X T %2d[0x%2X] L %4ld: ", (unsigned)(raw-raw_orig), (uint8_t)tag, (uint8_t)tag, length);
@@ -335,6 +339,11 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 std::string sm_name;
                 get_string(&raw, &length, sm_name);
                 printf ("\tsm_name = %s\n", sm_name.c_str());
+            }
+            break;
+            case 3:
+            {
+                if (debug) printf ("END_MODULE\n");
             }
             break;
             case 4:
@@ -359,6 +368,7 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 std::string lt_text;
                 get_string(&raw, &length, lt_text);
                 printf ("\tlt_text = <code>(%ld bytes)\n", lt_text.size());
+                code.insert(code.end(), lt_text.data(), lt_text.data() + lt_text.size());
             }
             break;
             case 11:
@@ -373,6 +383,14 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
                 std::string se_symbol;
                 get_string(&raw, &length, se_symbol);
                 printf ("\tse_symbol = %s\n", se_symbol.c_str());
+            }
+            break;
+            case 12:
+            {
+                if (debug) printf ("DEFINE_MAIN\n");
+                int64_t dm_entry;
+                get_number(&raw, &length, &dm_entry);
+                printf ("\tdm_entry = %ld\n", dm_entry);
             }
             break;
             case 15:
@@ -404,15 +422,14 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
             {
                 if (debug) printf ("DESCRIPTOR\n");
                 int64_t de_symbol;
-                get_value (&raw, &length, &de_symbol);
+                get_number (&raw, &length, &de_symbol);
                 printf ("\tde_symbol = %ld\n", de_symbol);
                 int64_t de_language;
-                get_value (&raw, &length, &de_language);
+                get_number (&raw, &length, &de_language);
                 printf ("\tde_language = %ld\n", de_language);
                 std::string de_string;
                 get_string (&raw, &length, de_string);
                 printf ("\tde_string = %s\n", de_string.c_str());
-
             }
             break;
             case 27:
@@ -429,7 +446,6 @@ void get_TCOFF_code(uint8_t *raw, std::vector<uint8_t> &code, bool debug) {
             case 28:
             {
                 if (debug) printf ("LINKED_UNIT\n");
-                raw+=length;
             }
             break;
             case 30:
@@ -464,9 +480,9 @@ bool load_tcoff (const char *name, bool debug) {
         return false;
     }
     printf ("load (TCOFF) %s\n", name);
-    get_TCOFF_code (code, load, debug);
+    get_TCOFF_code (code, statbuf.st_size, load, debug);
     if (debug) {
-        memdump(load.data(), load.size());
+        //memdump(load.data(), load.size());
         printf("Sending %s (%ld)\n", name, load.size());
     }
     return load_buf(load.data(), load.size(), debug);
@@ -474,7 +490,7 @@ bool load_tcoff (const char *name, bool debug) {
 
 bool boot(const char *fname, bool lsc, bool tcoff, bool debug)
 {   
-    #if 0
+    #if 1
     int ack, nnodes;
     c011_init();
     printf ("set byte mode...\n");
