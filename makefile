@@ -36,11 +36,28 @@ LSC_INCLUDE=$(LSC89_INCLUDE)
 	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\tasm $* -c > ASM.OUT" -c "exit"
 	cat ASM.OUT
 
+RAYTRACE.LKU : FRAMEBUF.T4H CNTLSYS.T4H RAYTRACE.T4H
+	$(DB) -c "$(LINK) /f RAYTRACE.L4H $(CPU) /h /o RAYTRACE.LKU $(LINKOPT) > 2.out" -c "exit"
+	-grep --color "Warning\|Error\|Serious" 2.OUT
+	$(DB) -c "ilist /A /T /C /M /W /I /X RAYTRACE.LKU > raytrace.lst" -c "exit"
+
+FRAMEBUF.T4H : FRAMEBUF.OCC PROTOCOL.INC B438.INC
+	$(DB) -c "$(OCCAM) FRAMEBUF $(CPU) /h /o FRAMEBUF.T4H $(OCCOPT) > 4.out" -c "exit"
+	-grep --color "Warning\|Error\|Serious" 4.OUT
+
 lsc_debug: 
 	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "D:" -c "cd $(LSC_BIN)"
 
-loader : main.c lkio_c011.c c011.c common.h
-	g++ -g -O0 main.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -o $@
+# g++ throws lots of compile errors for gpiolib
+LIBGPIO=gpiolib.o gpiochip_rp1.o util.o
+%.o : %.c
+	gcc -O3 -fPIC -o $@ -c $^
+
+libgpio.a: $(LIBGPIO)
+	ar rcs $@ $^
+
+loader : main.c lkio_c011.c c011.c common.h libgpio.a
+	g++ -g -O0 main.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -L. -lgpio -o $@
 
 clean:
 	rm -f *.OBJ

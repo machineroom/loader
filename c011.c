@@ -1,24 +1,46 @@
 
 /* MUST run code as root since BRCM timer registers used */
 
+// RP1 chip as used on pi5
+#define RP1
+
+#define _POSIX_C_SOURCE 200809L
+
 #include <bcm2835.h>
 #include <time.h>
 #include <stdio.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <unistd.h>
 #include "pins.h"
 #include "c011.h"
 
+#ifdef RP1
+#ifdef __cplusplus
+extern "C" {
+#endif
+    #include "gpiolib.h"
+    #include "gpiochip_rp1.h"
+#ifdef __cplusplus
+}
+#endif
+#endif
 
 #define TCSLCSH (50)
 #define TCSHCSL (50)
 #define TCSLDrV (40)
 
 static uint32_t bits=0;
-static volatile uint32_t *gpio_clr;
-static volatile uint32_t *gpio_set;
-static volatile uint32_t *gpio_fsel;
-static volatile uint32_t *gpio_lev;
+#ifdef RP1
+    static int gpio_bank;
+    static int gpio_offset;
+    static volatile uint32_t *gpio_base;
+#else
+    static volatile uint32_t *gpio_clr;
+    static volatile uint32_t *gpio_set;
+    static volatile uint32_t *gpio_fsel;
+    static volatile uint32_t *gpio_lev;
+#endif
 
 typedef enum {
     UNDEFINED,
@@ -68,10 +90,15 @@ static inline void sleep_ns(int ns) {
     for (int i=0; i < ns; i++) {
         asm ("nop");
     }
-    //bcm2835_delayMicroseconds(1);
 }
 
-//testing with scope shows set_gpio_bit takes ~6ns
+static uint64_t get_ms() {
+    struct timespec spec;
+    clock_gettime (CLOCK_REALTIME, &spec);
+    return spec.tv_sec * 1000 + spec.tv_nsec/1000000;
+}
+
+//testing with scope shows set_gpio_bit takes ~6ns (rpi4)
 static inline void set_gpio_bit(uint8_t pin, uint8_t on) {
     if (on) {
         bits |= 1<<pin;
@@ -80,15 +107,45 @@ static inline void set_gpio_bit(uint8_t pin, uint8_t on) {
     }
 }
 
-//testing with scope shows gpio_commit takes ~150ns (rpi4 -O3)
-// bcm2835_peri_write ~75ns
-// bcm2835_peri_write_nb ~5ns
 static inline void gpio_commit(void) {
+#ifdef RP1
+    rp1_gpio_sys_rio_out_write(gpio_base, gpio_bank, gpio_offset, bits);
+#else
+    //testing with scope shows gpio_commit takes ~150ns (rpi4 -O3)
+    // bcm2835_peri_write ~75ns
+    // bcm2835_peri_write_nb ~5ns
     bcm2835_peri_write_nb (gpio_clr, ~bits);
     bcm2835_peri_write_nb (gpio_set, bits);
+#endif
 }
 
 static void set_control_pins(void) {
+#ifdef RP1
+    gpio_set_fsel(RS0, GPIO_FSEL_OUTPUT);
+    gpio_set_fsel(RS0, GPIO_FSEL_OUTPUT);
+    gpio_set_fsel(RS1, GPIO_FSEL_OUTPUT);
+    gpio_set_fsel(RESET, GPIO_FSEL_OUTPUT);
+    gpio_set_fsel(CS, GPIO_FSEL_OUTPUT);
+    gpio_set_fsel(RW, GPIO_FSEL_OUTPUT);
+    gpio_set_fsel(BYTE, GPIO_FSEL_OUTPUT);
+    gpio_set_fsel(BYTE_DIR, GPIO_FSEL_OUTPUT);
+    gpio_set_fsel(INTFC_OE, GPIO_FSEL_OUTPUT);
+
+    gpio_set_fsel(IN_INT, GPIO_FSEL_INPUT);
+    gpio_set_fsel(OUT_INT, GPIO_FSEL_INPUT);
+    gpio_set_pull(IN_INT, PULL_DOWN);
+    gpio_set_pull(OUT_INT, PULL_DOWN);
+
+    gpio_set_fsel(D0, GPIO_FSEL_GPIO);
+    gpio_set_fsel(D1, GPIO_FSEL_GPIO);
+    gpio_set_fsel(D2, GPIO_FSEL_GPIO);
+    gpio_set_fsel(D3, GPIO_FSEL_GPIO);
+    gpio_set_fsel(D4, GPIO_FSEL_GPIO);
+    gpio_set_fsel(D5, GPIO_FSEL_GPIO);
+    gpio_set_fsel(D6, GPIO_FSEL_GPIO);
+    gpio_set_fsel(D7, GPIO_FSEL_GPIO);
+
+#else
     bcm2835_gpio_fsel(RS0, BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_fsel(RS1, BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_fsel(RESET, BCM2835_GPIO_FSEL_OUTP);
@@ -102,6 +159,7 @@ static void set_control_pins(void) {
     bcm2835_gpio_fsel(OUT_INT, BCM2835_GPIO_FSEL_INPT);
     bcm2835_gpio_set_pud(IN_INT, BCM2835_GPIO_PUD_DOWN);
     bcm2835_gpio_set_pud(OUT_INT, BCM2835_GPIO_PUD_DOWN);
+#endif
 }
 
 static inline void set_data_output_pins(void) {
@@ -109,10 +167,16 @@ static inline void set_data_output_pins(void) {
         // set the level shifters to be output
         set_gpio_bit (BYTE_DIR, HIGH);
         gpio_commit();
-        //bits 9-0 output (001)
+#ifdef RP1
+        // bits 9-2 output (1)
+        uint32_t oe = 0x3FC;
+        rp1_gpio_sys_rio_oe_set_word(gpio_base, gpio_bank, oe);
+#else
+        //bits 9-2 output (001)
         //%00001001001001001001001001001001
         //    0   9   2   4   9   2   4   9
         bcm2835_peri_write_nb (gpio_fsel, 0x09249249);
+#endif
         data_pins_mode = OUTPUT;
     }
 }
@@ -122,8 +186,13 @@ static inline void set_data_input_pins(void) {
         // set the level shifters to be input
         set_gpio_bit (BYTE_DIR, LOW);
         gpio_commit();
-        //bits 9-0 input (000)
+#ifdef RP1
+        uint32_t oe = 0x3FC;
+        rp1_gpio_sys_rio_oe_clr_word(gpio_base, gpio_bank, oe);
+#else
+        //bits 9-2 input (000)
         bcm2835_peri_write_nb (gpio_fsel, 0);
+#endif
         data_pins_mode = INPUT;
     }
 }
@@ -163,17 +232,44 @@ static void c011_enable_out_int(void) {
     gpio_commit();
     c011_put_byte (0x02); // set int enable bit
 }
-        
+
+static void verbose_callback(const char *msg)
+{
+    printf("%s", msg);
+}
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+    #include "gpiochip_rp1.h"
+#ifdef __cplusplus
+}
+#endif
+
 void c011_init(void) {
+#ifdef RP1
+    gpiolib_set_verbose(&verbose_callback);
+    int ret = gpiolib_init();
+    unsigned int gpio = D0; // all GPIO bins in the same bank, so pick an arbitrary pin
+    ret = gpiolib_mmap();
+
+    void *priv;
+    const GPIO_CHIP_INTERFACE_T *iface_ignored = NULL;
+    unsigned offset_ignored;
+    gpio_get_interface(gpio, &iface_ignored, &priv, &offset_ignored);
+    gpio_base = (volatile uint32_t *)priv;
+    rp1_gpio_get_bank(gpio, &gpio_bank, &gpio_offset);
+
+#else
     bcm2835_init();
     gpio_clr = bcm2835_regbase(BCM2835_REGBASE_GPIO) + BCM2835_GPCLR0/4;
     gpio_set = bcm2835_regbase(BCM2835_REGBASE_GPIO) + BCM2835_GPSET0/4;
     gpio_fsel = bcm2835_regbase(BCM2835_REGBASE_GPIO) + BCM2835_GPFSEL0/4;
     gpio_lev = bcm2835_regbase(BCM2835_REGBASE_GPIO) + BCM2835_GPLEV0/4;
+#endif
     set_control_pins();
     set_gpio_bit(CS, HIGH);
     set_gpio_bit(INTFC_OE, LOW);   // enable the level shifters (!OE pin on 74LVC8T245)
-
     gpio_commit();
 
 }
@@ -184,7 +280,8 @@ void c011_reset(void) {
     gpio_commit();
     set_gpio_bit(RESET, HIGH);
     gpio_commit();
-    bcm2835_delayMicroseconds (2*1000);
+sleep(1);
+//    bcm2835_delayMicroseconds (5*1000);
     set_gpio_bit(RESET, LOW);
     gpio_commit();
     c011_enable_in_int();
@@ -194,14 +291,16 @@ void c011_reset(void) {
 void c011_set_byte_mode(void) {
     set_gpio_bit (BYTE,HIGH);
     gpio_commit();
-    bcm2835_delay(1500);
+//    bcm2835_delay(1500);
+    sleep(2);
 }
 
 void c011_clear_byte_mode(void) {
     set_gpio_bit (BYTE,LOW);
     gpio_commit();
-    //The whitecross HSL takes some time to cascade
-    bcm2835_delay(1500);
+//The whitecross HSL takes some time to cascade
+//    bcm2835_delay(1500);
+    sleep(2);
 }
 
 void c011_analyse(void) {
@@ -218,8 +317,19 @@ void c011_analyse(void) {
 int c011_write_byte(uint8_t byte, uint32_t timeout) {
     total_writes++;
     //wait for OutputInt pin to go high (thereby indicating ready to write)
-    uint64_t timeout_us = timeout*1000;    // 1000us=1ms
     uint64_t start;
+#ifdef RP1
+    start = get_ms();
+    while (((gpio_get_level(OUT_INT)) == 0)) {
+        time_t now = get_ms();
+        if (now - start >  timeout) {
+            total_write_timeouts++;
+            return -1;
+        }
+        total_write_waits++;
+    }
+#else
+    uint64_t timeout_us = timeout*1000;    // 1000us=1ms
     start = bcm2835_st_read();
     while (((bcm2835_peri_read_nb(gpio_lev) & (1<<OUT_INT)) == 0)) {
         if (bcm2835_st_read() - start > timeout_us) {
@@ -228,6 +338,7 @@ int c011_write_byte(uint8_t byte, uint32_t timeout) {
         }
         total_write_waits++;
     }
+#endif
     set_data_output_pins();
     set_gpio_bit (RS1,0);
     set_gpio_bit (RS0,1);
@@ -244,7 +355,12 @@ static uint8_t read_c011(void) {
     gpio_commit();
     //should allow time for data valid after !CS (the code is slow enough for this to not be required?!)
     //sleep_ns (TCSLDrV);
-    uint32_t reg = bcm2835_peri_read_nb (gpio_lev);
+    uint32_t reg = 0;
+#ifdef RP1
+    reg = rp1_gpio_sys_rio_sync_in_read (gpio_base, gpio_bank, gpio_offset);
+#else
+    reg = bcm2835_peri_read_nb (gpio_lev);
+#endif
     uint8_t byte;
     reg >>= 2;
     byte = reg;
@@ -264,12 +380,29 @@ int c011_read_byte(uint8_t *byte, uint32_t timeout) {
     total_reads++;
     // wait for InputInt bit to go high
     if (timeout==0) {
+#ifdef RP1
+        while (gpio_get_level(IN_INT) == 0) {
+            total_read_waits++;
+        }
+#else
         while ((bcm2835_peri_read_nb(gpio_lev) & (1<<IN_INT)) == 0) {
             total_read_waits++;
         }
+#endif
     } else {
-        uint64_t timeout_us = timeout*1000;    // 1000us=1ms
         uint64_t start;
+#ifdef RP1
+        start = get_ms();
+        while (((gpio_get_level(IN_INT)) == 0)) {
+            uint64_t now = get_ms();
+            if (now - start >  timeout) {
+                total_read_timeouts++;
+                return -1;
+            }
+            total_read_waits++;
+        }
+#else
+        uint64_t timeout_us = timeout*1000;    // 1000us=1ms
         start = bcm2835_st_read();
         while (((bcm2835_peri_read_nb(gpio_lev) & (1<<IN_INT)) == 0)) {
             if (bcm2835_st_read() - start > timeout_us) {
@@ -278,6 +411,7 @@ int c011_read_byte(uint8_t *byte, uint32_t timeout) {
             }
             total_read_waits++;
         }
+#endif
     }
     set_gpio_bit (RS1,0);
     set_gpio_bit (RS0,0);
@@ -310,3 +444,22 @@ uint32_t c011_read_bytes (uint8_t *bytes, uint32_t num, uint32_t timeout) {
     return i;
 }
 
+uint8_t c011_read_input_status(void) {
+    uint8_t byte;
+    set_gpio_bit (RS1,1);
+    set_gpio_bit (RS0,0);
+    set_gpio_bit (RW,1);
+    gpio_commit();
+    byte = read_c011();
+    return byte;
+}
+
+uint8_t c011_read_output_status(void) {
+    uint8_t byte;
+    set_gpio_bit (RS1,1);
+    set_gpio_bit (RS0,1);
+    set_gpio_bit (RW,1);
+    gpio_commit();
+    byte = read_c011();
+    return byte;
+}
