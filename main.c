@@ -565,12 +565,11 @@ DEFINE_bool (r, false, "Raytrace");
 
 
 void do_raytrace(void) {
+    printf ("Sit and wait for network\n");
     while (1) {
         int x;
         if (word_in(&x) == 0) {      //len in bytes
-#ifdef DEBUG
             printf ("from RT 0x%X\n", x);
-#endif
         }
     }
 }
