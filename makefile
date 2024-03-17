@@ -56,8 +56,8 @@ LIBGPIO=gpiolib.o gpiochip_rp1.o util.o
 libgpio.a: $(LIBGPIO)
 	ar rcs $@ $^
 
-loader : main.c lkio_c011.c c011.c common.h libgpio.a
-	g++ -g -O0 main.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -L. -lgpio -o $@
+loader : main.c load_mandel.c lkio_c011.c c011.c common.h libgpio.a
+	g++ -g -O0 main.c load_mandel.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -L. -lgpio -o $@
 
 clean:
 	rm -f *.OBJ

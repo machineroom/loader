@@ -1,5 +1,5 @@
 
-#include "LKIO.H"
+#include "lkio.h"
 #include <assert.h>
 #include <stdio.h>
 #include <unistd.h>
