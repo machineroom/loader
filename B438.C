@@ -87,7 +87,7 @@ void resetB438(void) {
     *boardRegBase = 0;
 }
 
-void IMS_332_WriteRegister (int regno, unsigned int val) {
+void IMS_332_WriteRegister (unsigned int regno, unsigned int val) {
     volatile unsigned int *IMS332RegBase = (unsigned int *)0x0;
     volatile unsigned int *reg = IMS332RegBase;
     reg += regno;

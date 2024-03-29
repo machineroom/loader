@@ -18,6 +18,8 @@
 ****************************************************************************/
 /* compile: tcx file -cp0rv */
 
+/* NOTE this replaces the LSC library functions with minimal cut-down versions (since we don't use LSC main) */
+
 #include        <conc.h>
 #include        <string.h>
 #include        <stdlib.h>
@@ -98,12 +100,12 @@ L5
 	}
 
 PDes
-PSetup(void *ws, int (*func)(), int wsize, int psize, ...)
+PSetup(void *ws, void (*func)(), int wsize, int psize, ...)
 	{
 	psize <<= 2;			/* # of bytes of actual parameters */
 	ws = (int *) ((int) ws + wsize - sizeof(int) - psize);
 	((int *) ws)[-1] = (int) func;
-	bcopy((&psize + 1), ((int *) ws + 1), psize);
+	bcopy((&psize + 1), ((int *) ws + 1), (size_t)psize);
 	return ((PDes) ws);
 	}
 
@@ -127,7 +129,7 @@ malloc(size)
 	extern	int	hs;
 
 	hp = (char *)(&hs)+ho;
-        ho += size; /*(size+3)/4*4;*/
+        ho += size;
 	return((void *)hp);
 	}
 
