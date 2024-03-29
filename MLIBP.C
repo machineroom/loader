@@ -97,21 +97,6 @@ L5
 	#pragma endasm
 	}
 
-#if 1
-/* Setup process structure */
-PDes
-PSetupA(int (*func)(), int wsize, int psize, ...)
-	{
-	PDes ws;
-
-	ws = (PDes) malloc(wsize);
-	psize <<= 2;			/* # of bytes of actual parameters */
-	ws = (PDes) ((int) ws + wsize - sizeof(int) - psize);
-	((int *) ws)[-1] = (int) func;
-	bcopy((&psize + 1), ((int *) ws + 1), psize);
-	return (ws);
-	}
-
 PDes
 PSetup(void *ws, int (*func)(), int wsize, int psize, ...)
 	{
@@ -148,4 +133,3 @@ malloc(size)
 
 static	size_t	ho;
 static	int	hs;
-#endif

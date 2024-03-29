@@ -22,6 +22,8 @@
 
 #include <conc.h>
 #include <math.h>
+#include <stdlib.h>
+#include <conc.h>
 
 #include "common.h"
 #include "B438.h"
@@ -81,6 +83,9 @@ main will be the first byte in the code.
 #pragma endmacro
 /*}}}  */
 
+void *get_ws(size_t sz);
+
+/* NOTE main() must be first function */
 
 /*{{{  struct type def shared with loader and ident asembler code */
 typedef struct {
@@ -95,6 +100,7 @@ typedef struct {
     void *ldaddr;
     void *trantype;
 } LOADGB;
+
 
 /*}}}  */
 /*{{{  main(...)*/
@@ -153,7 +159,7 @@ main(LOADGB *ld)
                 so[list_index] = ChanAlloc();
                 ai[list_index] = ld->dn_out[i]+4;   /* input link from child */
                 /* buffer (Channel *req_out, Channel *buf_in, Channel *buf_out) */
-                PRun(PSetupA(buffer,BUFWSZ,3,sr[list_index],so[list_index],ld->dn_out[i]));
+                PRun(PSetup(get_ws(BUFWSZ),buffer,BUFWSZ,3,sr[list_index],so[list_index],ld->dn_out[i]));
                 list_index++;
             } 
         }
@@ -168,23 +174,35 @@ main(LOADGB *ld)
             /* id!=0 == worker node */
             si = ld->up_in;
             /* arbiter(Channel **arb_in, Channel *arb_out) */
-            PRun(PSetupA(arbiter,ARBWSZ,3,ai,ld->up_in-4,0));
+            PRun(PSetup(get_ws(ARBWSZ),arbiter,ARBWSZ,3,ai,ld->up_in-4,0));
         }
         else
         {
             /* id=0 == root node */
             si = ChanAlloc();
-            PRun(PSetupA(feed,FEDWSZ,3,ld->up_in,si,fxp));
+            PRun(PSetup(get_ws(FEDWSZ),feed,FEDWSZ,3,ld->up_in,si,fxp));
             /* arbiter(Channel **arb_in, Channel *arb_out) */
-            PRun(PSetupA(arbiter,ARBWSZ,3,ai,ld->up_in-4,1));
+            PRun(PSetup(get_ws(ARBWSZ),arbiter,ARBWSZ,3,ai,ld->up_in-4,1));
         }
         /* selector(Channel *sel_in, Channel **req_in, Channel **dn_out) */
-        PRun(PSetupA(selector,SELWSZ,3,si,sr,so));
+        PRun(PSetup(get_ws(SELWSZ),selector,SELWSZ,3,si,sr,so));
         PStop();
     }
     /*}}}  */
 }
 /*}}}  */
+
+/* Get a process workspace */
+void *get_ws(size_t sz)
+{
+    void *rval;
+    rval = malloc(sz);
+    if (sz == NULL) {
+        lon();
+        exit(1);
+    }
+    return (rval);
+}
 
 /*{{{  job(...)*/
 /* job calculates a slice of pixels - one instance per node */
