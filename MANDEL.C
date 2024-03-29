@@ -102,7 +102,7 @@ typedef struct {
     void *entryp;
     void *wspace;
     void *ldaddr;
-    void *trantype;
+    int trantype;
 } LOADGB;
 
 
