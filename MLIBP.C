@@ -99,33 +99,29 @@ L5
 	ALTEND
 	LDL	idx			;return(idx)
 	#pragma endasm
-	}
+}
 
-PDes
-PSetup(void *ws, void (*func)(), int wsize, int psize, ...)
-	{
+PDes PSetup(void *ws, void (*func)(), int wsize, int psize, ...)
+{
 	psize <<= 2;			/* # of bytes of actual parameters */
 	ws = (int *) ((int) ws + wsize - sizeof(int) - psize);
 	((int *) ws)[-1] = (int) func;
 	bcopy((&psize + 1), ((int *) ws + 1), (size_t)psize);
 	return ((PDes) ws);
-	}
+}
 
 /* Allocate channel pointer and initialise it . */
-Channel	*
-ChanAlloc(void)
-	{
+Channel	*ChanAlloc(void)
+{
 	Channel	*c;
 
 	c = (Channel *) malloc(sizeof(Channel));
 	*c = NOPROCESS;
 	return(c);
-	}
+}
 
-void	*
-malloc(size)
-	size_t	size;
-	{
+void *malloc(size_t	size)
+{
 	char	*hp;
 	extern	size_t	ho;
 	extern	int	hs;
@@ -133,7 +129,7 @@ malloc(size)
 	hp = (char *)(&hs)+ho;
         ho += size;
 	return((void *)hp);
-	}
+}
 
 static	size_t	ho;
 static	int	hs;

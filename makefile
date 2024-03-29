@@ -2,15 +2,11 @@
 
 #macihenroomfiddling@gmail.com
 #Uses normal GNU make on Linux with dosbox to run legacy LSC compiler
-#LSC 89 comes from http://www.classiccmp.org/transputer/software/languages/ansic/lsc/
+#LSC comes from http://www.classiccmp.org/transputer/software/languages/ansic/lsc/
 
 .SUFFIXES: .C .TAL .TLD .ARR .EXE
 .PHONY: lsc_debug
 all: loader MANDEL.TLD FLBOOT.TLD FLLOAD.TLD IDENT.TLD
-
-LSC89=${HOME}/lsc-V89.1
-LSC89_BIN=d:\exe
-LSC89_INCLUDE=d:\include
 
 LSC93=${HOME}/lsc-V93
 LSC93_BIN=d:\BIN

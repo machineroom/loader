@@ -3,8 +3,9 @@
         {
             "name": "Linux",
             "includePath": [
-                "${HOME}/lsc-V89.1/include",
-                "${workspaceFolder}/**"
+                "${HOME}/lsc-V93/include",
+                "${workspaceFolder}/**",
+                "${workspaceFolder}"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/g++",
