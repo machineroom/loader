@@ -99,8 +99,7 @@ typedef struct {
 /*}}}  */
 /*{{{  main(...)*/
 
-main(ld)
-LOADGB *ld;
+main(LOADGB *ld)
 {
     int i,fxp;
     if (ld->id == 0) {
