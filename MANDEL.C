@@ -24,9 +24,11 @@
 #include <math.h>
 #include <stdlib.h>
 #include <conc.h>
+#include "mlibp.h"
 
 #include "common.h"
 #include "B438.h"
+
 /*{{{  notes on compiling and linking*/
 /*
 This module is compiled as indicated above so it will be relocatable.
@@ -83,7 +85,9 @@ main will be the first byte in the code.
 #pragma endmacro
 /*}}}  */
 
-void *get_ws(size_t sz);
+void *get_ws(int sz);
+int fix(int *x);
+int iterFIX(int cx, int cy, int maxcnt);
 
 /* NOTE main() must be first function */
 
@@ -138,7 +142,7 @@ main(LOADGB *ld)
     /*{{{  set up par structure*/
     {
         Channel *si,*so[5],*sr[5],*ai[5];
-        extern int job(),buffer(),feed(),arbiter(),selector();
+        extern void job(),buffer(),feed(),arbiter(),selector();
         extern int jobws[JOBWSZ/4];
         int list_index;
 
@@ -193,10 +197,10 @@ main(LOADGB *ld)
 /*}}}  */
 
 /* Get a process workspace */
-void *get_ws(size_t sz)
+void *get_ws(int sz)
 {
     void *rval;
-    rval = malloc(sz);
+    rval = malloc((size_t)sz);
     if (sz == NULL) {
         lon();
         exit(1);
@@ -446,7 +450,6 @@ int iterR32(double cx, double cy, int maxcnt)
 /*}}}  */
 
 /* cast a float to fixed point variant? */
-/*{{{  int fix(x)*/
 int fix(int *x)
 {
     int e,tmp;

@@ -24,6 +24,8 @@
 #include        <string.h>
 #include        <stdlib.h>
 
+#include "mlibp.h"
+
 /* This function takes as array of channel pointer and return an index of
   the channel  that is ready for communication . */
 int ProcPriAltList(Channel	**clist, int pchan)
