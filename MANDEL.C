@@ -212,7 +212,7 @@ void *get_ws(size_t sz)
 */   
 int jobws[JOBWSZ/4];
 
-void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
+int job(Channel *req_out, Channel *job_in, Channel *rsl_out)
 {
     int (*iter)(double cx, double cy, int maxcnt);
     int i,len,pixvec,maxcnt,fxp;
