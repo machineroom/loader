@@ -195,10 +195,9 @@ LOADGB *ld;
 */   
 int jobws[JOBWSZ/4];
 
-job(req_out,job_in,rsl_out)
-Channel *req_out,*job_in,*rsl_out;
+void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
 {
-    int (*iter)();
+    int (*iter)(double cx, double cy, int maxcnt);
     int i,len,pixvec,maxcnt,fxp;
     int ilox,igapx,iloy,igapy;
     double dlox,dgapx,dloy,dgapy;
@@ -281,9 +280,7 @@ Channel *req_out,*job_in,*rsl_out;
 /*}}}  */
 
 /* fixed point iterate used by T4 variants */
-/*{{{  int iterFIX(...)*/
-int iterFIX(cx,cy,maxcnt)
-int cx,cy,maxcnt;
+int iterFIX(int cx, int cy, int maxcnt)
 {
     int cnt,zx,zy,zx2,zy2,tmp;
 
@@ -381,9 +378,7 @@ RETN:
 /* ONLY used by T8 variants */
 /*}}}  */
 /*{{{  int iterR64(...)*/
-int iterR64(cx,cy,maxcnt)
-double cx,cy;
-int maxcnt;
+int iterR64(double cx, double cy, int maxcnt)
 {
     int cnt;
     double zx,zy,zx2,zy2,tmp,four;
@@ -408,9 +403,7 @@ int maxcnt;
 /* ONLY used by T8 variants */
 /*}}}  */
 /*{{{  int iterR32(...)*/
-int iterR32(cx,cy,maxcnt)
-double cx,cy;
-int maxcnt;
+int iterR32(double cx, double cy, int maxcnt)
 {
     int cnt;
     float x,y,zx,zy,zx2,zy2,tmp,four;
@@ -437,8 +430,7 @@ int maxcnt;
 
 /* cast a float to fixed point variant? */
 /*{{{  int fix(x)*/
-int fix(x)
-int *x;
+int fix(int *x)
 {
     int e,tmp;
 
@@ -521,8 +513,7 @@ F5:
 /* Worker to pass messages to child nodes. Receives messages from the selector
    One instance per hard link
    posts on req_out (to the selector) every time it's ready for more work */
-buffer(req_out,buf_in,buf_out)
-Channel *req_out,*buf_in,*buf_out;
+void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
 {
     int len;
     int buf[PRBSIZE-1];
@@ -542,9 +533,7 @@ Channel *req_out,*buf_in,*buf_out;
 /* arb_in is list of channels connected to job or buffer processes */
 /* arb_out is the output side of the parent link */
 /* Receives result from worker (local job or link buffer processes) and passes result to parent */
-arbiter(arb_in,arb_out,root)
-Channel **arb_in,*arb_out;
-int root;
+void arbiter(Channel **arb_in, Channel *arb_out, int root)
 {
     int i,len,cnt,pri;
     int buf[RSLCOM_BUFSIZE];
@@ -593,8 +582,7 @@ int root;
 /* 1. waits for a buffer from the parent
    2. waits for a job() or a buffer() to inform they're ready (by writing a 0 on request channel)
    3. sends the buffer to the child that's ready */
-selector(sel_in,req_in,dn_out)
-Channel *sel_in,**req_in,**dn_out;
+void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
 {
     int i,len;
     int buf[PRBSIZE-1];
@@ -637,9 +625,7 @@ Channel *sel_in,**req_in,**dn_out;
 /*}}}  */
 /*{{{  feed(...)*/
 /* This runs on the root node only. Split full image into MAXPIX (or less) sized jobs */
-feed(fd_in,fd_out,fxp)
-Channel *fd_in,*fd_out;
-int fxp;
+void feed(Channel *fd_in, Channel *fd_out, int fxp)
 {
     int len;
     int buf[PRBSIZE];

@@ -6,8 +6,13 @@
 *.PP
 *.OUT
 *.ARR
+B438.TAL
 MANDEL.TAL
 SMALLMAN.TAL
 MLIBP.TAL
 MLIBS.TAL
 man
+loader
+*.o
+*.a
+.vscode/*

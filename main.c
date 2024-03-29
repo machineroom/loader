@@ -308,7 +308,7 @@ void get_value (uint8_t **raw, int64_t *length, int64_t *value) {
     }
 }
 
-void get_TCOFF_code(uint8_t *raw, off64_t raw_size, std::vector<uint8_t> &code, bool debug) {
+void get_TCOFF_code(uint8_t *raw, off64_t raw_size, std::vector<uint8_t> &code, bool debug, uint32_t &entry_point) {
     uint8_t *raw_orig=raw;
     bool go = true;
     while (go) {
@@ -402,6 +402,8 @@ void get_TCOFF_code(uint8_t *raw, off64_t raw_size, std::vector<uint8_t> &code, 
                 int64_t ds_value;
                 get_value (&raw, &length, &ds_value);
                 printf ("\tds_value = %ld\n", ds_value);
+                //TODO HACKY should use MAIN
+                entry_point = (uint32_t)ds_value;
             }
             break;
             case 20:
@@ -480,17 +482,29 @@ bool load_tcoff (const char *name, bool debug) {
         return false;
     }
     printf ("load (TCOFF) %s\n", name);
-    get_TCOFF_code (code, statbuf.st_size, load, debug);
+    uint32_t entry_point;
+    get_TCOFF_code (code, statbuf.st_size, load, debug, entry_point);
+    // TODO insert a gcall (entry point) so that FLLOAD jumps to the TCOFF entry point
+    printf ("entry_point 0x%X\n", entry_point);
+    std::vector<uint8_t> jump;
+    //TODO HACK assume bit size of entry_point (0x37A)
+//    jump.push_back(0x20|(entry_point&0xF00)>>8);    //pfix
+//    jump.push_back(0x20|(entry_point&0x0F0)>>4);    //pfix
+//    jump.push_back(0x00|(entry_point&0x00F)>>0);    //j
+//    jump.push_back(0x10);    //seterr
+    std::vector<uint8_t> load2;
+    load2.reserve(jump.size() + load.size());
+    load2.insert (load2.end(), jump.begin(), jump.end());
+    load2.insert (load2.end(), load.begin(), load.end());
     if (debug) {
-        //memdump(load.data(), load.size());
-        printf("Sending %s (%ld)\n", name, load.size());
+        memdump(load2.data(), load2.size());
+        printf("Sending %s (%ld)\n", name, load2.size());
     }
-    return load_buf(load.data(), load.size(), debug);
+    return load_buf(load2.data(), load2.size(), debug);
 }
 
 bool boot(const char *fname, bool lsc, bool tcoff, bool debug)
 {   
-    #if 1
     int ack, nnodes;
     c011_init();
     printf ("set byte mode...\n");
@@ -537,7 +551,6 @@ bool boot(const char *fname, bool lsc, bool tcoff, bool debug)
     }
     printf("from IDENT\n");
     printf("\tnodes found: %d (0x%X)\n",nnodes,nnodes);
-    #endif
     if (lsc) {
         if (!load_tld (fname, debug))
         {
@@ -587,7 +600,10 @@ int main(int argc, char **argv) {
     tcsetattr(STDIN_FILENO, TCSANOW, &new_opts);
     */
 
-    boot(FLAGS_code.c_str(), FLAGS_lsc, FLAGS_tcoff, FLAGS_v);
+    if (!boot(FLAGS_code.c_str(), FLAGS_lsc, FLAGS_tcoff, FLAGS_v)) {
+        fprintf (stderr, "Boot failed!\n");
+        exit(-1);
+    }
     if (FLAGS_m) {
         do_mandel();
     } else if (FLAGS_r) {

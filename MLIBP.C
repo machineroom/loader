@@ -24,11 +24,8 @@
 
 /* This function takes as array of channel pointer and return an index of
   the channel  that is ready for communication . */
-int
-ProcPriAltList(clist, pchan)
-	Channel	**clist;
-	int	pchan;
-	{
+int ProcPriAltList(Channel	**clist, int pchan)
+{
 	int	reserve;
 	int	idx;
 	int	cnt;
@@ -100,6 +97,7 @@ L5
 	#pragma endasm
 	}
 
+#if 1
 /* Setup process structure */
 PDes
 PSetupA(int (*func)(), int wsize, int psize, ...)
@@ -150,3 +148,4 @@ malloc(size)
 
 static	size_t	ho;
 static	int	hs;
+#endif
