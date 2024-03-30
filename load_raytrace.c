@@ -80,7 +80,176 @@ static void send_PRBCOM (double center_r, double center_i, double rng, int max_i
 }
 
 static void send_model(int model) {
-    
+    switch (model) {
+    case 1: /* 10 sphere selection */
+    {
+        float rad = 102.0;
+        float y  = -210.0;
+        float z = 3910.0;
+        float x0 = -210.0;
+        float x1 = 3.0;
+        float x2 = 210.0;
+        object sphere0 = {
+           .type = o_sphere,
+           .attr = 0,
+           .kdR = 0.7,
+           .kdG = 0.1,
+           .kdB = 0.1,
+           .ks = 0.9,
+           .u.sphere.rad = rad,
+           .u.sphere.x = x0,
+           .u.sphere.y = y,
+           .u.sphere.z = z
+        };
+        //out ! c.object; s.size; [ temp FROM 0 FOR s.size ]
+        send_object(sphere0);
+        object sphere1 = {
+           .type = o_sphere,
+           .attr = a_spec,
+           .kdR = 0.2,
+           .kdG = 0.3,
+           .kdB = 0.4,
+           .ks = 0.9,
+           .kg = 0.95,
+           .u.sphere.rad = rad,
+           .u.sphere.x = x1,
+           .u.sphere.y = y,
+           .u.sphere.z = z
+        };
+        send_object(sphere1);
+        object sphere2 = {
+           .type = o_sphere,
+           .attr = 0,
+           .kdR = 0.1,
+           .kdG = 0.9,
+           .kdB = 0.1,
+           .ks = 0.9,
+           .u.sphere.rad = rad,
+           .u.sphere.x = x2,
+           .u.sphere.y = y,
+           .u.sphere.z = z
+        };
+        send_object(sphere2);
+        printf ("sent 3 spheres\n");
+        rad=102.0;
+        y=5.0;
+        z=3910.0;
+        x0=-210.0;
+        x1=3.0;
+        x2=210.0;
+        object sphere3 = {
+           .type = o_sphere,
+           .attr = a_spec,
+           .kdR = 0.1,
+           .kdG = 0.4,
+           .kdB = 0.1,
+           .ks = 0.9,
+           .kg = 0.9,
+           .u.sphere.rad = rad,
+           .u.sphere.x = x0,
+           .u.sphere.y = y,
+           .u.sphere.z = z
+        };
+        send_object(sphere3);
+        object sphere4 = {
+           .type = o_sphere,
+           .attr = a_spec,
+           .kdR = 0.3,
+           .kdG = 0.1,
+           .kdB = 0.1,
+           .ks = 0.95,
+           .kg = 0.95,
+           .u.sphere.rad = rad,
+           .u.sphere.x = x1,
+           .u.sphere.y = y,
+           .u.sphere.z = z
+        };
+        send_object(sphere4);
+        object sphere5 = {
+           .type = o_sphere,
+           .attr = a_spec,
+           .kdR = 0.3,
+           .kdG = 0.1,
+           .kdB = 0.3,
+           .ks = 0.9,
+           .kg = 0.95,
+           .u.sphere.rad = rad,
+           .u.sphere.x = x2,
+           .u.sphere.y = y,
+           .u.sphere.z = z
+        };
+        send_object(sphere5);
+        printf ("sent 3 spheres\n");
+        rad=102.0;
+        y=210.0;
+        z=3910.0;
+        x0=-210.0;
+        x1=3.0;
+        x2=210.0;
+        object sphere6 = {
+           .type = o_sphere,
+           .attr = 0,
+           .kdR = 0.7,
+           .kdG = 0.7,
+           .kdB = 0.1,
+           .ks = 0.9,
+           .u.sphere.rad = rad,
+           .u.sphere.x = x0,
+           .u.sphere.y = y,
+           .u.sphere.z = z
+        };
+        send_object(sphere6);
+        object sphere7 = {
+           .type = o_sphere,
+           .attr = a_spec,
+           .kdR = 0.4,
+           .kdG = 0.1,
+           .kdB = 0.4,
+           .ks = 0.9,
+           .kg = 0.9,
+           .u.sphere.rad = rad,
+           .u.sphere.x = x1,
+           .u.sphere.y = y,
+           .u.sphere.z = z
+        };
+        send_object(sphere7);
+        object sphere8 = {
+           .type = o_sphere,
+           .attr = 0,
+           .kdR = 0.1,
+           .kdG = 0.1,
+           .kdB = 0.7,
+           .ks = 0.9,
+           .u.sphere.rad = rad,
+           .u.sphere.x = x2,
+           .u.sphere.y = y,
+           .u.sphere.z = z
+        };
+        send_object(sphere8);
+        printf ("sent 3 spheres\n");
+        object sphere9 = {
+           .type = o_sphere,
+           .attr = a_spec | a_frac,
+           .kdR = 0,
+           .kdG = 0,
+           .kdB = 0,
+           .ks = 0.3,
+           .kg = 0.8,
+           .xmitR = 0.7,
+           .xmitG = 0.7,
+           .xmitB = 0.7,
+           .refix = 1.02,
+           .power = 10,
+           .u.sphere.rad = 100,
+           .u.sphere.x = -90,
+           .u.sphere.y = -80,
+           .u.sphere.z = 3100
+        };
+        send_object(sphere9);
+        printf ("sent glass sphere\n");
+    }
+    break;
+    }    
 }
 
 #define DEBUG

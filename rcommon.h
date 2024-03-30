@@ -64,10 +64,6 @@
 #define o_ellipsoid  7
 #define o_quadric    8 /* general quadric, hell to compute */
 
-#define x_axis      0
-#define y_axis      1
-#define z_axis      2
-
 /* the attribute word contains gross attributes of the object as */
 /* bits. The relevant words in the object descriptor expand upon these */
 
@@ -79,162 +75,107 @@
 #define a_bump     0x20  /* bump map    ? */
 
 typedef struct {
-    int type;
-    int attr;
-    float kdR;
+    int type;       /* type field of all objects */
+    int attr;       /* attribute field of all object */
+    float kdR;      /* coeffs of diffuse reflection R G B */
     float kdG;
     float kdB;
-    float ks;
-    float kg;
-    float xmitR;
+    float ks;       /* coeff of specular reflection ( for reflections) */
+    float kg;       /* coeff of gloss for phong shading */
+    float xmitR;    /* coeffs of transmission R G B */
     float xmitG;
     float xmitB;
-    float power;
-    float refix;
+    float power;    /* power for phong shading */
+    float refix;    /* refractive index (relative) */
     union {
         struct {
-
-        }
+            float rad;
+            float x;
+            float y;
+            float z;
+        } sphere;
+        struct {
+            float x;    /* center of the ellipsoid */
+            float y;
+            float z;
+            float a11;  /* transformation matrix of the ellipsoid */
+            float a12;  /* from gobal to local coord_ */
+            float a13;
+            float a21;
+            float a22;
+            float a23;
+            float a31;
+            float a32;
+            float a33;
+            float radx; /* size on x axis ( of the new system ) */
+            float rady; /* size on y axis ( of the new system ) */
+            float radz; /* size on z axis ( of the new system ) */
+        } ellipsoid;
+        struct {
+            float x;    /* center of the circle */
+            float y;
+            float z;
+            float a11;  /* transformation matrix of the ellipsoid */
+            float a12;  /* from gobal to local coord_ */
+            float a13;
+            float a21;
+            float a22;
+            float a23;
+            float a31;
+            float a32;
+            float a33;
+            float rada; /* size of the circle at the beginning */
+            float co_radb;/* size of the circle at the end */
+            float len;  /* length of the cone on new z axis */
+        } circle;
+        struct {
+            float x;
+            float y;
+            float z;
+            float ux;
+            float uy;
+            float uz;
+            float vx;
+            float vy;
+            float vz;
+            float wx;
+            float wy;
+            float wz;
+            float sizeu;
+            float sizev;
+        } plane;
+        struct {
+            float x;
+            float y;
+            float z;
+            float sizex;
+            float sizey;
+        } xyplane;
+        struct {
+            float x;
+            float y;
+            float z;
+            float sizex;
+            float sizez;
+        } xzplane;
+        struct {
+            float x;
+            float y;
+            float z;
+            float sizey;
+            float sizez;
+        } yzplane;
+        struct {
+            float ir;   /* light intensity fields  R G B */
+            float ig;
+            float ib;
+            float dx;   /* light direction cosines x y z */
+            float dy;   /* this is a quick'n'tacky shading sheme */
+            float dz;
+        } light;
     }
 } object;
 
-#if 0
-#define o_type      0 /* type field of all objects */
-#define o_attr      1 /* attribute field of all object */
-
-#define o_kdR       2  /* coeffs of diffuse reflection R G B */
-#define o_kdG       3
-#define o_kdB       4
-
-#define o_ks        5  /* coeff of specular reflection ( for reflections) */
-
-#define o_kg        6  /* coeff of gloss for phong shading */
-#define o_xmitR     7  /* coeffs of transmission R G B */
-#define o_xmitG     8
-#define o_xmitB     9
-#endif
-
-#define o_power    10  /* power for phong shading */
-#define o_refix    11  /* refractive index (relative) */
-
-#define s_rad       first + 0
-#define s_x         first + 1
-#define s_y         first + 2
-#define s_z         first + 3
-
-#define s_map       first + 4  /* which map ( texture or bump) */
-#define s_uoffs     first + 5  /* offsets for u and v in map */
-#define s_voffs     first + 6
-#define s_size      first + 7
-
-#define co_x     first + 0       /* center of the circle */
-#define co_y     first + 1       /*  at the beginnig of the cone */
-#define co_z     first + 2
-#define co_a11   first + 3       /* transformation matrix of the cone */
-#define co_a12   first + 4       /* from gobal to local coord_ */
-#define co_a13   first + 5
-#define co_a21   first + 6
-#define co_a22   first + 7
-#define co_a23   first + 8
-#define co_a31   first + 9
-#define co_a32   first + 10
-#define co_a33   first + 11
-#define co_rada  first + 12      /* size of the circle at the beginning */
-#define co_radb  first + 13      /* size of the circle at the end */
-#define co_len   first + 14      /* length of the cone on new z axis */
-#define co_size  first + 15
-
-#define e_x     first + 0       /* center of the ellipsoid */
-#define e_y     first + 1
-#define e_z     first + 2
-#define e_a11   first + 3       /* transformation matrix of the ellipsoid */
-#define e_a12   first + 4       /* from gobal to local coord_ */
-#define e_a13   first + 5
-#define e_a21   first + 6
-#define e_a22   first + 7
-#define e_a23   first + 8
-#define e_a31   first + 9
-#define e_a32   first + 10
-#define e_a33   first + 11
-#define e_radx  first + 12      /* size on x axis ( of the new system ) */
-#define e_rady  first + 13      /* size on y axis ( of the new system ) */
-#define e_radz  first + 14      /* size on z axis ( of the new system ) */
-#define e_size  first + 15
-
-#define c_x     first + 0       /* center of the circle */
-#define c_y     first + 1       /*  at the beginnig of the cylinder */
-#define c_z     first + 2
-#define c_a11   first + 3       /* transformation matrix of the cylinder */
-#define c_a12   first + 4       /* from gobal to local coord_ */
-#define c_a13   first + 5
-#define c_a21   first + 6
-#define c_a22   first + 7
-#define c_a23   first + 8
-#define c_a31   first + 9
-#define c_a32   first + 10
-#define c_a33   first + 11
-#define c_rad   first + 12      /* size of the circle */
-#define c_len   first + 13      /* length of the cylinder */
-#define c_size  first + 14
-
-#define p_x        first + 1 
-#define p_y        first + 2 
-#define p_z        first + 3 
-#define p_ux       first + 4 
-#define p_uy       first + 5 
-#define p_uz       first + 6 
-#define p_vx       first + 7 
-#define p_vy       first + 8 
-#define p_vz       first + 9 
-#define p_wx       first + 10
-#define p_wy       first + 11
-#define p_wz       first + 12
-#define p_sizeu    first + 13
-#define p_sizev    first + 14
-
-#define p_map      first + 15  /* which map ( texture or bump) */
-#define p_uoffs    first + 16  /* offsets for u and v in map */
-#define p_voffs    first + 17
-#define p_size     first + 18
-
-#define pxy_x        first + 0 /* origin x of the plane */
-#define pxy_y        first + 1 /* origin y of the plane */
-#define pxy_z        first + 2 /* origin z of the plane */
-#define pxy_sizex    first + 3 /* bounding on x axis */
-#define pxy_sizey    first + 4 /* bounding on y axis */
-#define pxy_map      first + 5  /* which map ( texture or bump) */
-#define pxy_uoffs    first + 6  /* offsets for u and v in map */
-#define pxy_voffs    first + 7
-#define pxy_size     first + 8
-
-#define pxz_x        first + 0 /* origin x of the plane */
-#define pxz_y        first + 1 /* origin y of the plane */
-#define pxz_z        first + 2 /* origin z of the plane */
-#define pxz_sizex    first + 3 /* bounding on x axis */
-#define pxz_sizez    first + 4 /* bounding on z axis */
-#define pxz_map      first + 5  /* which map ( texture or bump) */
-#define pxz_uoffs    first + 6  /* offsets for u and v in map */
-#define pxz_voffs    first + 7
-#define pxz_size     first + 8
-
-#define pyz_x        first + 0 /* origin x of the plane */
-#define pyz_y        first + 1 /* origin y of the plane */
-#define pyz_z        first + 2 /* origin z of the plane */
-#define pyz_sizey    first + 3 /* bounding on y axis */
-#define pyz_sizez    first + 4 /* bounding on z axis */
-#define pyz_map      first + 5  /* which map ( texture or bump) */
-#define pyz_uoffs    first + 6  /* offsets for u and v in map */
-#define pyz_voffs    first + 7
-#define pyz_size     first + 8
-
-#define l_ir   0   /* light intensity fields  R G B */
-#define l_ig   1
-#define l_ib   2
-#define l_dx   3   /* light direction cosines x y z */
-#define l_dy   4   /* this is a quick'n'tacky shading sheme */
-#define l_dz   5
-
-#define l_size 6
 
 #define MAXPIX  32 /* keep it a multiple of 4 please! TODO why can't this be <32? */
 #define MAXPIX_WORDS MAXPIX/4
