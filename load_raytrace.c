@@ -100,6 +100,28 @@ void do_raytrace(void) {
     printf("\nfrom RAYTRACE");
     printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
     printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
+
+    int selection;
+    while (true) {
+        printf("                                                           \n");
+        printf("               RayTracer Image Selection                   \n");
+        printf("               =========================                   \n");
+        printf("                                                           \n");
+        printf("               <1>  10 Sphere Image                        \n");
+        printf("               <2>  14 Sphere Image                        \n");
+        printf("               <3>  Cone, Ellipsoid Image                  \n");
+        printf("               <4>  Cylinder, Sphere Image                 \n");
+        printf("               <5>  (small) Cylinder, Sphere Image         \n");
+        printf("                                                           \n");
+        printf(" Your Selection: ");
+
+        selection = getchar() - '0';
+        if (selection >= 1 && selection <= 5) {
+            break;
+        }
+    }
+
+
     //RENDER
     double center_r = CENTER_R;
     double center_i = CENTER_I;
