@@ -1,5 +1,5 @@
 #include "load_mandel.h"
-#include "mcommon.h"
+#include "rcommon.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>

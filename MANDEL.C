@@ -24,8 +24,9 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include <conc.h>
+
 #include "mlibp.h"
+#include "loader.h"
 
 #include "mcommon.h"
 #include "B438.h"
@@ -90,20 +91,6 @@ int iterR64(double cx, double cy, int maxcnt);
 
 
 /* NOTE main() must be first function */
-
-/* struct type def shared with loader and ident asembler code */
-typedef struct {
-    int id;
-    void *minint;
-    void *memstart;
-    Channel *up_in;
-    Channel *dn_out[3];
-    void *ldstart;
-    void *entryp;
-    void *wspace;
-    void *ldaddr;
-    int trantype;
-} LOADGB;
 
 main(LOADGB *ld)
 {

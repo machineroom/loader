@@ -53,6 +53,8 @@ libgpio.a: $(LIBGPIO)
 
 load_mandel.c: mcommon.h
 
+load_raytrace: rcommon.h
+
 loader : main.c load_mandel.c load_raytrace.c lkio_c011.c c011.c libgpio.a
 	g++ -g -O0 main.c load_mandel.c load_raytrace.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -L. -lgpio -o $@
 
