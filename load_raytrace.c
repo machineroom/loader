@@ -79,6 +79,10 @@ static void send_PRBCOM (double center_r, double center_i, double rng, int max_i
 #endif    
 }
 
+static void send_model(int model) {
+    
+}
+
 #define DEBUG
 void do_raytrace(void) {
     int fxp, nnodes;
@@ -120,6 +124,7 @@ void do_raytrace(void) {
             break;
         }
     }
+    send_model (selection);
 
 
     //RENDER
