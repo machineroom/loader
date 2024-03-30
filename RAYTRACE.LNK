@@ -1,0 +1,5 @@
+FLAG c
+LIST raytrace.map
+INPUT raytrace.trl mlibp.trl b438.trl
+ENTRY main
+LIB D:\LIB\t8lib.tll

@@ -25,7 +25,7 @@ static int calc_iter(double r) {
 static void send_PRBCOM (double center_r, double center_i, double rng, int max_iter) {
     int len;
     double xrange,yrange;
-    // This struct shared with transputer code (mandel.c) so type sizing & ordering is important
+    // This struct shared with transputer code (raytrace.c) so type sizing & ordering is important
     struct{
         int32_t com;
         int32_t width;
@@ -80,7 +80,7 @@ static void send_PRBCOM (double center_r, double center_i, double rng, int max_i
 }
 
 #define DEBUG
-void do_mandel(void) {
+void do_raytrace(void) {
     int fxp, nnodes;
     // BOOT
     if (tbyte_out(0))
@@ -88,16 +88,16 @@ void do_mandel(void) {
         printf("\n -- timeout sending execute");
         exit(1);
     }
-    //mandel code sends these back to parent, so these will reach the host
+    //raytrace code sends these back to parent, so these will reach the host
     if (word_in(&nnodes)) {
-        printf(" -- timeout getting nnodes (MANDEL)\n");
+        printf(" -- timeout getting nnodes (RAYTRACE)\n");
         exit(1);
     }
     if (word_in(&fxp)) {
         printf(" -- timeout getting fxp\n");
         exit(1);
     }
-    printf("\nfrom MANDEL");
+    printf("\nfrom RAYTRACE");
     printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
     printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
     //RENDER

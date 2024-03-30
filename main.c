@@ -17,6 +17,7 @@
 #include <iomanip>
 
 #include "load_mandel.h"
+#include "load_raytrace.h"
 
 int get_key(void)
 {
@@ -574,18 +575,6 @@ DEFINE_bool (tcoff, false, "Load a TCOFF object");
 DEFINE_bool (v, false, "verbose debug");
 DEFINE_bool (m, false, "Mandelbrot");
 DEFINE_bool (r, false, "Raytrace");
-
-
-
-void do_raytrace(void) {
-    printf ("Sit and wait for network\n");
-    while (1) {
-        int x;
-        if (word_in(&x) == 0) {      //len in bytes
-            printf ("from RT 0x%X\n", x);
-        }
-    }
-}
 
 int main(int argc, char **argv) {
     int i,aok = 1;

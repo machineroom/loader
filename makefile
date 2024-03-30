@@ -6,7 +6,7 @@
 
 .SUFFIXES: .C .TAL .TLD .ARR .EXE
 .PHONY: lsc_debug
-all: loader MANDEL.TLD FLBOOT.TLD FLLOAD.TLD IDENT.TLD
+all: loader MANDEL.TLD RAYTRACE.TLD FLBOOT.TLD FLLOAD.TLD IDENT.TLD
 
 LSC93=${HOME}/lsc-V93
 LSC93_BIN=d:\BIN
@@ -36,11 +36,6 @@ LSC_INCLUDE=$(LSC93_INCLUDE)
 	dosbox -c "mount D $(LSC)" -c "mount C `pwd`" -c "C:" -c "$(LSC_BIN)\tasm $* -c > ASM.OUT" -c "exit"
 	cat ASM.OUT
 
-RAYTRACE.LKU : FRAMEBUF.T4H CNTLSYS.T4H RAYTRACE.T4H
-	$(DB) -c "$(LINK) /f RAYTRACE.L4H $(CPU) /h /o RAYTRACE.LKU $(LINKOPT) > 2.out" -c "exit"
-	-grep --color "Warning\|Error\|Serious" 2.OUT
-	$(DB) -c "ilist /A /T /C /M /W /I /X RAYTRACE.LKU > raytrace.lst" -c "exit"
-
 FRAMEBUF.T4H : FRAMEBUF.OCC PROTOCOL.INC B438.INC
 	$(DB) -c "$(OCCAM) FRAMEBUF $(CPU) /h /o FRAMEBUF.T4H $(OCCOPT) > 4.out" -c "exit"
 	-grep --color "Warning\|Error\|Serious" 4.OUT
@@ -56,8 +51,10 @@ LIBGPIO=gpiolib.o gpiochip_rp1.o util.o
 libgpio.a: $(LIBGPIO)
 	ar rcs $@ $^
 
-loader : main.c load_mandel.c lkio_c011.c c011.c common.h libgpio.a
-	g++ -g -O0 main.c load_mandel.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -L. -lgpio -o $@
+load_mandel.c: mcommon.h
+
+loader : main.c load_mandel.c load_raytrace.c lkio_c011.c c011.c libgpio.a
+	g++ -g -O0 main.c load_mandel.c load_raytrace.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -L. -lgpio -o $@
 
 clean:
 	rm -f *.OBJ
@@ -70,8 +67,11 @@ clean:
 	rm -f MLIBP.TAL
 	rm -f B438.TAL
 
-MANDEL.TAL:  MANDEL.C common.h B438.h
+MANDEL.TAL:  MANDEL.C mcommon.h B438.h
 MANDEL.TLD:  MANDEL.TAL MLIBP.TRL B438.TRL MANDEL.LNK
+
+RAYTRACE.TAL:  RAYTRACE.C B438.h
+RAYTRACE.TLD:  RAYTRACE.TAL MLIBP.TRL B438.TRL RAYTRACE.LNK
 
 B438.TAL: B438.C B438.h
 B438.TRL:  B438.TAL
