@@ -173,9 +173,8 @@ typedef struct {
             float dy;   /* this is a quick'n'tacky shading sheme */
             float dz;
         } light;
-    }
+    } u;
 } object;
-
 
 #define MAXPIX  32 /* keep it a multiple of 4 please! TODO why can't this be <32? */
 #define MAXPIX_WORDS MAXPIX/4

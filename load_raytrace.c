@@ -1,9 +1,11 @@
 #include "load_mandel.h"
 #include "rcommon.h"
 #include <math.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <assert.h>
+#include <stdbool.h>
 #include "lkio.h"
 
 #define HIR  2.5
@@ -68,15 +70,22 @@ static void send_PRBCOM (double center_r, double center_i, double rng, int max_i
     assert (sizeof(prob_st) == 48);
     if (word_out(sizeof(prob_st)) != 0) {
         printf(" -- timeout sending prob_st size\n");
-        exit(1);           
+        exit(1);
     }
     if (chan_out((char *)&prob_st,sizeof(prob_st)) != 0) {
         printf(" -- timeout sending prob_st\n");
-        exit(1);           
+        exit(1);
     }
 #ifdef DEBUG
     printf ("PRBCOM sent\n");
 #endif    
+}
+
+static void send_object(object *o) {
+    if (chan_out((char *)o,sizeof(*o)) != 0) {
+        printf(" -- timeout sending object\n");
+        exit(1);
+    }
 }
 
 static void send_model(int model) {
@@ -102,7 +111,7 @@ static void send_model(int model) {
            .u.sphere.z = z
         };
         //out ! c.object; s.size; [ temp FROM 0 FOR s.size ]
-        send_object(sphere0);
+        send_object(&sphere0);
         object sphere1 = {
            .type = o_sphere,
            .attr = a_spec,
@@ -116,7 +125,7 @@ static void send_model(int model) {
            .u.sphere.y = y,
            .u.sphere.z = z
         };
-        send_object(sphere1);
+        send_object(&sphere1);
         object sphere2 = {
            .type = o_sphere,
            .attr = 0,
@@ -129,7 +138,7 @@ static void send_model(int model) {
            .u.sphere.y = y,
            .u.sphere.z = z
         };
-        send_object(sphere2);
+        send_object(&sphere2);
         printf ("sent 3 spheres\n");
         rad=102.0;
         y=5.0;
@@ -150,7 +159,7 @@ static void send_model(int model) {
            .u.sphere.y = y,
            .u.sphere.z = z
         };
-        send_object(sphere3);
+        send_object(&sphere3);
         object sphere4 = {
            .type = o_sphere,
            .attr = a_spec,
@@ -164,7 +173,7 @@ static void send_model(int model) {
            .u.sphere.y = y,
            .u.sphere.z = z
         };
-        send_object(sphere4);
+        send_object(&sphere4);
         object sphere5 = {
            .type = o_sphere,
            .attr = a_spec,
@@ -178,7 +187,7 @@ static void send_model(int model) {
            .u.sphere.y = y,
            .u.sphere.z = z
         };
-        send_object(sphere5);
+        send_object(&sphere5);
         printf ("sent 3 spheres\n");
         rad=102.0;
         y=210.0;
@@ -198,7 +207,7 @@ static void send_model(int model) {
            .u.sphere.y = y,
            .u.sphere.z = z
         };
-        send_object(sphere6);
+        send_object(&sphere6);
         object sphere7 = {
            .type = o_sphere,
            .attr = a_spec,
@@ -212,7 +221,7 @@ static void send_model(int model) {
            .u.sphere.y = y,
            .u.sphere.z = z
         };
-        send_object(sphere7);
+        send_object(&sphere7);
         object sphere8 = {
            .type = o_sphere,
            .attr = 0,
@@ -225,7 +234,7 @@ static void send_model(int model) {
            .u.sphere.y = y,
            .u.sphere.z = z
         };
-        send_object(sphere8);
+        send_object(&sphere8);
         printf ("sent 3 spheres\n");
         object sphere9 = {
            .type = o_sphere,
@@ -245,7 +254,7 @@ static void send_model(int model) {
            .u.sphere.y = -80,
            .u.sphere.z = 3100
         };
-        send_object(sphere9);
+        send_object(&sphere9);
         printf ("sent glass sphere\n");
     }
     break;
