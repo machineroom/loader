@@ -165,16 +165,28 @@ typedef struct {
             float sizey;
             float sizez;
         } yzplane;
-        struct {
-            float ir;   /* light intensity fields  R G B */
-            float ig;
-            float ib;
-            float dx;   /* light direction cosines x y z */
-            float dy;   /* this is a quick'n'tacky shading sheme */
-            float dz;
-        } light;
     } u;
 } object;
+
+typedef struct {
+    float ir;   /* light intensity fields  R G B */
+    float ig;
+    float ib;
+    float dx;   /* -- light direction cosines x y z */
+    float dy;   /* this is a quick'n'tacky shading scheme */
+    float dz;
+} light;
+
+typedef struct {
+    float ambient[3];
+    int renderingMode;
+    int runPatchsize;
+    int scaleFactor;
+    float screenOrg[3];
+    float screenX[3];
+    float screenY[3];
+    float pinhole[3];
+} rundata;
 
 #define MAXPIX  32 /* keep it a multiple of 4 please! TODO why can't this be <32? */
 #define MAXPIX_WORDS MAXPIX/4
