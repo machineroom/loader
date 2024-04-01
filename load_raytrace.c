@@ -346,6 +346,16 @@ void do_raytrace(void) {
                     case c_stop:
                         printf ("Finished\n");
                         break;
+                    case c_message:
+                        {
+                            int size;
+                            char buf[1204];
+                            word_in (&size);
+                            assert (size<sizeof(buf));
+                            chan_in(buf, size);
+                            printf ("message : %s\n", buf);
+                        }
+                        break;
                     case c_message2:
                         {
                             int p1,p2,size;
