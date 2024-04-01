@@ -342,9 +342,25 @@ void do_raytrace(void) {
 #ifdef DEBUG
                 printf ("len=0x%X, buf = 0x%X 0x%X 0x%X 0x%X...0x%X\n",len,buf[0],buf[1],buf[2],buf[3],buf[(len/4)-1]);
 #endif
-                if (buf[0] == c_stop) {
-                    printf ("Finished\n");
-                    break;
+                switch (buf[0]) {
+                    case c_stop:
+                        printf ("Finished\n");
+                        break;
+                    case c_message2:
+                        {
+                            int p1,p2,size;
+                            char buf[1204];
+                            word_in (&p1);
+                            word_in (&p2);
+                            word_in (&size);
+                            assert (size<sizeof(buf));
+                            chan_in(buf, size);
+                            printf ("message2 : %d %d %s\n", p1,p2,buf);
+                        }
+                        break;
+                    default:
+                        printf ("duff command (%d)\n", buf[0]);
+                        break;
                 }
             }
         }
