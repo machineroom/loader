@@ -8,13 +8,32 @@
 #include <stdbool.h>
 #include "lkio.h"
 
+static bool get_ack (int expected_ack) {
+    int ack;
+    if (word_in(&ack) == 0) {
+        if (ack == expected_ack) {
+            printf ("\tack\n");
+            return true;
+        } else {
+            printf ("got wrong ack. expecting %d got %d\n", expected_ack, ack);
+        }
+    } else {
+        printf ("timed out getting ack\n");
+    }
+    return false;
+}
+
 static void send_object(object *o) {
+    printf ("send object\n");
     if (word_out(c_object) != 0) {
         printf(" -- timeout sending object type\n");
         exit(1);
     }
     if (chan_out((char *)o,sizeof(*o)) != 0) {
         printf(" -- timeout sending object\n");
+        exit(1);
+    }
+    if (!get_ack (c_object_ack)) {
         exit(1);
     }
 }
@@ -28,6 +47,9 @@ static void send_light(light *l) {
         printf(" -- timeout sending light\n");
         exit(1);
     }
+    if (!get_ack (c_light_ack)) {
+        exit(1);
+    }
 }
 
 static void send_rundata(rundata *r) {
@@ -37,6 +59,9 @@ static void send_rundata(rundata *r) {
     }
     if (chan_out((char *)r,sizeof(*r)) != 0) {
         printf(" -- timeout sending rundata\n");
+        exit(1);
+    }
+    if (get_ack (c_runData_ack)) {
         exit(1);
     }
 }

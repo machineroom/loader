@@ -1,13 +1,28 @@
 
 /* Definitions shared between the Transputer and host code */
 
+/* TEMP until the mandel code reworked */
+#define JOBCOM 0L
+#define PRBCOM 1L
+#define DATCOM 2L
+#define RSLCOM 3L
+#define FLHCOM 4L
+
+#define MAXPIX  32 /* keep it a multiple of 4 please! TODO why can't this be <32? */
+#define MAXPIX_WORDS MAXPIX/4
+#define DATCOMSIZE 11
+#define JOBCOMSIZE 4
+#define PRBSIZE 12  /* Must be larger than DATCOM and JOBCOM. Sheesh :( */
+#define RSLCOM_BUFSIZE 3+MAXPIX_WORDS  /* 32 bit words */
+
+
 /*-------------------------- COMMANDS PROTOCOL -----------------------------*/
 
 #define c_invalid  -1
 #define c_stop      0 
 #define c_render    1   /* render; x0; y0 */
-#define c_object    2   /* object; size; [ size ] */
-#define c_light     3   /* light;  size; [ size ] */
+#define c_object    2   /* object; */
+#define c_light     3   /* light; */
 #define c_patch     4   /* patch;  x; y; patchSize; worker; [ patchSize][patchSize] */
 #define c_runData   5   /* ambient light, rendering mode, screen pos etc. */
 #define c_message   6   /* message; size; [ words ] */
@@ -15,6 +30,10 @@
 #define c_mapAck    8   /* count */
 #define c_message2  9   /* message; p1; p2; size; [ words ] */
 #define c_start     10
+
+#define c_object_ack 90 + c_object
+#define c_light_ack 90 + c_light
+#define c_runData_ack 90 + c_runData
 
 #define m_adaptive   0
 #define m_stochastic 1

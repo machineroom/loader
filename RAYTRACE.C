@@ -31,7 +31,7 @@
 
 #define JOBWSZ (53*4)+MAXPIX
 #define BUFWSZ (20*4)
-#define FEDWSZ (24*4)
+#define FEDWSZ (sizeof(object))+100
 #define ARBWSZ (22*4*10)+MAXPIX
 #define SELWSZ (29*4)
 
@@ -150,7 +150,7 @@ main(LOADGB *ld)
         {
             /* id=0 == root node */
             si = ChanAlloc();
-            PRun(PSetup(get_ws(FEDWSZ),feed,FEDWSZ,3,ld->up_in,si,fxp));
+            PRun(PSetup(get_ws(FEDWSZ),feed,FEDWSZ,4,ld->up_in,ld->up_in-4,si,fxp));
             /* arbiter(Channel **arb_in, Channel *arb_out) */
             PRun(PSetup(get_ws(ARBWSZ),arbiter,ARBWSZ,3,ai,ld->up_in-4,1));
         }
@@ -165,7 +165,7 @@ void *get_ws(int sz)
 {
     void *rval;
     rval = malloc((size_t)sz);
-    if (sz == NULL) {
+    if (rval == NULL) {
         lon();
         exit(1);
     }
@@ -581,13 +581,36 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
 
 
 /* This runs on the root node only. Split full image into MAXPIX (or less) sized jobs */
-void feed(Channel *fd_in, Channel *fd_out, int fxp)
+void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
 {
-    int len;
-    int buf[PRBSIZE];
     loop
     {
-        len = ChanInInt(fd_in);
+        int type;
+        type = ChanInInt(host_in);
+        switch (type) {
+            case c_object:
+            {
+                object o;
+                ChanIn(host_in,(char *)&o, sizeof(o));
+                ChanOutInt(host_out,c_object_ack);
+            }
+            break;
+            case c_light:
+            {
+                light l;
+                ChanIn(host_in,(char *)&l, sizeof(l));
+                ChanOutInt(host_out,c_light_ack);
+            }
+            break;
+            case c_runData:
+            {
+                rundata r;
+                ChanIn(host_in,(char *)&r, sizeof(r));
+                ChanOutInt(host_out,c_runData_ack);
+            }
+            break;
+        }
+        #if 0
         ChanIn(fd_in,(char *)buf,len);
         if (buf[0] == PRBCOM)
         {
@@ -619,5 +642,6 @@ void feed(Channel *fd_in, Channel *fd_out, int fxp)
         /* inform host that work is finished */
         ChanOutInt(fd_out,len);
         ChanOut(fd_out,(char *)buf,len);
+        #endif
     }
 }
