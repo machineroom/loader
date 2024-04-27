@@ -51,47 +51,42 @@ static void pumpWorldModels(int model, int patchEdge) {
             float x0 = -210.0;
             float x1 = 3.0;
             float x2 = 210.0;
-            object sphere0 = {
-            .type = o_sphere,
-            .attr = 0,
-            .kdR = 0.7,
-            .kdG = 0.1,
-            .kdB = 0.1,
-            .ks = 0.9,
-            .u.sphere.rad = rad,
-            .u.sphere.x = x0,
-            .u.sphere.y = y,
-            .u.sphere.z = z
-            };
+            object sphere;
+            sphere.type = o_sphere;
+            sphere.attr = 0;
+            sphere.kdR = 0.7;
+            sphere.kdG = 0.1;
+            sphere.kdB = 0.1;
+            sphere.ks = 0.9;
+            sphere.u.sphere.rad = rad;
+            sphere.u.sphere.x = x0;
+            sphere.u.sphere.y = y;
+            sphere.u.sphere.z = z;
             //out ! c.object; s.size; [ temp FROM 0 FOR s.size ]
-            send_object(&sphere0);
-            object sphere1 = {
-            .type = o_sphere,
-            .attr = a_spec,
-            .kdR = 0.2,
-            .kdG = 0.3,
-            .kdB = 0.4,
-            .ks = 0.9,
-            .kg = 0.95,
-            .u.sphere.rad = rad,
-            .u.sphere.x = x1,
-            .u.sphere.y = y,
-            .u.sphere.z = z
-            };
-            send_object(&sphere1);
-            object sphere2 = {
-            .type = o_sphere,
-            .attr = 0,
-            .kdR = 0.1,
-            .kdG = 0.9,
-            .kdB = 0.1,
-            .ks = 0.9,
-            .u.sphere.rad = rad,
-            .u.sphere.x = x2,
-            .u.sphere.y = y,
-            .u.sphere.z = z
-            };
-            send_object(&sphere2);
+            send_object(&sphere);
+            sphere.type = o_sphere;
+            sphere.attr = a_spec;
+            sphere.kdR = 0.2;
+            sphere.kdG = 0.3;
+            sphere.kdB = 0.4;
+            sphere.ks = 0.9;
+            sphere.kg = 0.95;
+            sphere.u.sphere.rad = rad;
+            sphere.u.sphere.x = x1;
+            sphere.u.sphere.y = y;
+            sphere.u.sphere.z = z;
+            send_object(&sphere);
+            sphere.type = o_sphere;
+            sphere.attr = 0;
+            sphere.kdR = 0.1;
+            sphere.kdG = 0.9;
+            sphere.kdB = 0.1;
+            sphere.ks = 0.9;
+            sphere.u.sphere.rad = rad;
+            sphere.u.sphere.x = x2;
+            sphere.u.sphere.y = y;
+            sphere.u.sphere.z = z;
+            send_object(&sphere);
             printf ("sent 3 spheres\n");
             rad=102.0;
             y=5.0;
@@ -99,48 +94,42 @@ static void pumpWorldModels(int model, int patchEdge) {
             x0=-210.0;
             x1=3.0;
             x2=210.0;
-            object sphere3 = {
-            .type = o_sphere,
-            .attr = a_spec,
-            .kdR = 0.1,
-            .kdG = 0.4,
-            .kdB = 0.1,
-            .ks = 0.9,
-            .kg = 0.9,
-            .u.sphere.rad = rad,
-            .u.sphere.x = x0,
-            .u.sphere.y = y,
-            .u.sphere.z = z
-            };
-            send_object(&sphere3);
-            object sphere4 = {
-            .type = o_sphere,
-            .attr = a_spec,
-            .kdR = 0.3,
-            .kdG = 0.1,
-            .kdB = 0.1,
-            .ks = 0.95,
-            .kg = 0.95,
-            .u.sphere.rad = rad,
-            .u.sphere.x = x1,
-            .u.sphere.y = y,
-            .u.sphere.z = z
-            };
-            send_object(&sphere4);
-            object sphere5 = {
-            .type = o_sphere,
-            .attr = a_spec,
-            .kdR = 0.3,
-            .kdG = 0.1,
-            .kdB = 0.3,
-            .ks = 0.9,
-            .kg = 0.95,
-            .u.sphere.rad = rad,
-            .u.sphere.x = x2,
-            .u.sphere.y = y,
-            .u.sphere.z = z
-            };
-            send_object(&sphere5);
+            sphere.type = o_sphere;
+            sphere.attr = a_spec;
+            sphere.kdR = 0.1;
+            sphere.kdG = 0.4;
+            sphere.kdB = 0.1;
+            sphere.ks = 0.9;
+            sphere.kg = 0.9;
+            sphere.u.sphere.rad = rad;
+            sphere.u.sphere.x = x0;
+            sphere.u.sphere.y = y;
+            sphere.u.sphere.z = z;
+            send_object(&sphere);
+            sphere.type = o_sphere;
+            sphere.attr = a_spec;
+            sphere.kdR = 0.3;
+            sphere.kdG = 0.1;
+            sphere.kdB = 0.1;
+            sphere.ks = 0.95;
+            sphere.kg = 0.95;
+            sphere.u.sphere.rad = rad;
+            sphere.u.sphere.x = x1;
+            sphere.u.sphere.y = y;
+            sphere.u.sphere.z = z;
+            send_object(&sphere);
+            sphere.type = o_sphere;
+            sphere.attr = a_spec;
+            sphere.kdR = 0.3;
+            sphere.kdG = 0.1;
+            sphere.kdB = 0.3;
+            sphere.ks = 0.9;
+            sphere.kg = 0.95;
+            sphere.u.sphere.rad = rad;
+            sphere.u.sphere.x = x2;
+            sphere.u.sphere.y = y;
+            sphere.u.sphere.z = z;
+            send_object(&sphere);
             printf ("sent 3 spheres\n");
             rad=102.0;
             y=210.0;
@@ -148,109 +137,96 @@ static void pumpWorldModels(int model, int patchEdge) {
             x0=-210.0;
             x1=3.0;
             x2=210.0;
-            object sphere6 = {
-            .type = o_sphere,
-            .attr = 0,
-            .kdR = 0.7,
-            .kdG = 0.7,
-            .kdB = 0.1,
-            .ks = 0.9,
-            .u.sphere.rad = rad,
-            .u.sphere.x = x0,
-            .u.sphere.y = y,
-            .u.sphere.z = z
-            };
-            send_object(&sphere6);
-            object sphere7 = {
-            .type = o_sphere,
-            .attr = a_spec,
-            .kdR = 0.4,
-            .kdG = 0.1,
-            .kdB = 0.4,
-            .ks = 0.9,
-            .kg = 0.9,
-            .u.sphere.rad = rad,
-            .u.sphere.x = x1,
-            .u.sphere.y = y,
-            .u.sphere.z = z
-            };
-            send_object(&sphere7);
-            object sphere8 = {
-            .type = o_sphere,
-            .attr = 0,
-            .kdR = 0.1,
-            .kdG = 0.1,
-            .kdB = 0.7,
-            .ks = 0.9,
-            .u.sphere.rad = rad,
-            .u.sphere.x = x2,
-            .u.sphere.y = y,
-            .u.sphere.z = z
-            };
-            send_object(&sphere8);
+            sphere.type = o_sphere;
+            sphere.attr = 0;
+            sphere.kdR = 0.7;
+            sphere.kdG = 0.7;
+            sphere.kdB = 0.1;
+            sphere.ks = 0.9;
+            sphere.u.sphere.rad = rad;
+            sphere.u.sphere.x = x0;
+            sphere.u.sphere.y = y;
+            sphere.u.sphere.z = z;
+            send_object(&sphere);
+            sphere.type = o_sphere;
+            sphere.attr = a_spec;
+            sphere.kdR = 0.4;
+            sphere.kdG = 0.1;
+            sphere.kdB = 0.4;
+            sphere.ks = 0.9;
+            sphere.kg = 0.9;
+            sphere.u.sphere.rad = rad;
+            sphere.u.sphere.x = x1;
+            sphere.u.sphere.y = y;
+            sphere.u.sphere.z = z;
+            send_object(&sphere);
+            sphere.type = o_sphere;
+            sphere.kdR = 0.1;
+            sphere.kdG = 0.1;
+            sphere.kdB = 0.7;
+            sphere.ks = 0.9;
+            sphere.u.sphere.rad = rad;
+            sphere.u.sphere.x = x2;
+            sphere.u.sphere.y = y;
+            sphere.u.sphere.z = z;
+            send_object(&sphere);
             printf ("sent 3 spheres\n");
-            object sphere9 = {
-            .type = o_sphere,
-            .attr = a_spec | a_frac,
-            .kdR = 0,
-            .kdG = 0,
-            .kdB = 0,
-            .ks = 0.3,
-            .kg = 0.8,
-            .xmitR = 0.7,
-            .xmitG = 0.7,
-            .xmitB = 0.7,
-            .refix = 1.02,
-            .power = 10,
-            .u.sphere.rad = 100,
-            .u.sphere.x = -90,
-            .u.sphere.y = -80,
-            .u.sphere.z = 3100
-            };
-            send_object(&sphere9);
+            sphere.type = o_sphere;
+            sphere.attr = a_spec | a_frac;
+            sphere.kdR = 0;
+            sphere.kdG = 0;
+            sphere.kdB = 0;
+            sphere.ks = 0.3;
+            sphere.kg = 0.8;
+            sphere.xmitR = 0.7;
+            sphere.xmitG = 0.7;
+            sphere.xmitB = 0.7;
+            sphere.refix = 1.02;
+            sphere.power = 10;
+            sphere.u.sphere.rad = 100;
+            sphere.u.sphere.x = -90;
+            sphere.u.sphere.y = -80;
+            sphere.u.sphere.z = 3100;
+            send_object(&sphere);
             printf ("sent glass sphere\n");
         }
         break;
     }
     if (model != 1) {
-        object plane = {
-            .type = o_xzplane,
-            .attr = a_spec | a_bound0 | a_bound1,
-            .kdR = 0.05,
-            .kdG = 0.4,
-            .kdB = 0.05,
-            .ks = 0.7,
-            .kg = 0.1,
-            .u.xzplane.x = -2000.0,
-            .u.xzplane.y = -690.0,
-            .u.xzplane.z = 10000.0,
-            .u.xzplane.sizex = 4000.0,
-            .u.xzplane.sizez = 3000.0,
-        };
+        object plane;
+        plane.type = o_xzplane;
+        plane.attr = a_spec | a_bound0 | a_bound1;
+        plane.kdR = 0.05;
+        plane.kdG = 0.4;
+        plane.kdB = 0.05;
+        plane.ks = 0.7;
+        plane.kg = 0.1;
+        plane.u.xzplane.x = -2000.0;
+        plane.u.xzplane.y = -690.0;
+        plane.u.xzplane.z = 10000.0;
+        plane.u.xzplane.sizex = 4000.0;
+        plane.u.xzplane.sizez = 3000.0;
         send_object (&plane);
         printf ("a plane\n");
     };
     // a yellow sun
-    light l1 = {
-        .ir = 780.8,
-        .ig = 780.8,
-        .ib = 710.7,
-        .dx = 1.7,
-        .dy = 1.6,
-        .dz = -0.9
-    };
-    send_light(&l1);
+    light l;
+    l.ir = 780.8;
+    l.ig = 780.8;
+    l.ib = 710.7;
+    l.dx = 1.7;
+    l.dy = 1.6;
+    l.dz = -0.9;
+    send_light(&l);
     printf ("a light\n");
     // a yellow sun
-    light l2 = {
-        .ir = 780.8,
-        .ig = 780.8,
-        .ib = 710.7,
-        .dx = -1.1,
-        .dy = 1.8,
-        .dz = -0.3
-    };
-    send_light(&l2);
+    l.ir = 780.8;
+    l.ig = 780.8;
+    l.ib = 710.7;
+    l.dx = -1.1;
+    l.dy = 1.8;
+    l.dz = -0.3;
+    send_light(&l);
     printf ("a light\n");
     float cosTheta = 0.93969;
     float sinTheta = 0.34202;
@@ -259,26 +235,25 @@ static void pumpWorldModels(int model, int patchEdge) {
     float offX = 0.0;
     float offY = 0.0;
     float offZ = 0.0;
-    rundata r = {
-        .ambient[0] = 266.0,
-        .ambient[1] = 266.0,
-        .ambient[2] = 280.0,
-        .renderingMode = m_adaptive,
-        .runPatchsize = patchEdge,
-        .scaleFactor = 1,
-        .screenOrg[0] = offX - 256.0,
-        .screenOrg[1] = offY - 256.0,
-        .screenOrg[2] = offZ + 0.0,
-        .screenX[0] = 1.0,
-        .screenX[1] = 0.0,
-        .screenX[2] = 0.0,
-        .screenY[0] = 0.0,
-        .screenY[1] = 1.0,  // cosTheta
-        .screenY[2] = 0.0,  // sinTheta
-        .pinhole[0] = offX + 0.0,
-        .pinhole[1] = offY + 0.0,
-        .pinhole[2] = offZ + 1024.0
-    };
+    rundata r;
+    r.ambient[0] = 266.0;
+    r.ambient[1] = 266.0;
+    r.ambient[2] = 280.0;
+    r.renderingMode = m_adaptive;
+    r.runPatchsize = patchEdge;
+    r.scaleFactor = 1;
+    r.screenOrg[0] = offX - 256.0;
+    r.screenOrg[1] = offY - 256.0;
+    r.screenOrg[2] = offZ + 0.0;
+    r.screenX[0] = 1.0;
+    r.screenX[1] = 0.0;
+    r.screenX[2] = 0.0;
+    r.screenY[0] = 0.0;
+    r.screenY[1] = 1.0;  // cosTheta
+    r.screenY[2] = 0.0;  // sinTheta
+    r.pinhole[0] = offX + 0.0;
+    r.pinhole[1] = offY + 0.0;
+    r.pinhole[2] = offZ + 1024.0;
     send_rundata (&r);
     printf ("rundata\n");
 }

@@ -52,7 +52,7 @@ libgpio.a: $(LIBGPIO)
 	ar rcs $@ $^
 
 loader : main.c load_mandel.c load_raytrace.c mcommon.h rcommon.h lkio_c011.c c011.c libgpio.a
-	g++ -g -O0 main.c load_mandel.c load_raytrace.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -L. -lgpio -o $@
+	g++ -std=c++20 -g -O0 main.c load_mandel.c load_raytrace.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -L. -lgpio -o $@
 
 clean:
 	rm -f *.OBJ
