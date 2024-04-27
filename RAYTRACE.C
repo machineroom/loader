@@ -68,10 +68,6 @@
 #pragma endmacro
 
 void *get_ws(int sz);
-int fix(int *x);
-int iterFIX(int cx, int cy, int maxcnt);
-int iterR32(double cx, double cy, int maxcnt);
-int iterR64(double cx, double cy, int maxcnt);
 
 
 /* NOTE main() must be first function */
@@ -181,7 +177,6 @@ int jobws[JOBWSZ/4];
 
 void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
 {
-    int (*iter)(double cx, double cy, int maxcnt);
     int i,len,pixvec,maxcnt,fxp;
     int ilox,igapx,iloy,igapy;
     double dlox,dgapx,dloy,dgapy;
@@ -206,7 +201,8 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
                     for (i = 0; i < pixvec; i++)
                     {
                         x = igapx*(buf[1]+i)+ilox;
-                        pbuf[i] = iterFIX(x,y,maxcnt);
+/*                        pbuf[i] = iterFIX(x,y,maxcnt);*/
+                        pbuf[i] = x;
                     }
                 }
                 else
@@ -221,7 +217,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
                 for (i = 0; i < pixvec; i++)
                 {
                     x = (buf[1]+i)*dgapx+dlox;
-                    pbuf[i] = (*iter)(x,y,maxcnt);
+                    pbuf[i] = x; /*(*iter)(x,y,maxcnt);*/
                 }
             }
             len = pixvec+3*4;
@@ -229,7 +225,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
         }
         else if (buf[0] == DATCOM)
         {
-            fxp = buf[1];
+            /*fxp = buf[1];
             maxcnt = buf[2];
             if (fxp)
             {
@@ -246,234 +242,12 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
                 dgapy = *(double *)(buf+9);
                 if (dgapx < THRESH || dgapy < THRESH) iter = iterR64;
                 else  iter = iterR32;
-            }
+            }*/
             continue;
         }
         ChanOutInt(rsl_out,len);
         ChanOut(rsl_out,(char *)buf,len);
     }
-}
-
-/* fixed point iterate used by T4 variants */
-int iterFIX(int cx, int cy, int maxcnt)
-{
-    int cnt,zx,zy,zx2,zy2,tmp;
-
-#pragma asm
-    .VAL    maxcnt, ?ws+3
-        .VAL    cy,     ?ws+2
-        .VAL    cx,     ?ws+1
-        .VAL    tmp,    ?ws-1
-        .VAL    zy2,    ?ws-2
-        .VAL    zx2,    ?ws-3
-    .VAL    zy,     ?ws-4
-        .VAL    zx,     ?ws-5
-        .VAL    cnt,    ?ws-6
-    ; zx = zy = zx2 = zy2 = cnt = 0;
-        LDC     0
-        STL     zx
-    LDC     0
-        STL     zy
-        LDC     0
-        STL     zx2
-        LDC     0
-        STL     zy2
-    LDC     0
-        STL     cnt
-LOOP:
-    ; cnt++;
-        LDL     cnt
-        ADC     1
-    STL     cnt
-        ; if (cnt >= maxcnt) goto END;
-        LDL     maxcnt
-        LDL     cnt
-        GT
-        CJ      @END
-    ; tmp = zx2 - zy2 + cx;
-        LDL     zx2
-        LDL     zy2
-    SUB
-        LDL     cx
-        ADD
-    STL     tmp
-        ; zy = zx * zy * 2 + cy;
-        LDL     zx
-        LDL     zy
-        FMUL
-        XDBLE
-    LDC 3
-        LSHL
-        CSNGL
-    LDL     cy
-        ADD
-        STL     zy
-    ; tmp = zx;
-        LDL     tmp
-        STL     zx
-        ; zx2 = zx * zx;
-        LDL     zx
-        LDL     zx
-    FMUL
-        XDBLE
-        LDC 2
-    LSHL
-        CSNGL
-        STL     zx2
-    ; zy2 = zy * zy;
-        LDL     zy
-        LDL     zy
-        FMUL
-        XDBLE
-        LDC     2
-    LSHL
-        CSNGL
-        STL     zy2
-    ; if (zx2 + zy2 >= 4.0) goto END;
-        LDL     zx2
-        LDL     zy2
-    ADD
-        TESTERR
-        CJ      @END
-        J       @LOOP
-END:
-        ; if (cnt != maxcnt) return(cnt);
-    LDL     cnt
-        LDL     maxcnt
-        DIFF
-    CJ      @RETN
-        LDL     cnt
-        .RETF   ?ws
-RETN:
-        ; return(0);
-        .RETF   ?ws
-#pragma endasm
-}
-
-/* ONLY used by T8 variants */
-int iterR64(double cx, double cy, int maxcnt)
-{
-    int cnt;
-    double zx,zy,zx2,zy2,tmp,four;
-
-    four = 4.0;
-    zx = zy = zx2 = zy2 = 0.0;
-    cnt = 0;
-    do
-    {
-        tmp = zx2-zy2+cx;
-        zy = zx*zy*2.0+cy;
-        zx = tmp;
-        zx2 = zx*zx;
-        zy2 = zy*zy;
-        cnt++;
-    }
-    while (cnt < maxcnt && zx2+zy2 < four);
-    if (cnt != maxcnt) return(cnt);
-    return(0);
-}
-
-/* ONLY used by T8 variants */
-int iterR32(double cx, double cy, int maxcnt)
-{
-    int cnt;
-    float x,y,zx,zy,zx2,zy2,tmp,four;
-
-    four = 4.0f;
-    zx = zy = zx2 = zy2 = 0.0f;
-    x = cx; y = cy;
-    cnt = 0;
-    do
-    {
-        tmp = zx2-zy2+x;
-        zy = zx*zy*2.0f+y;
-        zx = tmp;
-        zx2 = zx*zx;
-        zy2 = zy*zy;
-        cnt++;
-    }
-    while (cnt < maxcnt && zx2+zy2 < four);
-    if (cnt != maxcnt) return(cnt);
-    return(0);
-}
-
-/* cast a float to fixed point variant? */
-int fix(int *x)
-{
-    int e,tmp;
-
-#pragma asm
-        .VAL    x,?ws+1
-        .VAL    tmp,?ws-1
-    .VAL    e,?ws-2
-        ; e = ((x[1] >> 20) & 0x7ff) - 1023 + 9;
-        LDL     x
-    LDNL    1
-        .LDC    20
-        SHR
-        .LDC    0x7ff
-        AND
-        ADC     (-1023)+(+9)
-    STL     e
-        ; reg = (x[1] & 0xfffff) | 0x100000;
-        LDL     x
-    LDNL    1
-        .LDC    0xfffff
-        AND
-    .LDC    0x100000
-        OR
-        ; if (e < 0) { F2;
-        .LDC    0
-        LDL     e
-        GT
-    CJ      @F2
-        ; if (e > -21) { F1;
-        LDL     e
-    .LDC    -21
-        GT
-        CJ      @F1
-    ; reg >>= -e;
-        LDL     e
-        NOT
-        ADC     1
-        SHR
-F1:
-    ; } else reg = 0;
-        .LDC    0
-        CJ      @F4
-F2:
-        ; } else if (e < 11) { F3;
-        ADD
-    .LDC    +11
-        LDL     e
-        GT
-        CJ      @F3
-        ; lreg <<= e;
-        LDL     x
-    LDNL    0
-        LDL     e
-        LSHL
-    STL     tmp
-        .LDC    0
-        CJ      @F4
-F3:
-        ; } else reg = 0x7fffffff;
-        .LDC    0x7fffffff
-        .LDC    0
-F4:
-        ; if (x[1] < 0) return(-reg);
-    LDL     x
-        LDNL    1
-        GT
-    CJ      @F5
-        NOT
-        ADC     1
-    .RETF   ?ws
-F5:
-        ; return(reg);
-        ADD
-        .RETF   ?ws
-#pragma endasm
 }
 
 /* Worker to pass messages to child nodes. Receives messages from the selector
