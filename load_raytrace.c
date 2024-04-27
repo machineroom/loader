@@ -39,6 +39,7 @@ static void send_object(object *o) {
 }
 
 static void send_light(light *l) {
+    printf ("send light\n");
     if (word_out(c_light) != 0) {
         printf(" -- timeout sending light type\n");
         exit(1);
@@ -53,6 +54,7 @@ static void send_light(light *l) {
 }
 
 static void send_rundata(rundata *r) {
+    printf ("send runData\n");
     if (word_out(c_runData) != 0) {
         printf(" -- timeout sending rundata type\n");
         exit(1);
