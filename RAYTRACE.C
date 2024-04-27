@@ -146,6 +146,7 @@ main(LOADGB *ld)
         {
             /* id=0 == root node */
             si = ChanAlloc();
+            /* feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp) */
             PRun(PSetup(get_ws(FEDWSZ),feed,FEDWSZ,4,ld->up_in,ld->up_in-4,si,fxp));
             /* arbiter(Channel **arb_in, Channel *arb_out) */
             PRun(PSetup(get_ws(ARBWSZ),arbiter,ARBWSZ,3,ai,ld->up_in-4,1));
@@ -381,6 +382,11 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
                 rundata r;
                 ChanIn(host_in,(char *)&r, sizeof(r));
                 ChanOutInt(host_out,c_runData_ack);
+            }
+            break;
+            case c_start:
+            {
+                ChanOutInt(host_out,c_start_ack);
             }
             break;
         }

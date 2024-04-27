@@ -2,11 +2,11 @@
 /* Definitions shared between the Transputer and host code */
 
 /* TEMP until the mandel code reworked */
-#define JOBCOM 0L
-#define PRBCOM 1L
-#define DATCOM 2L
-#define RSLCOM 3L
-#define FLHCOM 4L
+#define JOBCOM 60L
+#define PRBCOM 61L
+#define DATCOM 62L
+#define RSLCOM 63L
+#define FLHCOM 64L
 
 #define MAXPIX  32 /* keep it a multiple of 4 please! TODO why can't this be <32? */
 #define MAXPIX_WORDS MAXPIX/4
@@ -34,6 +34,7 @@
 #define c_object_ack 90 + c_object
 #define c_light_ack 90 + c_light
 #define c_runData_ack 90 + c_runData
+#define c_start_ack 90 + c_start
 
 #define m_adaptive   0
 #define m_stochastic 1

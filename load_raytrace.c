@@ -63,7 +63,7 @@ static void send_rundata(rundata *r) {
         printf(" -- timeout sending rundata\n");
         exit(1);
     }
-    if (get_ack (c_runData_ack)) {
+    if (!get_ack (c_runData_ack)) {
         exit(1);
     }
 }
@@ -328,8 +328,12 @@ void do_raytrace(void) {
         }
     }
     pumpWorldModels (selection, patchEdge);
+    printf ("send c_start\n");
     if (word_out(c_start) != 0) {
         printf(" -- timeout sending start\n");
+        exit(1);
+    }
+    if (!get_ack (c_start_ack)) {
         exit(1);
     }
     printf ("The inmos ray tracer is GO\n");
