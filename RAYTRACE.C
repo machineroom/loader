@@ -76,7 +76,7 @@ main(LOADGB *ld)
 {
     int i,fxp;
     if (ld->id == 0) {
-        setupGfx();
+        setupGfx(1);
     }
 
     /* get num nodes and whether floating point*/
@@ -403,38 +403,5 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             }
             break;
         }
-        #if 0
-        ChanIn(fd_in,(char *)buf,len);
-        if (buf[0] == PRBCOM)
-        {
-            int width,height,multiple;
-            width = buf[1];
-            height = buf[2];
-            /* abuse buf to send parameters in a DATCOM block */
-            /* Dispatch single DATCOM block to each worker */
-            buf[1] = DATCOM;
-            buf[2] = fxp;
-            ChanOutInt(fd_out,(PRBSIZE-1)*4);
-            ChanOut(fd_out,(char *)&buf[1],(PRBSIZE-1)*4);
-            buf[0] = JOBCOM;
-            /* abuse buf to send parameters in a JOBCOM block */
-            /* Dispatch JOBCOM blocks for each slice to the selector. The selector distributes the work */
-            multiple = width/MAXPIX*MAXPIX;
-            for (buf[2] = 0; buf[2] < height; buf[2]++)
-            {
-                for (buf[1] = 0; buf[1] < width; buf[1]+=MAXPIX)
-                {
-                    buf[3] = (buf[1] < multiple) ? MAXPIX : width-multiple;
-                    ChanOutInt(fd_out,4*4);
-                    ChanOut(fd_out,(char *)buf,4*4);
-                }
-            }
-            buf[0] = FLHCOM;
-            len = 1*4;
-        }
-        /* inform host that work is finished */
-        ChanOutInt(fd_out,len);
-        ChanOut(fd_out,(char *)buf,len);
-        #endif
     }
 }

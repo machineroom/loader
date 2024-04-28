@@ -6,8 +6,6 @@
     .NOEMULATE
 #pragma endasm
 
-/*#define TRUE_COLOUR*/
-
 #define mon_frequency       (unsigned int)25
 #define mon_lineTime        (unsigned int)202
 #define mon_halfSync        (unsigned int)8
@@ -20,11 +18,6 @@
 #define mon_vPreEqualize    (unsigned int)4
 #define mon_vPostEqualize   (unsigned int)4
 #define mon_broadPulse      (unsigned int)75
-#ifdef TRUE_COLOUR
-#define mon_memInit         (unsigned int)128
-#else
-#define mon_memInit         (unsigned int)512
-#endif
 #define mon_xferDelay       (unsigned int)1
 #define mon_lineStart       (unsigned int)0
 
@@ -80,21 +73,21 @@
 #define	IMS_332_BOOTCLOCKPLL            (unsigned int)0x000020	/* else xternal */
 #define IMS_332_BOOT64BITMODE           (unsigned int)0x000040	/* else 32 */
 
-void resetB438(void) {
+static void resetB438(void) {
     volatile unsigned int *boardRegBase = (unsigned int *)0x200000;
     *boardRegBase = 0;
     *boardRegBase = 1;
     *boardRegBase = 0;
 }
 
-void IMS_332_WriteRegister (unsigned int regno, unsigned int val) {
+static void IMS_332_WriteRegister (unsigned int regno, unsigned int val) {
     volatile unsigned int *IMS332RegBase = (unsigned int *)0x0;
     volatile unsigned int *reg = IMS332RegBase;
     reg += regno;
     *reg = val;
 }
 
-void IMS_332_Init(void) {
+static void IMS_332_Init(int true_colour) {
     /* 
     PLL multipler in bits 0..4 (values from 5 to 31 allowed)
     // B438 TRAM derives clock from TRAM clock (5MHz)
@@ -103,11 +96,15 @@ void IMS_332_Init(void) {
     unsigned int clock;
     unsigned int pllMultiplier;
     unsigned int CSRA;
-#ifdef TRUE_COLOUR
-    int multiplier = 2;
-#else
-    int multiplier = 1;
-#endif
+    int multiplier;
+    int mon_memInit;
+    if (true_colour) {
+        mon_memInit = 128;
+        multiplier = 2;
+    } else {
+        mon_memInit = 512;
+        multiplier = 1;
+    }
     clock = 5; /* 5MHz from TRAM */
     pllMultiplier = mon_frequency/clock;
     pllMultiplier = pllMultiplier * multiplier; /* 24bpp interleaved mode -> clock=2*dot rate */
@@ -131,11 +128,11 @@ void IMS_332_Init(void) {
     IMS_332_WriteRegister (IMS_332_REGCOLORMASK,    0xFFFFFFFF);
     CSRA = 0;
     CSRA |= IMS_332_CSRA_DISABLECURSOR;
-#ifdef TRUE_COLOUR
-    CSRA |= IMS_335_BPP24;
-#else
-    CSRA |= IMS_332_BPP_8;
-#endif
+    if (true_colour) {
+        CSRA |= IMS_335_BPP24;
+    } else {
+        CSRA |= IMS_332_BPP_8;
+    }
     CSRA |= IMS_332_CSRA_PIXELINTERLEAVE;
     CSRA |= IMS_332_VRAMINC1024;
     CSRA |= IMS_332_CSRA_PLAINSYNC;
@@ -184,41 +181,34 @@ void set_palette (int index, unsigned char red, unsigned char green, unsigned ch
                 blue);
 }
 
-void setupGfx(void) {
+void setupGfx(int true_colour) {
     int i;
     int  r,g,b;
     int c = 0x00000000;
     unsigned int a = 0x80400000;
     resetB438();
-    IMS_332_Init();
-#ifdef TRUE_COLOUR
-    /*bt709Gamma();*/
-    poke_words(0, 640*480, 0);
-    poke_words(0,640*20,0xFF);/*blue*/
-    poke_words(640*20,640*20,0xFF00);/*green*/
-    poke_words(640*40,640*20,0xFF0000);/*red*/
-    poke_words(640*60,640*20,0xFF00FF);/*pink*/
-#else
-    /* a somewhat satisfying, but very ripped off palette */
-    for (i = 0; i < 256; i++)
-    {
-        r = 13*(256-i) % 256;
-        g = 7*(256-i) % 256;
-        b = 11*(256-i) % 256;
-        set_palette(i,r,g,b);
+    IMS_332_Init(true_colour);
+    if (true_colour) {
+        /*bt709Gamma();*/
+        poke_words(0, 640*480, 0);
+        poke_words(0,640*20,0xFF);/*blue*/
+        poke_words(640*20,640*20,0xFF00);/*green*/
+        poke_words(640*40,640*20,0xFF0000);/*red*/
+        poke_words(640*60,640*20,0xFF00FF);/*pink*/
+    } else {
+        /* a somewhat satisfying, but very ripped off palette */
+        for (i = 0; i < 256; i++)
+        {
+            r = 13*(256-i) % 256;
+            g = 7*(256-i) % 256;
+            b = 11*(256-i) % 256;
+            set_palette(i,r,g,b);
+        }
+        /* dump palette */
+        for (i=0; i<240; i++) {
+            poke_words(a, 640/2, c);
+            a += 640/2;
+            c += 0x01010101;
+        }
     }
-    /* dump palette */
-    for (i=0; i<240; i++) {
-        poke_words(a, 640/2, c);
-        a += 640/2;
-        c += 0x01010101;
-    }
-
-    /*poke_words(0x80400000, 640*480/4, 0);
-    poke_words(0x80400000+(640*2*4),640/2,0x02020202);
-    poke_words(0x80400000+(640*4*4),640/2,0x01010101);
-    poke_words(0x80400000+(640*6*4),640/2,0x03030303);
-    poke_words(0x80400000+(640*8*4),640/2,0x04040404);
-    poke_words(0x80400000+(640*10*4),640/2,0x05050505);*/
-#endif
 }

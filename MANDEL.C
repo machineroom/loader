@@ -96,7 +96,7 @@ main(LOADGB *ld)
 {
     int i,fxp;
     if (ld->id == 0) {
-        setupGfx();
+        setupGfx(0);
     }
 
     /* get num nodes and whether floating point*/
