@@ -341,43 +341,40 @@ void do_raytrace(void) {
     // wait for finish
 	while (1)
 	{
-        int len;
-        if (word_in(&len) == 0) {      //len in bytes
-            int32_t buf[1024];
-            if (chan_in ((char *)buf,len) == 0) {
-#ifdef DEBUG
-                printf ("len=0x%X, buf = 0x%X 0x%X 0x%X 0x%X...0x%X\n",len,buf[0],buf[1],buf[2],buf[3],buf[(len/4)-1]);
-#endif
-                switch (buf[0]) {
-                    case c_stop:
-                        printf ("Finished\n");
-                        break;
-                    case c_message:
-                        {
-                            int size;
-                            char buf[1204];
-                            word_in (&size);
-                            assert (size<sizeof(buf));
-                            chan_in(buf, size);
-                            printf ("message : %s\n", buf);
-                        }
-                        break;
-                    case c_message2:
-                        {
-                            int p1,p2,size;
-                            char buf[1204];
-                            word_in (&p1);
-                            word_in (&p2);
-                            word_in (&size);
-                            assert (size<sizeof(buf));
-                            chan_in(buf, size);
-                            printf ("message2 : %d %d %s\n", p1,p2,buf);
-                        }
-                        break;
-                    default:
-                        printf ("duff command (%d)\n", buf[0]);
-                        break;
-                }
+        int cmd;
+        if (word_in(&cmd) == 0) {
+            switch (cmd) {
+                case c_done:
+                    printf ("c_done\n");
+                break;
+                case c_stop:
+                    printf ("c_stop\n");
+                    break;
+                case c_message:
+                    {
+                        int size;
+                        char buf[1204];
+                        word_in (&size);
+                        assert (size<sizeof(buf));
+                        chan_in(buf, size);
+                        printf ("message : %s\n", buf);
+                    }
+                    break;
+                case c_message2:
+                    {
+                        int p1,p2,size;
+                        char buf[1204];
+                        word_in (&p1);
+                        word_in (&p2);
+                        word_in (&size);
+                        assert (size<sizeof(buf));
+                        chan_in(buf, size);
+                        printf ("message2 : %d %d %s\n", p1,p2,buf);
+                    }
+                    break;
+                default:
+                    printf ("duff command (%d)\n", cmd);
+                    break;
             }
         }
     }

@@ -178,9 +178,7 @@ int jobws[JOBWSZ/4];
 
 void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
 {
-    int i,len,pixvec,maxcnt,fxp;
-    int ilox,igapx,iloy,igapy;
-    double dlox,dgapx,dloy,dgapy;
+    int len;
     int buf[RSLCOM_BUFSIZE];
     unsigned char *pbuf = (unsigned char *)(buf+3);
 
@@ -192,36 +190,20 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
         ChanIn(job_in,(char *)buf,len);
         if (buf[0] == JOBCOM)
         {
+            int i,x,y,pixvec;
+            x = buf[1];
+            y = buf[2];
             pixvec = buf[3];
-            if (fxp)
+            for (i = 0; i < pixvec; i++)
             {
-                int x,y;
-                if (igapx && igapy)
-                {
-                    y = igapy*buf[2]+iloy;
-                    for (i = 0; i < pixvec; i++)
-                    {
-                        x = igapx*(buf[1]+i)+ilox;
-/*                        pbuf[i] = iterFIX(x,y,maxcnt);*/
-                        pbuf[i] = x;
-                    }
-                }
-                else
-                {
-                    for (i = 0; i < pixvec; i++) pbuf[i] = 1;
-                }
-            }
-            else
-            {
-                double x,y;
-                y = buf[2]*dgapy+dloy;
-                for (i = 0; i < pixvec; i++)
-                {
-                    x = (buf[1]+i)*dgapx+dlox;
-                    pbuf[i] = x; /*(*iter)(x,y,maxcnt);*/
-                }
+                int packed = x+i;
+                pbuf[i] = packed<<24|packed<<16|packed<<8|packed;
             }
             len = pixvec+3*4;
+            /* 0=RSLCOM
+                1=x
+                2=y
+                3=pixels*/
             buf[0] = RSLCOM;
         }
         else if (buf[0] == DATCOM)
@@ -294,6 +276,10 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
         if (root) {
             if (buf[0] == RSLCOM) {
                 /*write_pixels (buf[0], buf[1], len-2, &buf[2]);*/
+                /* 0=RSLCOM
+                   1=x
+                   2=y
+                   3=pixels*/
                 {
                     int *a = (int *)0x80400000;
                     int i;
@@ -387,6 +373,33 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             case c_start:
             {
                 ChanOutInt(host_out,c_start_ack);
+                {
+                    int width,height,multiple;
+                    int buf[20];
+                    width = 640;
+                    height = 480;
+                    /* abuse buf to send parameters in a DATCOM block */
+                    /* Dispatch single DATCOM block to each worker */
+                    buf[1] = DATCOM;
+                    buf[2] = fxp;
+                    ChanOutInt(fd_out,(PRBSIZE-1)*4);
+                    ChanOut(fd_out,(char *)&buf[1],(PRBSIZE-1)*4);
+                    buf[0] = JOBCOM;
+                    /* abuse buf to send parameters in a JOBCOM block */
+                    /* Dispatch JOBCOM blocks for each slice to the selector. The selector distributes the work */
+                    multiple = width/MAXPIX*MAXPIX;
+                    for (buf[2] = 0; buf[2] < height; buf[2]++)
+                    {
+                        for (buf[1] = 0; buf[1] < width; buf[1]+=MAXPIX)
+                        {
+                            buf[3] = (buf[1] < multiple) ? MAXPIX : width-multiple;
+                            ChanOutInt(fd_out,4*4);
+                            ChanOut(fd_out,(char *)buf,4*4);
+                        }
+                    }
+                }
+                /* inform host that work is finished */
+                ChanOutInt(host_out,c_done);
             }
             break;
         }
