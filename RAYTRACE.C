@@ -105,7 +105,7 @@ main(LOADGB *ld)
     {
         Channel *si,*so[5],*sr[5],*ai[5];
         extern void job(),buffer(),feed(),arbiter(),selector();
-        extern int jobws[JOBWSZ/4];
+        extern int jobws[JOBWSZ];
         int list_index;
 
         /* job worker on each node - this does iter() */
@@ -174,7 +174,7 @@ void *get_ws(int sz)
    2. receives (on job_in) a DATCOM to setup parameters, then a JOBCOM 
    3. sends (on rsl_out) a RSLCOM with the pixels
 */   
-int jobws[JOBWSZ/4];
+int jobws[JOBWSZ];
 
 void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
 {
