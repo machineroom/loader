@@ -180,7 +180,6 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
 {
     int len;
     int buf[RSLCOM_BUFSIZE];
-    unsigned char *pbuf = (unsigned char *)(buf+3);
 
     loop
     {
@@ -191,15 +190,15 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
         if (buf[0] == JOBCOM)
         {
             int i,x,y,pixvec;
+            int *pbuf = &buf[3];
             x = buf[1];
             y = buf[2];
             pixvec = buf[3];
             for (i = 0; i < pixvec; i++)
             {
-                int packed = x+i;
-                pbuf[i] = packed<<24|packed<<16|packed<<8|packed;
+                pbuf[i] = 0xFF00+x+i;
             }
-            len = pixvec+3*4;
+            len = (pixvec+3)*4;
             /* 0=RSLCOM
                 1=x
                 2=y
@@ -283,10 +282,10 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
                 {
                     int *a = (int *)0x80400000;
                     int i;
-                    int *pixels = (int *)&buf[3];
-                    int count = len-3*4;
-                    a += (buf[2]*640/4)+buf[1]/4;
-                    for (i=0; i < count/4; i++) {
+                    int *pixels = &buf[3];
+                    int count = (len/4)-3;  /* len is bytes */
+                    a += (buf[2]*640)+buf[1];
+                    for (i=0; i < count; i++) {
                         *a++ = pixels[i];
                     }
                 }

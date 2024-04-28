@@ -189,7 +189,11 @@ void setupGfx(int true_colour) {
     resetB438();
     IMS_332_Init(true_colour);
     if (true_colour) {
-        /*bt709Gamma();*/
+        /* set the gamma table for true colour */
+        for (i = 0; i < 256; i++)
+        {
+            set_palette(i,i,i,i);
+        }
         poke_words(0, 640*480, 0);
         poke_words(0,640*20,0xFF);/*blue*/
         poke_words(640*20,640*20,0xFF00);/*green*/
