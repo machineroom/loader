@@ -204,9 +204,9 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
                 2=y
                 3=pixels*/
             buf[0] = RSLCOM;
+            ChanOutInt(rsl_out,len);
+            ChanOut(rsl_out,(char *)buf,len);
         }
-        ChanOutInt(rsl_out,len);
-        ChanOut(rsl_out,(char *)buf,len);
     }
 }
 
@@ -294,6 +294,7 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
             ChanOutInt(dn_out[i],len);
             ChanOut(dn_out[i],(char *)buf,len);
         }
+        #if 0
         else
         {
             /* non-JOB messages are distributed round-robin to each worker (job or buffer process) */
@@ -306,10 +307,9 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
                 ChanOut(dn_out[i],(char *)buf,len);
             }
         }
+        #endif
     }
 }
-
-
 
 /* This runs on the root node only. Split full image into MAXPIX (or less) sized jobs */
 void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
