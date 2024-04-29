@@ -262,8 +262,7 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
                     }
                 }
            } else {
-                ChanOutInt(arb_out,len);
-                ChanOut(arb_out,(char *)buf,len);
+                lon();
            }
         } else {
             /* 3. Send result to parent */
