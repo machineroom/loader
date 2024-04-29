@@ -139,7 +139,7 @@ main(LOADGB *ld)
         {
             /* id!=0 == worker node */
             si = ld->up_in;
-            /* arbiter(Channel **arb_in, Channel *arb_out) */
+            /* arbiter(Channel **arb_in, Channel *arb_out, int root) */
             PRun(PSetup(get_ws(ARBWSZ),arbiter,ARBWSZ,3,ai,ld->up_in-4,0));
         }
         else
@@ -148,7 +148,7 @@ main(LOADGB *ld)
             si = ChanAlloc();
             /* feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp) */
             PRun(PSetup(get_ws(FEDWSZ),feed,FEDWSZ,4,ld->up_in,ld->up_in-4,si,fxp));
-            /* arbiter(Channel **arb_in, Channel *arb_out) */
+            /* arbiter(Channel **arb_in, Channel *arb_out, int root) */
             PRun(PSetup(get_ws(ARBWSZ),arbiter,ARBWSZ,3,ai,ld->up_in-4,1));
         }
         /* selector(Channel *sel_in, Channel **req_in, Channel **dn_out) */
