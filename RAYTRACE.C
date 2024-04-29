@@ -266,12 +266,6 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
         pri = (arb_in[pri+1]) ? pri+1 : 0;
         len = ChanInInt(arb_in[i]);
         ChanIn(arb_in[i],(char *)buf,len);
-        if (buf[0] == FLHCOM) {
-            if (arb_in[++cnt]) 
-                continue; 
-            else 
-                cnt = 0;
-        }
         if (root) {
             if (buf[0] == RSLCOM) {
                 /*write_pixels (buf[0], buf[1], len-2, &buf[2]);*/
