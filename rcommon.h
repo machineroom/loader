@@ -4,7 +4,6 @@
 /* TEMP until the mandel code reworked */
 #define JOBCOM 60L
 #define PRBCOM 61L
-#define DATCOM 62L
 #define RSLCOM 63L
 
 #define MAXPIX  32 /* keep it a multiple of 4 please! TODO why can't this be <32? */

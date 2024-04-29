@@ -205,28 +205,6 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
                 3=pixels*/
             buf[0] = RSLCOM;
         }
-        else if (buf[0] == DATCOM)
-        {
-            /*fxp = buf[1];
-            maxcnt = buf[2];
-            if (fxp)
-            {
-                ilox = fix(buf+3);
-                iloy = fix(buf+5);
-                igapx = fix(buf+7);
-                igapy = fix(buf+9);
-            }
-            else
-            {
-                dlox = *(double *)(buf+3);
-                dloy = *(double *)(buf+5);
-                dgapx = *(double *)(buf+7);
-                dgapy = *(double *)(buf+9);
-                if (dgapx < THRESH || dgapy < THRESH) iter = iterR64;
-                else  iter = iterR32;
-            }*/
-            continue;
-        }
         ChanOutInt(rsl_out,len);
         ChanOut(rsl_out,(char *)buf,len);
     }
@@ -371,14 +349,8 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
                     int buf[20];
                     width = 640;
                     height = 480;
-                    /* abuse buf to send parameters in a DATCOM block */
-                    /* Dispatch single DATCOM block to each worker */
-                    buf[1] = DATCOM;
-                    buf[2] = fxp;
-                    ChanOutInt(fd_out,(PRBSIZE-1)*4);
-                    ChanOut(fd_out,(char *)&buf[1],(PRBSIZE-1)*4);
-                    buf[0] = JOBCOM;
                     /* abuse buf to send parameters in a JOBCOM block */
+                    buf[0] = JOBCOM;
                     /* Dispatch JOBCOM blocks for each slice to the selector. The selector distributes the work */
                     multiple = width/MAXPIX*MAXPIX;
                     for (buf[2] = 0; buf[2] < height; buf[2]++)
