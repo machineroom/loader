@@ -1,8 +1,6 @@
 
 /* Definitions shared between the Transputer and host code */
 
-/* TEMP until the mandel code reworked */
-
 #define BLOCK_WIDTH 8
 #define BLOCK_HEIGHT 8
 
