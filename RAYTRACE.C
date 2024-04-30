@@ -205,7 +205,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             for (y = 0; y < r.h; y++) {
                 for (x = 0; x < r.w; x++)
                 {
-                    *pbuf++ = 0xFF00+r.x+x;
+                    *pbuf++ = r.x*r.y*640;
                 }
             }
             p.x = r.x;
