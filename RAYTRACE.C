@@ -195,22 +195,27 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
         type = ChanInInt(job_in);
         if (type == c_render)
         {
-            int i,x,y,pixvec;
+            int x,y,pixvec;
             int buf[MAXPIX];
+            int *pbuf;
             render r;
             patch p;
             ChanIn(job_in,(char *)&r,sizeof(r));
-            for (i = 0; i < r.w; i++)
-            {
-                buf[i] = 0xFF00+r.x+i;
+            pbuf = buf;
+            for (y = 0; y < r.h; y++) {
+                for (x = 0; x < r.w; x++)
+                {
+                    *pbuf++ = 0xFF00+r.x+x;
+                }
             }
             p.x = r.x;
             p.y = r.y;
             p.worker = 0;   /* TODO */
             p.patchWidth = r.w;
+            p.patchHeight = r.h;
             ChanOutInt(rsl_out,c_patch);
             ChanOut(rsl_out,(char *)&p,sizeof(p));
-            ChanOut(rsl_out, buf, p.patchWidth*4);
+            ChanOut(rsl_out, buf, p.patchWidth*p.patchHeight*4);
         } else {
             lon();
         }
@@ -258,21 +263,24 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
         if (type == c_patch) {
             patch p;
             ChanIn(arb_in[i],(char *)&p,sizeof(p));
-            ChanIn(arb_in[i],buf,p.patchWidth*4);
+            ChanIn(arb_in[i],buf,p.patchWidth*p.patchHeight*4);
             if (root) {
                 /* render to B438 */
                 int *a = (int *)0x80400000;
-                int i;
-                int count = p.patchWidth;
+                int x,y;
+                i = 0;
                 a += (p.y*640)+p.x;
-                for (i=0; i < count; i++) {
-                    *a++ = buf[i];
+                for (y=0; y < p.patchHeight; y++) {
+                    for (x=0; x < p.patchWidth; x++) {
+                        a[x] = buf[i++];
+                    }
+                    a += 640;
                 }
             } else {
                 /* 3. Send result to parent */
                 ChanOutInt(arb_out,type);
                 ChanOut(arb_out,(char *)&p,sizeof(p));
-                ChanOut(arb_out,(char *)buf,p.patchWidth*4);
+                ChanOut(arb_out,(char *)buf,p.patchWidth*p.patchHeight*4);
             }
         } else {
             lon();
@@ -341,17 +349,21 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             {
                 ChanOutInt(host_out,c_start_ack);
                 {
-                    int width,height,multiple;
+                    int width,height;
+                    int block_height, block_width;
                     render r;
                     width = 640;
                     height = 480;
+                    block_width = BLOCK_WIDTH;
+                    block_height = BLOCK_HEIGHT;
+
+                    r.w = block_width;
+                    r.h = block_height;
                     /* Dispatch render jmessages for each slice to the selector. The selector distributes the work */
-                    multiple = width/MAXPIX*MAXPIX;
-                    for (r.y = 0; r.y < height; r.y++)
+                    for (r.y = 0; r.y < height; r.y+=block_height)
                     {
-                        for (r.x = 0; r.x < width; r.x+=MAXPIX)
+                        for (r.x = 0; r.x < width; r.x+=block_width)
                         {
-                            r.w = (r.x < multiple) ? MAXPIX : width-multiple;
                             ChanOutInt (fd_out, c_render);
                             ChanOut(fd_out,(char *)&r,sizeof(r));
                         }

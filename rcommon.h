@@ -3,10 +3,10 @@
 
 /* TEMP until the mandel code reworked */
 
-#define MAXPIX  32 /* keep it a multiple of 4 please! TODO why can't this be <32? */
-#define PRBSIZE 12  /* Must be larger than DATCOM and JOBCOM. Sheesh :( */
-#define RSLCOM_BUFSIZE 3+MAXPIX  /* 32 bit words */
+#define BLOCK_WIDTH 8
+#define BLOCK_HEIGHT 8
 
+#define MAXPIX  BLOCK_WIDTH*BLOCK_HEIGHT
 
 /*-------------------------- COMMANDS PROTOCOL -----------------------------*/
 
@@ -93,7 +93,9 @@ typedef struct {
     int x;
     int y;
     int patchWidth;
+    int patchHeight;
     int worker;
+    /* pixels [patchWidth][patchHeight]*/
 } patch;
 
 typedef struct {
