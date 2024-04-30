@@ -180,31 +180,31 @@ void *get_ws(int sz)
 
 /* job calculates a slice of pixels - one instance per node */
 /* 1. sends a 0 on req_out to indicate it needs work
-   2. receives (on job_in) a DATCOM to setup parameters, then a JOBCOM 
+   2. receives (on job_in) a DATCOM to setup parameters, then a c_render 
    3. sends (on rsl_out) a RSLCOM with the pixels
 */   
 int jobws[JOBWSZ];
 
 void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
 {
-    int len;
-    int buf[RSLCOM_BUFSIZE];
-
     loop
     {
         int type;
         /* 1. tell selector that we're ready to recieve work */
         ChanOutInt(req_out,0);
         type = ChanInInt(job_in);
-        if (type == JOBCOM)
+        if (type == c_render)
         {
             int i,x,y,pixvec;
+            int buf[RSLCOM_BUFSIZE];
+            int len;
             int *pbuf;
-            ChanIn(job_in,(char *)buf,4*4);
+            render r;
+            ChanIn(job_in,(char *)&r,sizeof(r));
+            x = r.x;
+            y = r.y;
+            pixvec = r.pixvec;
             pbuf = &buf[3];
-            x = buf[1];
-            y = buf[2];
-            pixvec = buf[3];
             for (i = 0; i < pixvec; i++)
             {
                 pbuf[i] = 0xFF00+x+i;
@@ -215,6 +215,8 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
                 2=y
                 3=pixels*/
             buf[0] = RSLCOM;
+            buf[1] = x;
+            buf[2] = y;
             ChanOutInt(rsl_out,len);
             ChanOut(rsl_out,(char *)buf,len);
         } else {
@@ -228,19 +230,17 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
    posts on req_out (to the selector) every time it's ready for more work */
 void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
 {
-    int len;
-    int buf[PRBSIZE-1];
-
     loop
     {
         int type;
         ChanOutInt(req_out,0);
         type = ChanInInt(buf_in);
-        if (type == JOBCOM)
+        if (type == c_render)
         {
-            ChanIn(buf_in,(char *)buf,4*4);
-            ChanOutInt(buf_out, JOBCOM);
-            ChanOut(buf_out, buf, 4*4);
+            render r;
+            ChanIn(buf_in,(char *)&r, sizeof(r));
+            ChanOutInt(buf_out, type);
+            ChanOut(buf_out, (char *)&r, sizeof(r));
         } else {
             lon();
         }
@@ -297,22 +297,24 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
 void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
 {
     int i;
-    int buf[PRBSIZE-1];
 
     loop
     {
         /* 1. wait for a job from the parent */
         int type;
         type = ChanInInt(sel_in);
-        if (type == JOBCOM)
+        if (type == c_render)
         {
-            ChanIn(sel_in,(char *)buf,4*4);
+            render r;
+            ChanIn(sel_in,(char *)&r,sizeof(r));
             /* 2. wait for any worker to become ready */
             i = ProcPriAltList(req_in,0);
             ChanInInt(req_in[i]);       /* discard the 0 */
             /* 3. send the job to the worker */
-            ChanOutInt(dn_out[i],JOBCOM);
-            ChanOut(dn_out[i],(char *)buf,4*4);
+            ChanOutInt(dn_out[i],type);
+            ChanOut(dn_out[i],(char *)&r,sizeof(r));
+        } else {
+            lon();
         }
     }
 }
@@ -351,20 +353,18 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
                 ChanOutInt(host_out,c_start_ack);
                 {
                     int width,height,multiple;
-                    int buf[20];
+                    render r;
                     width = 640;
                     height = 480;
-                    /* abuse buf to send parameters in a JOBCOM block */
-                    buf[0] = JOBCOM;
-                    /* Dispatch JOBCOM blocks for each slice to the selector. The selector distributes the work */
+                    /* Dispatch render jmessages for each slice to the selector. The selector distributes the work */
                     multiple = width/MAXPIX*MAXPIX;
-                    for (buf[2] = 0; buf[2] < height; buf[2]++)
+                    for (r.y = 0; r.y < height; r.y++)
                     {
-                        for (buf[1] = 0; buf[1] < width; buf[1]+=MAXPIX)
+                        for (r.x = 0; r.x < width; r.x+=MAXPIX)
                         {
-                            buf[3] = (buf[1] < multiple) ? MAXPIX : width-multiple;
-                            ChanOutInt (fd_out, JOBCOM);
-                            ChanOut(fd_out,(char *)buf,4*4);
+                            r.pixvec = (r.x < multiple) ? MAXPIX : width-multiple;
+                            ChanOutInt (fd_out, c_render);
+                            ChanOut(fd_out,(char *)&r,sizeof(r));
                         }
                     }
                 }

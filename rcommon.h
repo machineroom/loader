@@ -2,7 +2,6 @@
 /* Definitions shared between the Transputer and host code */
 
 /* TEMP until the mandel code reworked */
-#define JOBCOM 60L
 #define RSLCOM 63L
 
 #define MAXPIX  32 /* keep it a multiple of 4 please! TODO why can't this be <32? */
@@ -14,7 +13,7 @@
 
 #define c_invalid  -1
 #define c_stop      0 
-#define c_render    1   /* render; x0; y0 */
+#define c_render    1   /* render; */
 #define c_object    2   /* object; */
 #define c_light     3   /* light; */
 #define c_patch     4   /* patch;  x; y; patchSize; worker; [ patchSize][patchSize] */
@@ -83,6 +82,12 @@
 #define a_bound1   0x08  /* bounded in 2 dimension */
 #define a_tex      0x10  /* texture map ? */
 #define a_bump     0x20  /* bump map    ? */
+
+typedef struct {
+    int x;
+    int y;
+    int pixvec;
+} render;
 
 typedef struct {
     int type;       /* type field of all objects */
