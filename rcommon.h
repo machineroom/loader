@@ -2,7 +2,6 @@
 /* Definitions shared between the Transputer and host code */
 
 /* TEMP until the mandel code reworked */
-#define RSLCOM 63L
 
 #define MAXPIX  32 /* keep it a multiple of 4 please! TODO why can't this be <32? */
 #define PRBSIZE 12  /* Must be larger than DATCOM and JOBCOM. Sheesh :( */
@@ -88,6 +87,13 @@ typedef struct {
     int y;
     int pixvec;
 } render;
+
+typedef struct {
+    int x;
+    int y;
+    int patchSize;
+    int worker;
+} patch;
 
 typedef struct {
     int type;       /* type field of all objects */

@@ -181,7 +181,7 @@ void *get_ws(int sz)
 /* job calculates a slice of pixels - one instance per node */
 /* 1. sends a 0 on req_out to indicate it needs work
    2. receives (on job_in) a DATCOM to setup parameters, then a c_render 
-   3. sends (on rsl_out) a RSLCOM with the pixels
+   3. sends (on rsl_out) a c_patch with the pixels
 */   
 int jobws[JOBWSZ];
 
@@ -196,29 +196,24 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
         if (type == c_render)
         {
             int i,x,y,pixvec;
-            int buf[RSLCOM_BUFSIZE];
-            int len;
-            int *pbuf;
+            int buf[MAXPIX];
             render r;
+            patch p;
             ChanIn(job_in,(char *)&r,sizeof(r));
             x = r.x;
             y = r.y;
             pixvec = r.pixvec;
-            pbuf = &buf[3];
             for (i = 0; i < pixvec; i++)
             {
-                pbuf[i] = 0xFF00+x+i;
+                buf[i] = 0xFF00+x+i;
             }
-            len = (pixvec+3)*4;
-            /* 0=RSLCOM
-                1=x
-                2=y
-                3=pixels*/
-            buf[0] = RSLCOM;
-            buf[1] = x;
-            buf[2] = y;
-            ChanOutInt(rsl_out,len);
-            ChanOut(rsl_out,(char *)buf,len);
+            p.x = x;
+            p.y = y;
+            p.worker = 0;   /* TODO */
+            p.patchSize = pixvec;
+            ChanOutInt(rsl_out,c_patch);
+            ChanOut(rsl_out,(char *)&p,sizeof(p));
+            ChanOut(rsl_out, buf, p.patchSize*4);
         } else {
             lon();
         }
@@ -253,7 +248,8 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
 void arbiter(Channel **arb_in, Channel *arb_out, int root)
 {
     int i,len,cnt,pri;
-    int buf[RSLCOM_BUFSIZE];
+    int buf[MAXPIX];
+    int type;
 
     cnt = pri = 0;
     loop
@@ -261,32 +257,28 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
         /* 1. Wait for worker to notify result */
         i = ProcPriAltList(arb_in,pri);
         pri = (arb_in[pri+1]) ? pri+1 : 0;
-        len = ChanInInt(arb_in[i]);
-        ChanIn(arb_in[i],(char *)buf,len);
-        if (root) {
-            if (buf[0] == RSLCOM) {
-                /*write_pixels (buf[0], buf[1], len-2, &buf[2]);*/
-                /* 0=RSLCOM
-                   1=x
-                   2=y
-                   3=pixels*/
-                {
-                    int *a = (int *)0x80400000;
-                    int i;
-                    int *pixels = &buf[3];
-                    int count = (len/4)-3;  /* len is bytes */
-                    a += (buf[2]*640)+buf[1];
-                    for (i=0; i < count; i++) {
-                        *a++ = pixels[i];
-                    }
+        type = ChanInInt(arb_in[i]);
+        if (type == c_patch) {
+            patch p;
+            ChanIn(arb_in[i],(char *)&p,sizeof(p));
+            ChanIn(arb_in[i],buf,p.patchSize*4);
+            if (root) {
+                /* render to B438 */
+                int *a = (int *)0x80400000;
+                int i;
+                int count = p.patchSize;
+                a += (p.y*640)+p.x;
+                for (i=0; i < count; i++) {
+                    *a++ = buf[i];
                 }
-           } else {
-                lon();
-           }
+            } else {
+                /* 3. Send result to parent */
+                ChanOutInt(arb_out,type);
+                ChanOut(arb_out,(char *)&p,sizeof(p));
+                ChanOut(arb_out,(char *)buf,p.patchSize*4);
+            }
         } else {
-            /* 3. Send result to parent */
-            ChanOutInt(arb_out,len);
-            ChanOut(arb_out,(char *)buf,len);
+            lon();
         }
     }
 }
