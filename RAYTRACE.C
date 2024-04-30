@@ -187,6 +187,14 @@ int jobws[JOBWSZ];
 
 void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
 {
+    int loading_scene = 1;
+    while (loading_scene) {
+        int type;
+        type = ChanInInt(job_in);
+        if (type == c_start) {
+            loading_scene = 0;
+        }
+    }
     loop
     {
         int type;
@@ -227,6 +235,15 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
    posts on req_out (to the selector) every time it's ready for more work */
 void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
 {
+    int loading_scene = 1;
+    while (loading_scene) {
+        int type;
+        type = ChanInInt(buf_in);
+        if (type == c_start) {
+            ChanOutInt(buf_out,type);
+            loading_scene = 0;
+        }
+    }
     loop
     {
         int type;
@@ -293,8 +310,21 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
    3. sends the buffer to the child that's ready */
 void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
 {
-    int i;
-
+    int loading_scene = 1;
+    while (loading_scene) {
+        int type;
+        type = ChanInInt(sel_in);
+        if (type == c_start) {
+            int i;
+            /* send the command to each worker */
+            for (i=0; i < 4; i++) {
+                if (dn_out[i]!=(void *)0) {
+                    ChanOutInt(dn_out[i],type);
+                }
+            }
+            loading_scene = 0;
+        }
+    }
     loop
     {
         /* 1. wait for a job from the parent */
@@ -303,6 +333,7 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
         if (type == c_render)
         {
             render r;
+            int i;
             ChanIn(sel_in,(char *)&r,sizeof(r));
             /* 2. wait for any worker to become ready */
             i = ProcPriAltList(req_in,0);
@@ -347,6 +378,7 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             break;
             case c_start:
             {
+                ChanOutInt (fd_out, c_start);
                 ChanOutInt(host_out,c_start_ack);
                 {
                     int width,height;
