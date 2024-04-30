@@ -200,20 +200,17 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             render r;
             patch p;
             ChanIn(job_in,(char *)&r,sizeof(r));
-            x = r.x;
-            y = r.y;
-            pixvec = r.pixvec;
-            for (i = 0; i < pixvec; i++)
+            for (i = 0; i < r.w; i++)
             {
-                buf[i] = 0xFF00+x+i;
+                buf[i] = 0xFF00+r.x+i;
             }
-            p.x = x;
-            p.y = y;
+            p.x = r.x;
+            p.y = r.y;
             p.worker = 0;   /* TODO */
-            p.patchSize = pixvec;
+            p.patchWidth = r.w;
             ChanOutInt(rsl_out,c_patch);
             ChanOut(rsl_out,(char *)&p,sizeof(p));
-            ChanOut(rsl_out, buf, p.patchSize*4);
+            ChanOut(rsl_out, buf, p.patchWidth*4);
         } else {
             lon();
         }
@@ -261,12 +258,12 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
         if (type == c_patch) {
             patch p;
             ChanIn(arb_in[i],(char *)&p,sizeof(p));
-            ChanIn(arb_in[i],buf,p.patchSize*4);
+            ChanIn(arb_in[i],buf,p.patchWidth*4);
             if (root) {
                 /* render to B438 */
                 int *a = (int *)0x80400000;
                 int i;
-                int count = p.patchSize;
+                int count = p.patchWidth;
                 a += (p.y*640)+p.x;
                 for (i=0; i < count; i++) {
                     *a++ = buf[i];
@@ -275,7 +272,7 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
                 /* 3. Send result to parent */
                 ChanOutInt(arb_out,type);
                 ChanOut(arb_out,(char *)&p,sizeof(p));
-                ChanOut(arb_out,(char *)buf,p.patchSize*4);
+                ChanOut(arb_out,(char *)buf,p.patchWidth*4);
             }
         } else {
             lon();
@@ -354,7 +351,7 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
                     {
                         for (r.x = 0; r.x < width; r.x+=MAXPIX)
                         {
-                            r.pixvec = (r.x < multiple) ? MAXPIX : width-multiple;
+                            r.w = (r.x < multiple) ? MAXPIX : width-multiple;
                             ChanOutInt (fd_out, c_render);
                             ChanOut(fd_out,(char *)&r,sizeof(r));
                         }

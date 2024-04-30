@@ -85,13 +85,14 @@
 typedef struct {
     int x;
     int y;
-    int pixvec;
+    int w;
+    int h;
 } render;
 
 typedef struct {
     int x;
     int y;
-    int patchSize;
+    int patchWidth;
     int worker;
 } patch;
 
