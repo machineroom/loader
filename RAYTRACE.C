@@ -102,6 +102,15 @@ main(LOADGB *ld)
         ChanOut(ld->up_in-4,(char *)buf,2*4);
     }
     /* set up par structure*/
+    /* host -> feed -> selector -> job
+                                -> buffer (HARD) -> feed
+                                -> buffer (HARD) -> feed
+                                -> buffer (HARD) -> feed
+    host <- arbiter <- job
+                    <- (HARD) arbiter <- job
+                    <- (HARD) arbiter <- job
+                    <- (HARD) arbiter <- job 
+    */
     {
         Channel *si,*so[5],*sr[5],*ai[5];
         extern void job(),buffer(),feed(),arbiter(),selector();
@@ -294,20 +303,6 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
             ChanOutInt(dn_out[i],len);
             ChanOut(dn_out[i],(char *)buf,len);
         }
-        #if 0
-        else
-        {
-            /* non-JOB messages are distributed round-robin to each worker (job or buffer process) */
-            for (i = 0; req_in[i]; i++)
-            {
-                /* 2. wait for the worker to become ready */
-                ChanInInt(req_in[i]);   /* discard the 0 */
-                /* 3. send the message to the worker */
-                ChanOutInt(dn_out[i],len);
-                ChanOut(dn_out[i],(char *)buf,len);
-            }
-        }
-        #endif
     }
 }
 
