@@ -192,14 +192,16 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
 
     loop
     {
+        int type;
         /* 1. tell selector that we're ready to recieve work */
         ChanOutInt(req_out,0);
-        len = ChanInInt(job_in);
-        ChanIn(job_in,(char *)buf,len);
-        if (buf[0] == JOBCOM)
+        type = ChanInInt(job_in);
+        if (type == JOBCOM)
         {
             int i,x,y,pixvec;
-            int *pbuf = &buf[3];
+            int *pbuf;
+            ChanIn(job_in,(char *)buf,4*4);
+            pbuf = &buf[3];
             x = buf[1];
             y = buf[2];
             pixvec = buf[3];
@@ -215,6 +217,8 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             buf[0] = RSLCOM;
             ChanOutInt(rsl_out,len);
             ChanOut(rsl_out,(char *)buf,len);
+        } else {
+            lon();
         }
     }
 }
@@ -229,11 +233,17 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
 
     loop
     {
+        int type;
         ChanOutInt(req_out,0);
-        len = ChanInInt(buf_in);
-        ChanIn(buf_in,(char *)buf,len);
-        ChanOutInt(buf_out,len);
-        ChanOut(buf_out,(char *)buf,len);
+        type = ChanInInt(buf_in);
+        if (type == JOBCOM)
+        {
+            ChanIn(buf_in,(char *)buf,4*4);
+            ChanOutInt(buf_out, JOBCOM);
+            ChanOut(buf_out, buf, 4*4);
+        } else {
+            lon();
+        }
     }
 }
 
@@ -286,22 +296,23 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
    3. sends the buffer to the child that's ready */
 void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
 {
-    int i,len;
+    int i;
     int buf[PRBSIZE-1];
 
     loop
     {
         /* 1. wait for a job from the parent */
-        len = ChanInInt(sel_in);
-        ChanIn(sel_in,(char *)buf,len);
-        if (buf[0] == JOBCOM)
+        int type;
+        type = ChanInInt(sel_in);
+        if (type == JOBCOM)
         {
+            ChanIn(sel_in,(char *)buf,4*4);
             /* 2. wait for any worker to become ready */
             i = ProcPriAltList(req_in,0);
             ChanInInt(req_in[i]);       /* discard the 0 */
             /* 3. send the job to the worker */
-            ChanOutInt(dn_out[i],len);
-            ChanOut(dn_out[i],(char *)buf,len);
+            ChanOutInt(dn_out[i],JOBCOM);
+            ChanOut(dn_out[i],(char *)buf,4*4);
         }
     }
 }
@@ -352,7 +363,7 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
                         for (buf[1] = 0; buf[1] < width; buf[1]+=MAXPIX)
                         {
                             buf[3] = (buf[1] < multiple) ? MAXPIX : width-multiple;
-                            ChanOutInt(fd_out,4*4);
+                            ChanOutInt (fd_out, JOBCOM);
                             ChanOut(fd_out,(char *)buf,4*4);
                         }
                     }
