@@ -124,7 +124,7 @@ main(LOADGB *ld)
         so[0] = ChanAlloc();    /* so = selector outputs (job configuration channel) */
         ai[0] = ChanAlloc();    /* ai = arbiter inputs (job/buffer results written to these channels) */
         /* job(Channel *req_out, Channel *job_in, Channel *rsl_out) */
-        PRun(PSetup(jobws,job,JOBWSZ,3,sr[0],so[0],ai[0])|1);
+        PRun(PSetup(jobws,job,JOBWSZ,3,sr[0],so[0],ai[0]));
         /* buffer worker for each child node */
         /* The channel lists must be zero terminated. ld->dn_out may have 0, 1 or 2 links set and in any order,
            i.e [0,0,linkA], [linkB,0,linkA] & [linkA,linkB,linkC] are all valid */
@@ -245,13 +245,6 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             case c_start:
                 loading_scene = 0;
             break;
-            case c_render:
-            {
-                /* TODO shouldn't get these yet!*/
-                render r;
-                ChanIn(job_in,(char *)&r,sizeof(r));
-            }
-            break;
             default:
                 while(1) { lon(); }
             break;
@@ -306,36 +299,29 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
             {
                 object o;
                 ChanIn(buf_in,(char *)&o, sizeof(o));
-                /*ChanOutInt(buf_out,type);
-                ChanOut(buf_out,&o,sizeof(o));*/
+                ChanOutInt(buf_out,type);
+                ChanOut(buf_out,&o,sizeof(o));
             }
             break;
             case c_light:
             {
                 light l;
                 ChanIn(buf_in,(char *)&l, sizeof(l));
-                /*ChanOutInt(buf_out,type);
-                ChanOut(buf_out,&l,sizeof(l));*/
+                ChanOutInt(buf_out,type);
+                ChanOut(buf_out,&l,sizeof(l));
             }
             break;
             case c_runData:
             {
                 rundata r;
                 ChanIn(buf_in,(char *)&r, sizeof(r));
-                /*ChanOutInt(buf_out,type);
-                ChanOut(buf_out,&r,sizeof(r));*/
+                ChanOutInt(buf_out,type);
+                ChanOut(buf_out,&r,sizeof(r));
             }
             break;
             case c_start:
                 ChanOutInt(buf_out,type);
                 loading_scene = 0;
-            break;
-            case c_render:
-            {
-                /* TODO shouldn't get these yet!*/
-                render r;
-                ChanIn(buf_in,(char *)&r,sizeof(r));
-            }
             break;
             default:
                 while(1) {lon();}
@@ -448,7 +434,7 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
             }
             break;
             default:
-                while(1) {lon();}
+                /*while(1) {lon();}*/
             break;
         }
     }
