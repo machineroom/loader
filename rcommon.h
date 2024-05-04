@@ -4,7 +4,10 @@
 #define BLOCK_WIDTH 8
 #define BLOCK_HEIGHT 8
 
-#define MAXPIX  BLOCK_WIDTH*BLOCK_HEIGHT
+#define MAXPIX  (BLOCK_WIDTH*BLOCK_HEIGHT)
+
+#define MAX_OBJECTS 12
+#define MAX_LIGHTS 5
 
 /*-------------------------- COMMANDS PROTOCOL -----------------------------*/
 

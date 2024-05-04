@@ -212,6 +212,9 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
     }
 }
 
+object objects[MAX_OBJECTS];
+light lights[MAX_LIGHTS];
+
 /* job calculates a slice of pixels - one instance per node */
 /* 1. sends a 0 on req_out to indicate it needs work
    2. receives (on job_in) a DATCOM to setup parameters, then a c_render 
@@ -219,6 +222,8 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
 */   
 void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
 {
+    object *po = objects;
+    light *pl = lights;
     int loading_scene = 1;
     while (loading_scene) {
         int type;
@@ -228,12 +233,14 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             {
                 object o;
                 ChanIn(job_in,(char *)&o, sizeof(o));
+                memcpy (po++, &o, sizeof(o));
             }
             break;
             case c_light:
             {
                 light l;
                 ChanIn(job_in,(char *)&l, sizeof(l));
+                memcpy (pl++, &l, sizeof(l));
             }
             break;
             case c_runData:
