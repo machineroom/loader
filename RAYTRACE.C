@@ -230,9 +230,21 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
                 ChanIn(job_in,(char *)&o, sizeof(o));
             }
             break;
-        case c_start:
-            loading_scene = 0;
+            case c_light:
+            {
+                light l;
+                ChanIn(job_in,(char *)&l, sizeof(l));
+            }
             break;
+            case c_runData:
+            {
+                rundata r;
+                ChanIn(job_in,(char *)&r, sizeof(r));
+            }
+            break;
+            case c_start:
+                loading_scene = 0;
+                break;
         }
     }
     loop
