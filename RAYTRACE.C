@@ -318,19 +318,41 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
         /* 1. wait for a job from the parent */
         int type;
         type = ChanInInt(sel_in);
-        if (type == c_render)
-        {
-            render r;
-            int i;
-            ChanIn(sel_in,(char *)&r,sizeof(r));
-            /* 2. wait for any worker to become ready */
-            i = ProcPriAltList(req_in,0);
-            ChanInInt(req_in[i]);       /* discard the 0 */
-            /* 3. send the job to the worker */
-            ChanOutInt(dn_out[i],type);
-            ChanOut(dn_out[i],(char *)&r,sizeof(r));
-        } else {
-            lon();
+        switch (type) {
+            case c_object:
+            {
+                object o;
+                ChanIn(sel_in,(char *)&o, sizeof(o));
+            }
+            break;
+            case c_light:
+            {
+                light l;
+                ChanIn(sel_in,(char *)&l, sizeof(l));
+            }
+            break;
+            case c_runData:
+            {
+                rundata r;
+                ChanIn(sel_in,(char *)&r, sizeof(r));
+            }
+            break;
+            case c_render:
+            {
+                render r;
+                int i;
+                ChanIn(sel_in,(char *)&r,sizeof(r));
+                /* 2. wait for any worker to become ready */
+                i = ProcPriAltList(req_in,0);
+                ChanInInt(req_in[i]);       /* discard the 0 */
+                /* 3. send the job to the worker */
+                ChanOutInt(dn_out[i],type);
+                ChanOut(dn_out[i],(char *)&r,sizeof(r));
+            }
+            break;
+            default:
+                lon();
+            break;
         }
     }
 }
@@ -347,6 +369,10 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             {
                 object o;
                 ChanIn(host_in,(char *)&o, sizeof(o));
+                /* pass downstream */
+                ChanOutInt (fd_out, type);
+                ChanOut(fd_out,(char *)&o,sizeof(o));
+                /* ack to host */
                 ChanOutInt(host_out,c_object_ack);
             }
             break;
@@ -354,6 +380,8 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             {
                 light l;
                 ChanIn(host_in,(char *)&l, sizeof(l));
+                ChanOutInt (fd_out, type);
+                ChanOut(fd_out,(char *)&l,sizeof(l));
                 ChanOutInt(host_out,c_light_ack);
             }
             break;
@@ -361,6 +389,8 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             {
                 rundata r;
                 ChanIn(host_in,(char *)&r, sizeof(r));
+                ChanOutInt (fd_out, type);
+                ChanOut(fd_out,(char *)&r,sizeof(r));
                 ChanOutInt(host_out,c_runData_ack);
             }
             break;
@@ -379,7 +409,7 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
 
                     r.w = block_width;
                     r.h = block_height;
-                    /* Dispatch render jmessages for each slice to the selector. The selector distributes the work */
+                    /* Dispatch render messages for each slice to the selector. The selector distributes the work */
                     for (r.y = 0; r.y < height; r.y+=block_height)
                     {
                         for (r.x = 0; r.x < width; r.x+=block_width)
