@@ -61,11 +61,11 @@
 #pragma endif
 #pragma endmacro
 
-#define JOBWSZ (53*4)+sizeof(object)+MAXPIX
-#define BUFWSZ (20*4)
-#define FEDWSZ (sizeof(object))+100
-#define ARBWSZ (22*4*10)+MAXPIX
-#define SELWSZ (29*4)
+#define JOBWSZ 2048+MAXPIX
+#define BUFWSZ 2048
+#define FEDWSZ 2048
+#define ARBWSZ 2048+MAXPIX
+#define SELWSZ 2048
 
 int jobws[JOBWSZ];
 int arbws[ARBWSZ];
@@ -244,7 +244,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             break;
             case c_start:
                 loading_scene = 0;
-                break;
+            break;
         }
     }
     loop
@@ -319,7 +319,7 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
             case c_start:
                 ChanOutInt(buf_out,type);
                 loading_scene = 0;
-                break;
+            break;
         }
     }
     loop
