@@ -61,7 +61,7 @@
 #pragma endif
 #pragma endmacro
 
-#define JOBWSZ (53*4)+MAXPIX
+#define JOBWSZ (53*4)+sizeof(object)+MAXPIX
 #define BUFWSZ (20*4)
 #define FEDWSZ (sizeof(object))+100
 #define ARBWSZ (22*4*10)+MAXPIX
@@ -223,8 +223,16 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
     while (loading_scene) {
         int type;
         type = ChanInInt(job_in);
-        if (type == c_start) {
+        switch (type) {
+            case c_object:
+            {
+                object o;
+                ChanIn(job_in,(char *)&o, sizeof(o));
+            }
+            break;
+        case c_start:
             loading_scene = 0;
+            break;
         }
     }
     loop
@@ -272,13 +280,30 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
         int type;
         type = ChanInInt(buf_in);
         switch (type){
+            case c_object:
             {
                 object o;
-                int i;
                 ChanIn(buf_in,(char *)&o, sizeof(o));
-                ChanOutInt(buf_out,type);
-                ChanOut(buf_out,&o,sizeof(o));
+                /*ChanOutInt(buf_out,type);
+                ChanOut(buf_out,&o,sizeof(o));*/
             }
+            break;
+            case c_light:
+            {
+                light l;
+                ChanIn(buf_in,(char *)&l, sizeof(l));
+                /*ChanOutInt(buf_out,type);
+                ChanOut(buf_out,&o,sizeof(o));*/
+            }
+            break;
+            case c_runData:
+            {
+                rundata r;
+                ChanIn(buf_in,(char *)&r, sizeof(r));
+                /*ChanOutInt(buf_out,type);
+                ChanOut(buf_out,&o,sizeof(o));*/
+            }
+            break;
             case c_start:
                 ChanOutInt(buf_out,type);
                 loading_scene = 0;
@@ -329,13 +354,29 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
             case c_light:
             {
                 light l;
+                int i;
                 ChanIn(sel_in,(char *)&l, sizeof(l));
+                /* send the object to each worker */
+                for (i=0; i < 4; i++) {
+                    if (dn_out[i]!=(void *)0) {
+                        ChanOutInt(dn_out[i],type);
+                        ChanOut(dn_out[i],&l,sizeof(l));
+                    }
+                }
             }
             break;
             case c_runData:
             {
                 rundata r;
+                int i;
                 ChanIn(sel_in,(char *)&r, sizeof(r));
+                /* send the object to each worker */
+                for (i=0; i < 4; i++) {
+                    if (dn_out[i]!=(void *)0) {
+                        ChanOutInt(dn_out[i],type);
+                        ChanOut(dn_out[i],&r,sizeof(r));
+                    }
+                }
             }
             break;
             case c_start:
