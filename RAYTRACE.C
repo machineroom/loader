@@ -29,12 +29,6 @@
 #define TRUE  1
 #define FALSE 0
 
-#define JOBWSZ (53*4)+MAXPIX
-#define BUFWSZ (20*4)
-#define FEDWSZ (sizeof(object))+100
-#define ARBWSZ (22*4*10)+MAXPIX
-#define SELWSZ (29*4)
-
 #define THRESH 2.0e-7
 #define loop for (;;)
 
@@ -67,8 +61,17 @@
 #pragma endif
 #pragma endmacro
 
-void *get_ws(int sz);
+#define JOBWSZ (53*4)+MAXPIX
+#define BUFWSZ (20*4)
+#define FEDWSZ (sizeof(object))+100
+#define ARBWSZ (22*4*10)+MAXPIX
+#define SELWSZ (29*4)
 
+int jobws[JOBWSZ];
+int arbws[ARBWSZ];
+int feedws[FEDWSZ];
+int selws[SELWSZ];
+int bufws[3][BUFWSZ];
 
 /* NOTE main() must be first function */
 
@@ -114,7 +117,6 @@ main(LOADGB *ld)
     {
         Channel *si,*so[5],*sr[5],*ai[5];
         extern void job(),buffer(),feed(),arbiter(),selector();
-        extern int jobws[JOBWSZ];
         int list_index;
 
         /* job worker on each node - this does iter() */
@@ -134,7 +136,7 @@ main(LOADGB *ld)
                 so[list_index] = ChanAlloc();
                 ai[list_index] = ld->dn_out[i]+4;   /* input link from child */
                 /* buffer (Channel *req_out, Channel *buf_in, Channel *buf_out) */
-                PRun(PSetup(get_ws(BUFWSZ),buffer,BUFWSZ,3,sr[list_index],so[list_index],ld->dn_out[i]));
+                PRun(PSetup(bufws[i],buffer,BUFWSZ,3,sr[list_index],so[list_index],ld->dn_out[i]));
                 list_index++;
             } 
         }
@@ -149,33 +151,21 @@ main(LOADGB *ld)
             /* id!=0 == worker node */
             si = ld->up_in;
             /* arbiter(Channel **arb_in, Channel *arb_out, int root) */
-            PRun(PSetup(get_ws(ARBWSZ),arbiter,ARBWSZ,3,ai,ld->up_in-4,0));
+            PRun(PSetup(arbws,arbiter,ARBWSZ,3,ai,ld->up_in-4,0));
         }
         else
         {
             /* id=0 == root node */
             si = ChanAlloc();
             /* feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp) */
-            PRun(PSetup(get_ws(FEDWSZ),feed,FEDWSZ,4,ld->up_in,ld->up_in-4,si,fxp));
+            PRun(PSetup(feedws,feed,FEDWSZ,4,ld->up_in,ld->up_in-4,si,fxp));
             /* arbiter(Channel **arb_in, Channel *arb_out, int root) */
-            PRun(PSetup(get_ws(ARBWSZ),arbiter,ARBWSZ,3,ai,ld->up_in-4,1));
+            PRun(PSetup(arbws,arbiter,ARBWSZ,3,ai,ld->up_in-4,1));
         }
         /* selector(Channel *sel_in, Channel **req_in, Channel **dn_out) */
-        PRun(PSetup(get_ws(SELWSZ),selector,SELWSZ,3,si,sr,so));
+        PRun(PSetup(selws,selector,SELWSZ,3,si,sr,so));
         PStop();
     }
-}
-
-/* Get a process workspace */
-void *get_ws(int sz)
-{
-    void *rval;
-    rval = malloc((size_t)sz);
-    if (rval == NULL) {
-        lon();
-        exit(1);
-    }
-    return (rval);
 }
 
 /* job calculates a slice of pixels - one instance per node */
@@ -183,8 +173,6 @@ void *get_ws(int sz)
    2. receives (on job_in) a DATCOM to setup parameters, then a c_render 
    3. sends (on rsl_out) a c_patch with the pixels
 */   
-int jobws[JOBWSZ];
-
 void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
 {
     int loading_scene = 1;
