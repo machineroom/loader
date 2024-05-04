@@ -121,7 +121,7 @@ main(LOADGB *ld)
 
         /* job worker on each node - this does iter() */
         sr[0] = ChanAlloc();    /* sr = selector request (job request channel) */
-        so[0] = ChanAlloc();    /* so = slector outputs (job configuration channel) */
+        so[0] = ChanAlloc();    /* so = selector outputs (job configuration channel) */
         ai[0] = ChanAlloc();    /* ai = arbiter inputs (job/buffer results written to these channels) */
         /* job(Channel *req_out, Channel *job_in, Channel *rsl_out) */
         PRun(PSetup(jobws,job,JOBWSZ,3,sr[0],so[0],ai[0])|1);
@@ -207,7 +207,7 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
                 ChanOut(arb_out,(char *)buf,p.patchWidth*p.patchHeight*4);
             }
         } else {
-            lon();
+            while(1){lon();}
         }
     }
 }
@@ -245,6 +245,16 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             case c_start:
                 loading_scene = 0;
             break;
+            case c_render:
+            {
+                /* TODO shouldn't get these yet!*/
+                render r;
+                ChanIn(job_in,(char *)&r,sizeof(r));
+            }
+            break;
+            default:
+                while(1) { lon(); }
+            break;
         }
     }
     loop
@@ -277,7 +287,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             ChanOut(rsl_out,(char *)&p,sizeof(p));
             ChanOut(rsl_out, buf, p.patchWidth*p.patchHeight*4);
         } else {
-            lon();
+            while (1) {lon();}
         }
     }
 }
@@ -320,6 +330,16 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
                 ChanOutInt(buf_out,type);
                 loading_scene = 0;
             break;
+            case c_render:
+            {
+                /* TODO shouldn't get these yet!*/
+                render r;
+                ChanIn(buf_in,(char *)&r,sizeof(r));
+            }
+            break;
+            default:
+                while(1) {lon();}
+                break;
         }
     }
     loop
@@ -334,7 +354,7 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
             ChanOutInt(buf_out, type);
             ChanOut(buf_out, (char *)&r, sizeof(r));
         } else {
-            lon();
+            while(1) {lon();}
         }
     }
 }
@@ -403,6 +423,9 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
                 loading_scene = 0;
             }
             break;
+            default:
+                while(1) {lon();}
+            break;
         }
     }
     loop
@@ -425,7 +448,7 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
             }
             break;
             default:
-                lon();
+                while(1) {lon();}
             break;
         }
     }
@@ -496,6 +519,9 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
                 /* inform host that work is finished */
                 ChanOutInt(host_out,c_done);
             }
+            break;
+            default:
+                while(1) {lon();}
             break;
         }
     }
