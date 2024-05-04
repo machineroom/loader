@@ -168,6 +168,50 @@ main(LOADGB *ld)
     }
 }
 
+/* arb_in is list of channels connected to job or buffer processes */
+/* arb_out is the output side of the parent link */
+/* Receives result from worker (local job or link buffer processes) and passes result to parent */
+void arbiter(Channel **arb_in, Channel *arb_out, int root)
+{
+    int i,len,cnt,pri;
+    int buf[MAXPIX];
+    int type;
+
+    cnt = pri = 0;
+    loop
+    {
+        /* 1. Wait for worker to notify result */
+        i = ProcPriAltList(arb_in,pri);
+        pri = (arb_in[pri+1]) ? pri+1 : 0;
+        type = ChanInInt(arb_in[i]);
+        if (type == c_patch) {
+            patch p;
+            ChanIn(arb_in[i],(char *)&p,sizeof(p));
+            ChanIn(arb_in[i],buf,p.patchWidth*p.patchHeight*4);
+            if (root) {
+                /* render to B438 */
+                int *a = (int *)0x80400000;
+                int x,y;
+                i = 0;
+                a += (p.y*640)+p.x;
+                for (y=0; y < p.patchHeight; y++) {
+                    for (x=0; x < p.patchWidth; x++) {
+                        a[x] = buf[i++];
+                    }
+                    a += 640;
+                }
+            } else {
+                /* 3. Send result to parent */
+                ChanOutInt(arb_out,type);
+                ChanOut(arb_out,(char *)&p,sizeof(p));
+                ChanOut(arb_out,(char *)buf,p.patchWidth*p.patchHeight*4);
+            }
+        } else {
+            lon();
+        }
+    }
+}
+
 /* job calculates a slice of pixels - one instance per node */
 /* 1. sends a 0 on req_out to indicate it needs work
    2. receives (on job_in) a DATCOM to setup parameters, then a c_render 
@@ -227,9 +271,18 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
     while (loading_scene) {
         int type;
         type = ChanInInt(buf_in);
-        if (type == c_start) {
-            ChanOutInt(buf_out,type);
-            loading_scene = 0;
+        switch (type){
+            {
+                object o;
+                int i;
+                ChanIn(buf_in,(char *)&o, sizeof(o));
+                ChanOutInt(buf_out,type);
+                ChanOut(buf_out,&o,sizeof(o));
+            }
+            case c_start:
+                ChanOutInt(buf_out,type);
+                loading_scene = 0;
+                break;
         }
     }
     loop
@@ -249,50 +302,6 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
     }
 }
 
-/* arb_in is list of channels connected to job or buffer processes */
-/* arb_out is the output side of the parent link */
-/* Receives result from worker (local job or link buffer processes) and passes result to parent */
-void arbiter(Channel **arb_in, Channel *arb_out, int root)
-{
-    int i,len,cnt,pri;
-    int buf[MAXPIX];
-    int type;
-
-    cnt = pri = 0;
-    loop
-    {
-        /* 1. Wait for worker to notify result */
-        i = ProcPriAltList(arb_in,pri);
-        pri = (arb_in[pri+1]) ? pri+1 : 0;
-        type = ChanInInt(arb_in[i]);
-        if (type == c_patch) {
-            patch p;
-            ChanIn(arb_in[i],(char *)&p,sizeof(p));
-            ChanIn(arb_in[i],buf,p.patchWidth*p.patchHeight*4);
-            if (root) {
-                /* render to B438 */
-                int *a = (int *)0x80400000;
-                int x,y;
-                i = 0;
-                a += (p.y*640)+p.x;
-                for (y=0; y < p.patchHeight; y++) {
-                    for (x=0; x < p.patchWidth; x++) {
-                        a[x] = buf[i++];
-                    }
-                    a += 640;
-                }
-            } else {
-                /* 3. Send result to parent */
-                ChanOutInt(arb_out,type);
-                ChanOut(arb_out,(char *)&p,sizeof(p));
-                ChanOut(arb_out,(char *)buf,p.patchWidth*p.patchHeight*4);
-            }
-        } else {
-            lon();
-        }
-    }
-}
-
 /* 1. waits for a buffer from the parent
    2. waits for a job() or a buffer() to inform they're ready (by writing a 0 on request channel)
    3. sends the buffer to the child that's ready */
@@ -302,27 +311,19 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
     while (loading_scene) {
         int type;
         type = ChanInInt(sel_in);
-        if (type == c_start) {
-            int i;
-            /* send the command to each worker */
-            for (i=0; i < 4; i++) {
-                if (dn_out[i]!=(void *)0) {
-                    ChanOutInt(dn_out[i],type);
-                }
-            }
-            loading_scene = 0;
-        }
-    }
-    loop
-    {
-        /* 1. wait for a job from the parent */
-        int type;
-        type = ChanInInt(sel_in);
         switch (type) {
             case c_object:
             {
                 object o;
+                int i;
                 ChanIn(sel_in,(char *)&o, sizeof(o));
+                /* send the object to each worker */
+                for (i=0; i < 4; i++) {
+                    if (dn_out[i]!=(void *)0) {
+                        ChanOutInt(dn_out[i],type);
+                        ChanOut(dn_out[i],&o,sizeof(o));
+                    }
+                }
             }
             break;
             case c_light:
@@ -337,6 +338,26 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
                 ChanIn(sel_in,(char *)&r, sizeof(r));
             }
             break;
+            case c_start:
+            {
+                int i;
+                /* send the command to each worker */
+                for (i=0; i < 4; i++) {
+                    if (dn_out[i]!=(void *)0) {
+                        ChanOutInt(dn_out[i],type);
+                    }
+                }
+                loading_scene = 0;
+            }
+            break;
+        }
+    }
+    loop
+    {
+        /* 1. wait for a job from the parent */
+        int type;
+        type = ChanInInt(sel_in);
+        switch (type) {
             case c_render:
             {
                 render r;
