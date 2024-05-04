@@ -62,16 +62,16 @@
 #pragma endmacro
 
 #define JOBWSZ 2048+MAXPIX
-#define BUFWSZ 2048
 #define FEDWSZ 2048
-#define ARBWSZ 2048+MAXPIX
 #define SELWSZ 2048
+#define BUFWSZ 2048
+#define ARBWSZ 2048+MAXPIX
 
 int jobws[JOBWSZ];
-int arbws[ARBWSZ];
-int feedws[FEDWSZ];
-int selws[SELWSZ];
 int bufws[3][BUFWSZ];
+int selws[SELWSZ];
+int feedws[FEDWSZ];
+int arbws[ARBWSZ];
 
 /* NOTE main() must be first function */
 
@@ -305,7 +305,7 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
                 light l;
                 ChanIn(buf_in,(char *)&l, sizeof(l));
                 /*ChanOutInt(buf_out,type);
-                ChanOut(buf_out,&o,sizeof(o));*/
+                ChanOut(buf_out,&l,sizeof(l));*/
             }
             break;
             case c_runData:
@@ -313,7 +313,7 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
                 rundata r;
                 ChanIn(buf_in,(char *)&r, sizeof(r));
                 /*ChanOutInt(buf_out,type);
-                ChanOut(buf_out,&o,sizeof(o));*/
+                ChanOut(buf_out,&r,sizeof(r));*/
             }
             break;
             case c_start:
