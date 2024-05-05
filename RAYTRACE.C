@@ -270,9 +270,14 @@ void initWORDvec (int *vec, int pattern, int words ) {
 #define rMask (1<<colourBits)-1
 #define gMask rMask<<colourBits
 #define bMask gMask<<colourBits
+#define nil -1
 
 typedef struct {
-    void *objPtr;
+    int reflect;
+    int refract;
+    int next;
+    int type;
+    int objPtr;
     float sectx;
     float secty;
     float sectz;
@@ -294,6 +299,152 @@ typedef struct {
 NODE cleanTree[maxNodes];
 
 NODE *tree = cleanTree;
+
+int buildShadeTree (float x, float y) {
+    return 0;
+}
+
+typedef struct {
+    int np;
+    int action;
+} SHADE_STACK_ENTRY;
+
+void shade ( int rootNode ) {
+/*
+    --  Action
+    --  ------
+    --
+    --  We enter proc shade with a pointer into the root node of the tree,
+    --  and exit with 3 10-bit integer values in the root node's r g b fields
+    --
+    --  This proc performs bottom-up shading of the ray intersection tree
+    --
+    --  Its action is equivalent to
+    --
+    --  PROC shade ( VAL INT node )
+    --    SEQ
+    --      IF
+    --        tree [ node + n.reflect] <> nil
+    --          shade ( tree [ node + n.reflect])
+    --        TRUE
+    --          SKIP
+    --      IF
+    --        tree [ node + n.refract] <> nil
+    --          shade ( tree [ node + n.refract])
+    --        TRUE
+    --          SKIP
+    --      shadeNode ( node)
+    --      mixNode   ( node)
+    --  :
+    --
+    --  where shadeNode () shades this intersection according to lighting
+    --        conditions and surface properties
+    --
+    --  and   mixNode () mixes together the node + its children according to the
+    --        surface transmission / reflectance properties
+    --
+    */
+    const int a_stop = 0;
+    const int a_refract = 1;
+    const int a_mix = 2;
+    const int a_reflect = 3;
+    SHADE_STACK_ENTRY stack[(maxDepth + 2)];
+    int sp;
+
+    int nodePtr, action;
+    sp = 0;
+    /* -- pre load stack with 'terminate' action */
+    stack[sp].np = 0;
+    stack[sp].action = a_stop;  
+    sp++;
+    nodePtr = rootNode;
+    action  = a_reflect;
+    while (action != a_stop) {
+        NODE node;
+        node = tree[nodePtr];
+        int spec = node.reflect;
+        int frac = node.refract;
+        if (action == a_reflect) {
+            if (spec == nil) {
+                /* -- no reflected ray, shade refracted ray */
+                action = a_refract;
+            } else if (frac == nil) {
+                stack[sp].action = a_mix;
+                stack[sp].np = nodePtr;
+                sp++;
+                nodePtr = spec;
+            } else {
+                /* -- direction to go on return */
+                stack[sp].action = a_refract;
+                stack[sp].np = nodePtr;
+                sp++;
+                nodePtr = spec;
+            }
+        }
+        else if (frac == nil) {
+            shadeNode ( nodePtr );      /* -- shade leaf node */
+            sp--;
+            action = stack[sp].action;
+            nodePtr = stack[sp].np;
+            while (action = a_mix) {
+            /* -- all these nodes have had their children shaded, so we can shade nd mix them */
+                shadeNode   ( nodePtr );
+                mixChildren ( nodePtr );
+                sp--;
+                action = stack[sp].action;
+                nodePtr = stack[sp].np;
+            }
+        } else {
+            stack[sp].action = a_mix;
+            stack[sp].np = nodePtr;
+            sp++;
+            nodePtr = frac;
+            action  = a_reflect;
+        }
+    }
+    NODE *root = &tree[rootNode];
+
+    float red  = root->red;
+    float green = root->green;
+    float blue = root->blue;
+
+    int ired = (int)root->red;
+    int igreen = (int)root->green;
+    int iblue = (int)root->blue;
+
+    float maxC = 1022.99; /*-- just under 10 bits*/
+    float maxP, fudge;
+    int desaturate;
+    desaturate = TRUE;
+    if (red > green) {
+        maxP = red;
+    } else {
+        maxP = green;
+    }
+    if (maxP > blue) {
+        if (maxP > maxC) {
+            fudge = maxC / maxP;
+        } else {
+            desaturate = FALSE;
+        }
+    } else if (blue > maxC) {
+        fudge = maxC / blue;
+    } else {
+        desaturate = FALSE;
+    }
+    if (desaturate) {
+        ired   = (int)(red   * fudge);
+        igreen = (int)(green * fudge);
+        iblue  = (int)(blue  * fudge);
+    } else {
+        ired   = (int)red;
+        igreen = (int)green;
+        iblue  = (int)blue;
+    }
+    root->red = ired;
+    root->green = igreen;
+    root->blue = iblue;
+}
 
 int pointSample (int **patch, int patchx, int patchy, int x, int y ) {
     int colour = patch[y][x];
@@ -318,10 +469,6 @@ int pointSample (int **patch, int patchx, int patchy, int x, int y ) {
     }
     return colour;
 }
-
-#define a_render 0
-#define a_shade  1
-#define a_stop   2
 
 typedef struct {
     int hop;
@@ -350,6 +497,10 @@ void renderPixels ( int patchx, int patchy,
     int sp, cp;
     int x, y, hop;
     int action;
+    const int a_render=0;
+    const int a_shade=1;
+    const int a_stop=2;
+
     if (renderingMode == m_adaptive) {
         cp        = 0;                 /*-- empty colour stack */
         action    = a_render;          /* -- init action */
