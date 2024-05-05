@@ -370,6 +370,50 @@ void mixChildren ( int nodePtr ) {
     node->colour.b = node->colour.g + (spec.r + xmit.b);
 }
 
+#define a11 0
+#define a12 1
+#define a13 2
+#define a21 3
+#define a22 4
+#define a23 5
+#define a31 6
+#define a32 7
+#define a33 8
+
+#define pxx 0
+#define pyy 1
+#define pzz 2
+
+void TransLocal(float *matrix/*9*/,float *point/*3*/) {
+    float newpoint[3];
+    newpoint[pxx] = (( matrix[a11] * point[pxx] ) +
+                    (( matrix[a12] * point[pyy] ) +
+                        ( matrix[a13] * point[pzz] )));
+    newpoint[pyy] = (( matrix[a21] * point[pxx] ) +
+                    (( matrix[a22] * point[pyy] ) +
+                        ( matrix[a23] * point[pzz] )));
+    newpoint[pzz] = (( matrix[a31] * point[pxx] ) +
+                    (( matrix[a32] * point[pyy] ) +
+                        ( matrix[a33] * point[pzz] )));
+    point[pxx] = newpoint[pxx];
+    point[pyy] = newpoint[pyy];
+    point[pzz] = newpoint[pzz];
+}
+
+void TransGlobal(float *matrix/*9*/,float *point/*3*/ ) {
+    float invers[9];
+    invers[a11]=matrix[a11];
+    invers[a12]=matrix[a21];
+    invers[a13]=matrix[a31];
+    invers[a21]=matrix[a12];
+    invers[a22]=matrix[a22];
+    invers[a23]=matrix[a32];
+    invers[a31]=matrix[a13];
+    invers[a32]=matrix[a23];
+    invers[a33]=matrix[a33];
+    TransLocal(invers,point);
+}
+
 int nrays=0;
 
 int sceneSect ( int nodePtr, int shadowRay ) {
