@@ -271,6 +271,8 @@ void initWORDvec (int *vec, int pattern, int words ) {
 #define maxDescend 2   /* this is a space limitation on the sub-pixel grid rather than a compute saver */
 #define descendPower 4 /* 2 ^^ maxDescend */
 
+#define PATCH_SIZE 16
+#define GRID_SIZE ((PATCH_SIZE + 1) * descendPower) + 1
 #define threshold  10 << 2 /* this is 10 on a scale of 256, but we */
 #define colourBits 10 /* generate 10 bits */
 #define rMask (1<<colourBits)-1
@@ -900,8 +902,10 @@ void shade ( int rootNode ) {
     }
 }
 
-int pointSample (int **patch, int patchx, int patchy, int x, int y ) {
-    int colour = patch[y][x];
+int samples[GRID_SIZE][GRID_SIZE];
+
+int pointSample (int patchx, int patchy, int x, int y ) {
+    int colour = samples[y][x];
     if (colour == notRendered) {
         int tx, ty;
         float wx, wy;
@@ -917,7 +921,7 @@ int pointSample (int **patch, int patchx, int patchy, int x, int y ) {
         shade (treep);
         node = tree[treep];
         colour = (int)node.colour.r | (int)node.colour.g << colourBits | (int)node.colour.b << (colourBits + colourBits);
-        patch[y][x] = colour;
+        samples[y][x] = colour;
     }
     return colour;
 }
@@ -939,9 +943,7 @@ typedef struct {
 
 void renderPixels ( int patchx, int patchy,
                     int x0, int y0,
-                    int **patch,
                     int *colour,
-                    int patchSize,
                     int renderingMode,
                     int debug) {
     STACK_ENTRY stack[maxDescend * (4 * 17)];   /* 4 * (render, x, y, hop); shade */
@@ -970,10 +972,10 @@ void renderPixels ( int patchx, int patchy,
                 x   = record.x;
                 y   = record.y;
                 hop = record.hop;
-                a = pointSample ( patch, patchx, patchy, x,       y      );
-                b = pointSample ( patch, patchx, patchy, x + hop, y      );
-                c = pointSample ( patch, patchx, patchy, x,       y + hop);
-                d = pointSample ( patch, patchx, patchy, x + hop, y + hop);
+                a = pointSample ( patchx, patchy, x,       y      );
+                b = pointSample ( patchx, patchy, x + hop, y      );
+                c = pointSample ( patchx, patchy, x,       y + hop);
+                d = pointSample ( patchx, patchy, x + hop, y + hop);
 
                 rRange = findRange (a & rMask, b & rMask,
                                     c & rMask, d & rMask);
@@ -1046,7 +1048,7 @@ void renderPixels ( int patchx, int patchy,
         }
         *colour = colstack[cp-1];
     } else if (renderingMode == m_test) {
-        *colour = (x0 + (y0 * patchSize));
+        *colour = (x0 + (y0 * PATCH_SIZE));
     }
 }
 
@@ -1111,7 +1113,11 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             for (y = 0; y < r.h; y++) {
                 for (x = 0; x < r.w; x++)
                 {
-                    *pbuf++ = r.x*r.y*640;
+                    *pbuf = r.x*r.y*640;
+                    /* ASSUME patch has equal width & height */
+                    /*renderPixels (r.x, r.y, x, y, pbuf, rundata.renderingMode, (x==0) && (y==0));*/
+                    /*renderPixels (r.x, r.y, x, y, pbuf, m_test, (x==0) && (y==0));*/
+                    pbuf++;
                 }
             }
             p.x = r.x;
