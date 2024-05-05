@@ -212,6 +212,23 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
     }
 }
 
+void normalize ( float *vector, float oldHyp ) {
+    float t;
+    t =  (vector [0] * vector [0]) +
+        ((vector [1] * vector [1]) +
+        (vector [2] * vector [2]));
+    oldHyp = SQRT( t );
+    vector [0] = vector [0] / oldHyp;
+    vector [1] = vector [1] / oldHyp;
+    vector [2] = vector [2] / oldHyp;
+}
+
+float dotProduct (float *a, float *b) {
+    float ab;
+    ab = (a[0] * b[0]) + ((a[1] * b[1]) + (a[2] * b[2]));
+    return ab;
+}
+
 int findRange ( int a, int b, int c, int d ) {
     int max, min;
     if (a > b) {
@@ -237,20 +254,50 @@ int findRange ( int a, int b, int c, int d ) {
     return max - min;
 }
 
-int maxDepth = 6;
-int maxNodes = 4 + (2 << maxDepth); /*traverse tree 5 deep max, PLUS 4 for good measure */
+void initWORDvec (int *vec, int pattern, int words ) {
+    int i;
+    for (i=0; i < words; i++) {
+        vec[i] = pattern;
+    }
+}
 
-int notRendered = 0x80000000;
-int maxDescend = 2;   /* this is a space limitation on the sub-pixel grid rather than a compute saver */
-int descendPower = 4; /* 2 ^^ maxDescend */
+#define notRendered 0x80000000
+#define maxDescend 2   /* this is a space limitation on the sub-pixel grid rather than a compute saver */
+#define descendPower 4 /* 2 ^^ maxDescend */
 
-int threshold  = 10 << 2; /* this is 10 on a scale of 256, but we */
-int colourBits = 10; /* generate 10 bits */
+#define threshold  10 << 2 /* this is 10 on a scale of 256, but we */
+#define colourBits 10 /* generate 10 bits */
+#define rMask (1<<colourBits)-1
+#define gMask rMask<<colourBits
+#define bMask gMask<<colourBits
 
-int pointSample ( int **patch, int patchx, int patchy, int x, int y ) {
-    int colour;
-    int pixel = patch[y][x];
-    if (pixel == notRendered) {
+typedef struct {
+    void *objPtr;
+    float sectx;
+    float secty;
+    float sectz;
+    float normx;
+    float normy;
+    float normz;
+    float t;
+    float startx;
+    float starty;
+    float startz;
+    float dx;
+    float dy;
+    float dz;
+    float red;
+    float green;
+    float blue;     
+} NODE;
+
+NODE cleanTree[maxNodes];
+
+NODE *tree = cleanTree;
+
+int pointSample (int **patch, int patchx, int patchy, int x, int y ) {
+    int colour = patch[y][x];
+    if (colour == notRendered) {
         int tx, ty;
         float wx, wy;
         int iwx = wx;
@@ -265,169 +312,141 @@ int pointSample ( int **patch, int patchx, int patchy, int x, int y ) {
 
         treep = buildShadeTree (wx, wy);
         shade (treep);
-        node = tree[tree.p];
-        colour = node.red || node.green << colourBits || node.blue << (colourBits + colourBits);
-        patch.p := colour;
-        return 
-    } else {
-        return pixel;
+        node = tree[treep];
+        colour = (int)node.red | (int)node.green << colourBits | (int)node.blue << (colourBits + colourBits);
+        patch[y][x] = colour;
     }
+    return colour;
 }
+
+#define a_render 0
+#define a_shade  1
+#define a_stop   2
+
+typedef struct {
+    int hop;
+    int y;
+    int x;
+    int action;
+} SHADE;
+
+typedef struct {
+    int action;
+    int hop;
+    int y;
+    int x;
+    SHADE shade[4];
+} STACK_ENTRY;
 
 void renderPixels ( int patchx, int patchy,
                     int x0, int y0,
-                    int *patch,
-                    int colour,
+                    int **patch,
+                    int *colour,
                     int patchSize,
                     int renderingMode,
                     int debug) {
+    STACK_ENTRY stack[maxDescend * (4 * 17)];   /* 4 * (render, x, y, hop); shade */
+    int colstack[maxDescend + 1];
+    int sp, cp;
+    int x, y, hop;
+    int action;
+    if (renderingMode == m_adaptive) {
+        cp        = 0;                 /*-- empty colour stack */
+        action    = a_render;          /* -- init action */
+        sp = 0;                /*-- pre load stack with render x y hop; stop*/
+        stack[sp].action = a_stop;
+        stack[sp].hop = descendPower;      /*-- set grid hop value to gross pixel level*/
+        stack[sp].y = y0 << maxDescend;
+        stack[sp].x = x0 << maxDescend;  /*-- locations within this patch*/
+        while (action != a_stop) {
+            if (action == a_render) {
+                int a, b, c, d, rRange, gRange, bRange;
+                int sg = colourBits;
+                int sb = colourBits + colourBits;
+                STACK_ENTRY record = stack[sp];
+                x   = record.x;
+                y   = record.y;
+                hop = record.hop;
+                a = pointSample ( patch, patchx, patchy, x,       y      );
+                b = pointSample ( patch, patchx, patchy, x + hop, y      );
+                c = pointSample ( patch, patchx, patchy, x,       y + hop);
+                d = pointSample ( patch, patchx, patchy, x + hop, y + hop);
 
+                rRange = findRange (a & rMask, b & rMask,
+                                    c & rMask, d & rMask);
 
+                gRange = findRange ( (a & gMask) >> sg, (b & gMask) >> sg,
+                                    (c & gMask) >> sg, (d & gMask) >> sg);
 
-[maxDescend * (4 * 17)] INT    stack : -- 4 * (render, x, y, hop); shade
-[(maxDescend + 1) *  4] INT colstack : --
-INT sp, cp :
-INT    x, y, hop :
-VAL a.render IS 0 :
-VAL a.shade  IS 1 :
-VAL a.stop   IS 2 :
+                bRange = findRange ( a >> sb, b >> sb,
+                                    c >> sb, d >> sb);
 
-INT action :
-IF
-    renderingMode = m.adaptive
-    SEQ
-        cp        := 0                 -- empty colour stack
-        action    := a.render          -- init action
+                if (hop != 1 &&
+                    ((rRange > threshold) ||
+                    ((gRange > threshold) || (bRange > threshold)))) {
+                        record = stack[sp];
+                        record.action = a_shade;
+                        hop = hop >> 1;
+                        record.shade[0].hop = hop;
+                        record.shade[0].y = y;
+                        record.shade[0].x = x;
+                        record.shade[0].action = a_render;
+                        record.shade[1].hop = hop;
+                        record.shade[1].y = y;
+                        record.shade[1].x = x + hop;
+                        record.shade[1].action = a_render;
+                        record.shade[2].hop = hop;
+                        record.shade[2].y = y + hop;
+                        record.shade[2].x = x;
+                        record.shade[2].action = a_render;
+                        record.shade[3].hop = hop;
+                        record.shade[3].y = y + hop;
+                        record.shade[3].x = x + hop;
+                        record.shade[3].action = a_render;
+                    sp = sp + 1;
+                } else {
+                    int R, G, B, m;
+                    m = rMask;
+                    R = ((((a & m) + (b & m)) +
+                            ((c & m) + (d & m))) >> 2) & m;
+                    m = gMask;
+                    G = ((((a & m) + (b & m)) +
+                            ((c & m) + (d & m))) >> 2) & m;
+                    m = bMask;
+                    B = ((((a & m) + (b & m)) +
+                            ((c & m) + (d & m))) >> 2) & m;
+                    colstack[cp] = R | G | B;
+                    cp = cp + 1;
+                }
+                sp     = sp - 1;
+                action = stack [sp].action;
+            } else if (action == a_shade) {
+                int a, b, c, d, R, G, B, m;
+                a  = colstack[0];
+                b  = colstack[-1];
+                c  = colstack[-2];
+                d  = colstack[-3];
+                m = rMask;
+                R = ((((a & m) + (b & m)) +
+                        ((c & m) + (d & m))) >> 2) & m;
+                m = gMask;
+                G = ((((a & m) + (b & m)) +
+                        ((c & m) + (d & m))) >> 2) & m;
+                m = bMask;
+                B = ((((a & m) + (b & m)) +
+                        ((c & m) + (d & m))) >> 2) & m;
+                colstack[0] = R | G | B;
+                cp = cp - 3;
+                sp = sp - 1;
+                action = stack[sp].action;
+            }
+        }
+        *colour = colstack[cp-1];
+    } else if (renderingMode == m_test) {
+        *colour = (x0 + (y0 * patchSize));
+    }
+}
 
-        stack [0] := a.stop
-        stack [1] := descendPower      -- set grid hop value to gross pixel level
-        stack [2] := y0 << maxDescend
-        stack [3] := x0 << maxDescend  -- locations within this patch
-        sp        := 4                 -- pre load stack with render x y hop; stop
-        WHILE action <> a.stop
-        IF
-            action = a.render
-            INT a, b, c, d, rRange, gRange, bRange :
-            VAL sg IS colourBits :
-            VAL sb IS colourBits + colourBits :
-            SEQ
-                VAL record IS [ stack FROM sp - 3 FOR 3 ] :
-                SEQ
-                x   := record [2]
-                y   := record [1]
-                hop := record [0]
-                sp := sp - 3
-
-                pointSample ( a, x,       y      )
-                pointSample ( b, x + hop, y      )
-                pointSample ( c, x,       y + hop)
-                pointSample ( d, x + hop, y + hop)
-
-                findRange ( rRange, a /\ rMask, b /\ rMask,
-                                    c /\ rMask, d /\ rMask)
-
-                findRange ( gRange, (a /\ gMask) >> sg, (b /\ gMask) >> sg,
-                                    (c /\ gMask) >> sg, (d /\ gMask) >> sg)
-
-                findRange ( bRange, a >> sb, b >> sb,
-                                    c >> sb, d >> sb)
-
-                IF
-                (hop <> 1) AND
-                    ((rRange > threshold) OR
-                    ((gRange > threshold) OR (bRange > threshold)))
-                    record IS [ stack FROM sp FOR 17 ] :
-                    SEQ
-                    hop := hop >> 1
-                    record [0] := a.shade
-                    VAL recordStart IS 1 :
-                    SEQ
-                        record [recordStart + 0] := hop
-                        record [recordStart + 1] := y
-                        record [recordStart + 2] := x
-                        record [recordStart + 3] := a.render
-                    VAL recordStart IS 5 :
-                    SEQ
-                        record [recordStart + 0] := hop
-                        record [recordStart + 1] := y
-                        record [recordStart + 2] := x + hop
-                        record [recordStart + 3] := a.render
-                    VAL recordStart IS 9 :
-                    SEQ
-                        record [recordStart + 0] := hop
-                        record [recordStart + 1] := y + hop
-                        record [recordStart + 2] := x
-                        record [recordStart + 3] := a.render
-                    VAL recordStart IS 13 :
-                    SEQ
-                        record [recordStart + 0] := hop
-                        record [recordStart + 1] := y + hop
-                        record [recordStart + 2] := x + hop
-                        record [recordStart + 3] := a.render
-                    sp := sp + 17
-                TRUE
-                    INT R, G, B, m :
-                    SEQ
-                    m := rMask
-                    R := ((((a /\ m) + (b /\ m)) +
-                            ((c /\ m) + (d /\ m))) >> 2) /\ m
-                    m := gMask
-                    G := ((((a /\ m) + (b /\ m)) +
-                            ((c /\ m) + (d /\ m))) >> 2) /\ m
-                    m := bMask
-                    B := ((((a /\ m) PLUS (b /\ m)) PLUS
-                            ((c /\ m) PLUS (d /\ m))) >> 2) /\ m
-                    colstack [cp] := R \/ (G \/ B)
-                    cp := cp + 1
-                sp     := sp - 1
-                action := stack [sp]
-            action = a.shade
-            INT a, b, c, d, R, G, B, m :
-            record IS [ colstack FROM cp - 4 FOR 4 ] :
-            SEQ
-                a  := record [3]
-                b  := record [2]
-                c  := record [1]
-                d  := record [0]
-                m := rMask
-                R := ((((a /\ m) + (b /\ m)) +
-                        ((c /\ m) + (d /\ m))) >> 2) /\ m
-                m := gMask
-                G := ((((a /\ m) + (b /\ m)) +
-                        ((c /\ m) + (d /\ m))) >> 2) /\ m
-                m := bMask
-                B := ((((a /\ m) PLUS (b /\ m)) PLUS
-                        ((c /\ m) PLUS (d /\ m))) >> 2) /\ m
-                record [0] := R \/ (G \/ B)
-                cp := cp - 3
-                sp := sp - 1
-                action := stack [ sp]
-        colour := colstack [ cp-1]
-    renderingMode = m.stochastic
-    SEQ
-    renderingMode = m.dumb
-    INT tree.p :
-    INT    tx, ty :
-    REAL32 wx, wy :
-    INT iwx RETYPES wx :
-    INT iwy RETYPES wy :
-    SEQ
-        tx := ((patchx + x0) << maxDescend)
-        ty := ((patchy + y0) << maxDescend)
-
-        wx := (REAL32 TRUNC tx) / (REAL32 TRUNC descendPower)
-        wy := (REAL32 TRUNC ty) / (REAL32 TRUNC descendPower)
-
-        buildShadeTree ( tree.p, wx, wy )
-        shade ( tree.p )
-        node IS [ tree FROM tree.p FOR nodeSize ] :
-        colour :=   node [   n.red] \/
-                ((node [ n.green] <<  colourBits) \/
-                ( node [  n.blue] << (colourBits + colourBits)))
-
-    renderingMode = m.test
-    colour := (x0 + (y0 * patchSize))
-  :
 object objects[MAX_OBJECTS];
 light lights[MAX_LIGHTS];
 
