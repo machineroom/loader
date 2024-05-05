@@ -203,7 +203,13 @@ typedef struct {
 } light;
 
 typedef struct {
-    float ambient[3];
+    float r;
+    float g;
+    float b;
+} _colour;
+
+typedef struct {
+    _colour ambient;
     int renderingMode;
     int runPatchsize;
     int scaleFactor;
@@ -211,4 +217,4 @@ typedef struct {
     float screenX[3];
     float screenY[3];
     float pinhole[3];
-} rundata;
+} _rundata;

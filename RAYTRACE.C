@@ -212,6 +212,12 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
     }
 }
 
+object objects[MAX_OBJECTS];
+light lights[MAX_LIGHTS];
+_rundata rundata;
+int num_objects=0;
+int num_lights=0;
+
 void normalize ( float *vector, float oldHyp ) {
     float t;
     t =  (vector [0] * vector [0]) +
@@ -261,7 +267,6 @@ void initWORDvec (int *vec, int pattern, int words ) {
     }
 }
 
-#define notRendered 0x80000000
 #define maxDescend 2   /* this is a space limitation on the sub-pixel grid rather than a compute saver */
 #define descendPower 4 /* 2 ^^ maxDescend */
 
@@ -271,6 +276,8 @@ void initWORDvec (int *vec, int pattern, int words ) {
 #define gMask rMask<<colourBits
 #define bMask gMask<<colourBits
 #define nil -1
+#define mint 0x80000000
+#define notRendered mint
 
 typedef struct {
     int reflect;
@@ -291,18 +298,168 @@ typedef struct {
     float dx;
     float dy;
     float dz;
-    float red;
-    float green;
-    float blue;     
+    _colour colour;
 } NODE;
 
 NODE cleanTree[maxNodes];
 
 NODE *tree = cleanTree;
+int freeNode;
 
 int buildShadeTree (float x, float y) {
+    freeNode = 0;
+    /* TODO */
     return 0;
 }
+
+int claim (int type ) {
+    int nodePtr = freeNode;
+    tree[nodePtr].reflect = nil;
+    tree[nodePtr].refract = nil;
+    tree[nodePtr].next = nil;
+    tree[nodePtr].objPtr = nil;
+    tree[nodePtr].type = type;
+    freeNode++;
+    return nodePtr;
+}
+
+void shadeNode ( int nodePtr ) {
+/*
+    --
+    -- Total intensity at node is sum of ambient, diffuse, glossy,
+    -- specular and transmitted intensities.
+    --
+    --                            j=ls
+    --                             _  _ _
+    -- I = (Ia * kd) + Ig + kd *   > (N.Lj)
+    --                             -
+    --                            j=1
+    --
+    -- Here we compute ambient diffuse and glossy terms, specular
+    -- and transmitted components are added at mix time.
+    --
+    -- Ig is given by Phong
+    --
+    --      j=ls
+    --       _  _ _   n
+    -- Ig =  > (N.Lj')
+    --       -
+    --      j=1
+    --
+    --
+    --
+*/
+    NODE *node = &tree[nodePtr];
+    int objPtr = node->objPtr;
+    _colour ambient = rundata.ambient;
+    _colour *colour = &node->colour;
+    _colour black = {0.0,0.0,0.0};
+    if (objPtr == nil) {
+        *colour = ambient;
+    } else {
+        object o = objects[objPtr];
+        float spec = o.kg;
+        int attr = o.attr;
+        const int rt_root=0;/*-- only first ray is of this type*/
+        const int rt_spec=1;/*-- reflected ray*/
+        const int rt_frac=2;/*-- transmitted ray*/
+
+        int shadow, phong;  /*-- ptr into tree for shadow ray, pseudo light*/
+        int lightPtr;
+        NODE *shadowNode;
+        NODE *phongNode;
+        if ((attr & a_spec) == 0) {
+            colour->r = ambient.r * o.kdR;
+            colour->g = ambient.g * o.kdG;
+            colour->b = ambient.b * o.kdB;
+        } else {
+            *colour = black;
+        }
+        shadow = claim(rt_root);
+        phong = claim(rt_root);
+
+        shadowNode = &tree[shadow];
+        phongNode = &tree[phong];
+
+        lightPtr = 0;
+        shadowNode->startx = node->sectx + node->normx;
+        shadowNode->starty = node->secty + node->normy;
+        shadowNode->startz = node->sectz + node->normz;
+        for (lightPtr=0; lightPtr < num_lights; lightPtr++) {
+            light l = lights[lightPtr];
+            /*-- set up shadow ray direction cosines */
+            shadowNode->dx = l.dx;
+            shadowNode->dy = l.dy;
+            shadowNode->dz = l.dz;
+            sceneSect ( shadow, TRUE );
+            if (shadowNode->t != 0.0) {
+
+            } else {
+                float lambert;
+                int iLambert;
+                lambert = dotProduct (&l.dx, &node->normx);
+                iLambert = (int)lambert;
+                if ((iLambert & 0x80000000) != 0) { /*-- -ve !*/
+                } else {
+                    colour->r = colour->r + (lambert * (o.kdR * l.ir));
+                    colour->g = colour->g + (lambert * (o.kdG * l.ig));
+                    colour->b = colour->b + (lambert * (o.kdB * l.ib));
+                }
+                /*--
+                -- the phong shader is a mite messy at the moment, with lots of
+                -- sign inversions all over the place. I'm not sure they can be avoided
+                --*/
+                if (attr & a_spec != 0) {
+                    float cosPhong;
+                    int iCosPhong;
+                    float Vprime;   /*-- to keep reflect ray happy */
+                    float Vvec[3];
+                    int signFlip;
+                    int flipNode[3];
+
+                    shadowNode->normx = node->normx;
+                    shadowNode->normy = node->normy;
+                    shadowNode->normz = node->normz;
+                    shadowNode->sectx = node->sectx;
+                    shadowNode->secty = node->secty;
+                    shadowNode->sectz = node->sectz;
+
+                    /*--
+                    --  a nasty sign inversion due to the light direction being optimized
+                    --  for shadow spotting
+                    --*/
+                    /* TODO check this! */
+                    shadowNode->dx = (int)shadowNode->dx ^ mint;
+                    shadowNode->dy = (int)shadowNode->dy ^ mint;
+                    shadowNode->dz = (int)shadowNode->dz ^ mint;
+                    reflectRay ( phong, shadow, Vprime,
+                                    Vvec, signFlip );
+                    /*--
+                    --  again, a nasty sign inversion is required here - see diagram
+                    -- newmann / sproull, p. 391
+                    --*/                    
+                    flipNode[0] = (int)node->dx ^ mint;
+                    flipNode[1] = (int)node->dy ^ mint;
+                    flipNode[2] = (int)node->dz ^ mint;
+                    cosPhong = dotProduct (flipNode, &phongNode->dx);
+                    iCosPhong = (int)cosPhong;
+                    if (iCosPhong & mint != 0) {
+                        iCosPhong = iCosPhong ^ mint;
+                    }
+                    cosPhong = iCosPhong;
+                    cosPhong = (cosPhong * cosPhong); /*-- power := 2*/
+                    cosPhong = (cosPhong * cosPhong); /*-- power := 4*/
+                    cosPhong = (cosPhong * cosPhong); /*-- power := 8*/
+                    colour->r = colour->r + (spec * (cosPhong * l.ir));
+                    colour->g = colour->g + (spec * (cosPhong * l.ig));
+                    colour->b = colour->b + (spec * (cosPhong * l.ib));
+                } else {
+                }
+            }
+        }
+    }
+}
+
 
 typedef struct {
     int np;
@@ -389,7 +546,7 @@ void shade ( int rootNode ) {
             action = stack[sp].action;
             nodePtr = stack[sp].np;
             while (action = a_mix) {
-            /* -- all these nodes have had their children shaded, so we can shade nd mix them */
+                /* -- all these nodes have had their children shaded, so we can shade nd mix them */
                 shadeNode   ( nodePtr );
                 mixChildren ( nodePtr );
                 sp--;
@@ -407,13 +564,13 @@ void shade ( int rootNode ) {
     {
         NODE *root = &tree[rootNode];
 
-        float red  = root->red;
-        float green = root->green;
-        float blue = root->blue;
+        float red  = root->colour.r;
+        float green = root->colour.g;
+        float blue = root->colour.b;
 
-        int ired = (int)root->red;
-        int igreen = (int)root->green;
-        int iblue = (int)root->blue;
+        int ired = (int)root->colour.r;
+        int igreen = (int)root->colour.g;
+        int iblue = (int)root->colour.b;
 
         float maxC = 1022.99; /*-- just under 10 bits*/
         float maxP, fudge;
@@ -444,9 +601,9 @@ void shade ( int rootNode ) {
             igreen = (int)green;
             iblue  = (int)blue;
         }
-        root->red = ired;
-        root->green = igreen;
-        root->blue = iblue;
+        root->colour.r = ired;
+        root->colour.g = igreen;
+        root->colour.b = iblue;
     }
 }
 
@@ -468,7 +625,7 @@ int pointSample (int **patch, int patchx, int patchy, int x, int y ) {
         treep = buildShadeTree (wx, wy);
         shade (treep);
         node = tree[treep];
-        colour = (int)node.red | (int)node.green << colourBits | (int)node.blue << (colourBits + colourBits);
+        colour = (int)node.colour.r | (int)node.colour.g << colourBits | (int)node.colour.b << (colourBits + colourBits);
         patch[y][x] = colour;
     }
     return colour;
@@ -602,9 +759,6 @@ void renderPixels ( int patchx, int patchy,
     }
 }
 
-object objects[MAX_OBJECTS];
-light lights[MAX_LIGHTS];
-
 /* job calculates a slice of pixels - one instance per node */
 /* 1. sends a 0 on req_out to indicate it needs work
    2. receives (on job_in) a DATCOM to setup parameters, then a c_render 
@@ -624,6 +778,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
                 object o;
                 ChanIn(job_in,(char *)&o, sizeof(o));
                 memcpy (po++, &o, sizeof(o));
+                num_objects++;
             }
             break;
             case c_light:
@@ -631,12 +786,12 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
                 light l;
                 ChanIn(job_in,(char *)&l, sizeof(l));
                 memcpy (pl++, &l, sizeof(l));
+                num_lights++;
             }
             break;
             case c_runData:
             {
-                rundata r;
-                ChanIn(job_in,(char *)&r, sizeof(r));
+                ChanIn(job_in,(char *)&rundata, sizeof(rundata));
             }
             break;
             case c_start:
@@ -710,7 +865,7 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
             break;
             case c_runData:
             {
-                rundata r;
+                _rundata r;
                 ChanIn(buf_in,(char *)&r, sizeof(r));
                 ChanOutInt(buf_out,type);
                 ChanOut(buf_out,&r,sizeof(r));
@@ -782,7 +937,7 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
             break;
             case c_runData:
             {
-                rundata r;
+                _rundata r;
                 int i;
                 ChanIn(sel_in,(char *)&r, sizeof(r));
                 /* send the object to each worker */
@@ -867,7 +1022,7 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             break;
             case c_runData:
             {
-                rundata r;
+                _rundata r;
                 ChanIn(host_in,(char *)&r, sizeof(r));
                 ChanOutInt (fd_out, type);
                 ChanOut(fd_out,(char *)&r,sizeof(r));

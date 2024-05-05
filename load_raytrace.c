@@ -53,7 +53,7 @@ static void send_light(light *l) {
     }
 }
 
-static void send_rundata(rundata *r) {
+static void send_rundata(_rundata *r) {
     printf ("send runData\n");
     if (word_out(c_runData) != 0) {
         printf(" -- timeout sending rundata type\n");
@@ -262,10 +262,10 @@ static void pumpWorldModels(int model, int patchEdge) {
     float offX = 0.0;
     float offY = 0.0;
     float offZ = 0.0;
-    rundata r;
-    r.ambient[0] = 266.0;
-    r.ambient[1] = 266.0;
-    r.ambient[2] = 280.0;
+    _rundata r;
+    r.ambient.r = 266.0;
+    r.ambient.g = 266.0;
+    r.ambient.b = 280.0;
     r.renderingMode = m_adaptive;
     r.runPatchsize = patchEdge;
     r.scaleFactor = 1;
