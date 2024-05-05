@@ -404,48 +404,50 @@ void shade ( int rootNode ) {
             action  = a_reflect;
         }
     }
-    NODE *root = &tree[rootNode];
+    {
+        NODE *root = &tree[rootNode];
 
-    float red  = root->red;
-    float green = root->green;
-    float blue = root->blue;
+        float red  = root->red;
+        float green = root->green;
+        float blue = root->blue;
 
-    int ired = (int)root->red;
-    int igreen = (int)root->green;
-    int iblue = (int)root->blue;
+        int ired = (int)root->red;
+        int igreen = (int)root->green;
+        int iblue = (int)root->blue;
 
-    float maxC = 1022.99; /*-- just under 10 bits*/
-    float maxP, fudge;
-    int desaturate;
-    desaturate = TRUE;
-    if (red > green) {
-        maxP = red;
-    } else {
-        maxP = green;
-    }
-    if (maxP > blue) {
-        if (maxP > maxC) {
-            fudge = maxC / maxP;
+        float maxC = 1022.99; /*-- just under 10 bits*/
+        float maxP, fudge;
+        int desaturate;
+        desaturate = TRUE;
+        if (red > green) {
+            maxP = red;
+        } else {
+            maxP = green;
+        }
+        if (maxP > blue) {
+            if (maxP > maxC) {
+                fudge = maxC / maxP;
+            } else {
+                desaturate = FALSE;
+            }
+        } else if (blue > maxC) {
+            fudge = maxC / blue;
         } else {
             desaturate = FALSE;
         }
-    } else if (blue > maxC) {
-        fudge = maxC / blue;
-    } else {
-        desaturate = FALSE;
+        if (desaturate) {
+            ired   = (int)(red   * fudge);
+            igreen = (int)(green * fudge);
+            iblue  = (int)(blue  * fudge);
+        } else {
+            ired   = (int)red;
+            igreen = (int)green;
+            iblue  = (int)blue;
+        }
+        root->red = ired;
+        root->green = igreen;
+        root->blue = iblue;
     }
-    if (desaturate) {
-        ired   = (int)(red   * fudge);
-        igreen = (int)(green * fudge);
-        iblue  = (int)(blue  * fudge);
-    } else {
-        ired   = (int)red;
-        igreen = (int)green;
-        iblue  = (int)blue;
-    }
-    root->red = ired;
-    root->green = igreen;
-    root->blue = iblue;
 }
 
 int pointSample (int **patch, int patchx, int patchy, int x, int y ) {
