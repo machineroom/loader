@@ -361,9 +361,11 @@ void shade ( int rootNode ) {
     action  = a_reflect;
     while (action != a_stop) {
         NODE node;
+        int spec;
+        int frac;
         node = tree[nodePtr];
-        int spec = node.reflect;
-        int frac = node.refract;
+        spec = node.reflect;
+        frac = node.refract;
         if (action == a_reflect) {
             if (spec == nil) {
                 /* -- no reflected ray, shade refracted ray */
