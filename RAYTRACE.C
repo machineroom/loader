@@ -17,6 +17,7 @@
 #include <conc.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stddef.h>
 #include <conc.h>
 #include "mlibp.h"
@@ -186,7 +187,7 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
         type = ChanInInt(arb_in[i]);
         if (type == c_patch) {
             patch p;
-            ChanIn(arb_in[i],(char *)&p,sizeof(p));
+            ChanIn(arb_in[i],(char *)&p,(int)sizeof(p));
             ChanIn(arb_in[i],buf,p.patchWidth*p.patchHeight*4);
             if (root) {
                 /* render to B438 */
@@ -203,7 +204,7 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
             } else {
                 /* 3. Send result to parent */
                 ChanOutInt(arb_out,type);
-                ChanOut(arb_out,(char *)&p,sizeof(p));
+                ChanOut(arb_out,(char *)&p,(int)sizeof(p));
                 ChanOut(arb_out,(char *)buf,p.patchWidth*p.patchHeight*4);
             }
         } else {
@@ -220,10 +221,10 @@ int num_lights=0;
 
 void normalize ( float *vector, float oldHyp ) {
     float t;
-    t =  (vector [0] * vector [0]) +
+    t = (vector [0] * vector [0]) +
         ((vector [1] * vector [1]) +
-        (vector [2] * vector [2]));
-    oldHyp = SQRT( t );
+         (vector [2] * vector [2]));
+    oldHyp = sqrtf( t );
     vector [0] = vector [0] / oldHyp;
     vector [1] = vector [1] / oldHyp;
     vector [2] = vector [2] / oldHyp;
@@ -323,6 +324,254 @@ int claim (int type ) {
     return nodePtr;
 }
 
+void mixChildren ( int nodePtr ) {
+    /*--
+    -- Total intensity at node is sum of ambient, diffuse, glossy, specular and
+    -- transmitted intensities.
+    --
+    --
+    --                    j=ls _ _
+    -- I = Ia + Ig + kd *   { (N.Lj)
+    --                    j=1
+    --
+    -- Here we attenuate specular and transmitted components
+    -- from the children, and add into the parent node.
+    --*/
+    NODE *node = &tree[nodePtr];
+    object o = objects[node->objPtr];
+    _colour black = {0.0, 0.0, 0.0};
+    _colour xmit;
+    _colour spec;
+    int specPtr = node->reflect;
+    int fracPtr = node->refract;
+    if (specPtr == nil) {
+        spec = black;
+    } else {
+        /*-- specular contribution is independent of colour of surface
+        -- but here we should attenuate according to 't' ( distance
+        -- ray has travelled)*/
+        spec = tree[specPtr].colour;
+        spec.r = spec.r * o.ks;
+        spec.g = spec.g * o.ks;
+        spec.b = spec.b * o.ks;
+    }
+    if (fracPtr == nil) {
+        xmit = black;
+    } else {
+        /* -- colour the transmitted light
+           -- but here we should attenuate according to 't' of ray*/
+        xmit = tree[fracPtr].colour;
+        xmit.r = xmit.r * o.xmitR;
+        xmit.g = xmit.g * o.xmitG;
+        xmit.b = xmit.b * o.xmitB;
+    }
+    node->colour.r = node->colour.r + (spec.r + xmit.r);
+    node->colour.g = node->colour.g + (spec.r + xmit.g);
+    node->colour.b = node->colour.g + (spec.r + xmit.b);
+}
+
+int nrays=0;
+
+int sceneSect ( int nodePtr, int shadowRay ) {
+    NODE *node = &tree[nodePtr];
+    int  ptr, objp, i;
+    int proceed;
+    NODE closest;
+    nrays ++;
+    closest = *node;
+    proceed = TRUE; /*-- a quick 'get out' clause for shadow checking*/
+    objp   = nil;
+    ptr    = 0;
+    for (i=0; i < num_objects && proceed; i++) {
+        object o = objects[i];
+        #if 0
+        switch (o.type) {
+            case o_sphere:
+                sphereSect ( node, o );
+            break;
+            case o_ellipsoid:
+                ellipsoidSect ( node, o );
+            break;
+            case o_cylinder:
+                cylinderSect ( node, o );
+            break;
+            case o_cone:
+                coneSect ( node, o );
+            break;
+            case o_plane:
+                planeSect (node, o );
+            break;
+            case o_xyplane:
+                xyPlaneSect (node, o );
+            break;
+            case o_yzplane:
+                yzPlaneSect (node, o );
+            break;
+            case o_xzplane:
+                xzPlaneSect (node, o );
+            break;
+            default:
+            /*
+                writef (pixelsOut, "*N*CGarbage object %I in list at offset %I",
+                    object [o.type], ptr, 0, 0 )
+                STOP*/
+            break;
+        }
+        #endif
+        if ((int)node->t == 0) {
+            /* SKIP */            
+        } else if (shadowRay) {
+            proceed = FALSE;
+            node->objPtr = nil;
+        } else if (objp == nil) {
+            objp = ptr;   /*-- pointer to type slot in world model*/
+            node->objPtr = objp;
+            closest = *node;
+        } else if (node->t < closest.t) {
+            objp = ptr;   /*-- pointer to size slot in world model*/
+            node->objPtr = objp;
+            closest = *node;
+        }
+    }
+    if (shadowRay) {
+
+    } else {
+        *node = closest;
+    }
+}
+
+float invert(float a) {
+    int b = (int)a;
+    b = b ^ mint;
+    return (float)b;
+}
+
+void reflectRay ( int reflected, int incident, float *Vprime, float *Vvec, int *flip) {
+    /*
+    --
+    -- this code assumes a ray normalized on entry. if it is not, you are in
+    -- trouble
+    --
+    -- normalization is not maintained after a reflection, but from the
+    -- geometry of the system ( see above) we can determine that
+    -- the ratio of V' to V is the ratio of R' to R
+    --
+    -- now V is 1, R is 1, so to obtain R from R'
+    -- R = (R' * V) / V'
+    -- or R = R'/V'
+    --
+    -- so renormalization now costs 3 divides, not 3 muls, 2 adds and 1 root
+    --
+    */
+    NODE *node = &tree[incident];
+    NODE *spec = &tree[reflected];
+    float twoN;
+    float VN;
+    VN = dotProduct (&node->dx,&node->normx);
+    if (VN > 0.0) {
+        node->normx = invert(node->normx);
+        node->normy = invert(node->normy);
+        node->normz = invert(node->normz);
+        *Vprime = 1.0 / VN;
+        *flip   = TRUE;
+    } else {
+        *Vprime = -1.0 / VN;
+        *flip   = FALSE;
+    }
+    /*--
+    --  V'/V = dxV' / dxV
+    --                  _ _
+    --  V = 1, V' = -1/(N.V)
+    --
+    --  so dxV' = dxV*Vprime
+    --
+    --  so Rx = Nx + Nx + dxV*Vprime
+    --     Ry = Ny + Ny + dyV*Vprime
+    --     Rz = Nz + Nz + dzV*Vprime
+    --*/
+    twoN     = node->normx * 2.0;
+    Vvec[0]  = node->dx * *Vprime;
+    spec->dx = Vvec[0]  + twoN;
+
+    twoN     = node->normy * 2.0;
+    Vvec[1]  = node->dy * *Vprime;
+    spec->dx = Vvec[1]  + twoN;
+
+    twoN     = node->normz * 2.0;
+    Vvec[2]  = node->dz * *Vprime;
+    spec->dx = Vvec[2]  + twoN;
+
+    spec->dx = spec->dx / *Vprime;
+    spec->dy = spec->dy / *Vprime;
+    spec->dz = spec->dz / *Vprime;
+
+    spec->startx = node->sectx + node->normx;
+    spec->starty = node->secty + node->normy;
+    spec->startz = node->sectz + node->normz;
+}
+
+void refractRay ( int refracted, int incident,
+                    float *Vprime, float *Vvec,
+                    int   flip, int *totalInternal ) {
+    /*--   _       _   _     _
+    --   P  = kf(N + V') - N
+    --
+    --                  2    2   _    _  2  -1/2
+    --    where kf = (kn |V'| - |V' + N'| )
+    --
+    --    kn = index of refraction
+    --               _ _
+    --  NOTE that if V.N < 0 we are INSIDE the object - be careful about
+    --  the refractive index*/
+
+    NODE *node = &tree[incident];
+    NODE *frac = &tree[refracted];
+
+    object o = objects[node->objPtr];
+    float kn = o.refix;
+    float kn_Vprime, Vprime_plus_N;
+    float t[3]; /* -- temporary vector */
+
+    /*[3] REAL32 norm IS [ node FROM n.normx FOR 3 ] :
+    [3] INT inorm RETYPES norm :
+    */
+    if (flip) {
+        kn_Vprime = (*Vprime * *Vprime) / kn;
+    } else {
+        kn_Vprime = (*Vprime * *Vprime) * kn;
+    }
+
+    t[0] = node->normx + Vvec[0];
+    t[1] = node->normy + Vvec[1];
+    t[2] = node->normz + Vvec[2];
+
+    Vprime_plus_N = (t[0] * t[0]) +
+                    ((t[1] * t[1]) +
+                    (t[2] * t[2]));
+
+    if (Vprime_plus_N > kn_Vprime) {
+        *totalInternal = TRUE;
+    } else {
+        float kf2, kf;
+        *totalInternal = FALSE;
+
+        kf2 = kn_Vprime - Vprime_plus_N;
+        kf = sqrtf ( kf2 );
+
+        t[0] = t[0] / kf;  /*-- get kf (N + V')*/
+        t[1] = t[1] / kf;
+        t[2] = t[2] / kf;
+
+        frac->dx = t[0] - node->normx;
+        frac->dy = t[1] - node->normy;
+        frac->dz = t[2] - node->normz;
+        normalize (&node->dx, kf);
+        frac->startx = node->sectx - node->normx;
+        frac->starty = node->secty - node->normy;
+        frac->startz = node->sectz - node->normz;
+    }
+}
+
 void shadeNode ( int nodePtr ) {
 /*
     --
@@ -415,7 +664,7 @@ void shadeNode ( int nodePtr ) {
                     float Vprime;   /*-- to keep reflect ray happy */
                     float Vvec[3];
                     int signFlip;
-                    int flipNode[3];
+                    float flipNode[3];
 
                     shadowNode->normx = node->normx;
                     shadowNode->normy = node->normy;
@@ -429,24 +678,24 @@ void shadeNode ( int nodePtr ) {
                     --  for shadow spotting
                     --*/
                     /* TODO check this! */
-                    shadowNode->dx = (int)shadowNode->dx ^ mint;
-                    shadowNode->dy = (int)shadowNode->dy ^ mint;
-                    shadowNode->dz = (int)shadowNode->dz ^ mint;
-                    reflectRay ( phong, shadow, Vprime,
-                                    Vvec, signFlip );
+                    shadowNode->dx = invert(shadowNode->dx);
+                    shadowNode->dy = invert(shadowNode->dy);
+                    shadowNode->dz = invert(shadowNode->dz);
+                    reflectRay ( phong, shadow, &Vprime,
+                                    Vvec, &signFlip );
                     /*--
                     --  again, a nasty sign inversion is required here - see diagram
                     -- newmann / sproull, p. 391
-                    --*/                    
-                    flipNode[0] = (int)node->dx ^ mint;
-                    flipNode[1] = (int)node->dy ^ mint;
-                    flipNode[2] = (int)node->dz ^ mint;
+                    --*/
+                    flipNode[0] = invert(node->dx);
+                    flipNode[1] = invert(node->dy);
+                    flipNode[2] = invert(node->dz);
                     cosPhong = dotProduct (flipNode, &phongNode->dx);
                     iCosPhong = (int)cosPhong;
                     if (iCosPhong & mint != 0) {
                         iCosPhong = iCosPhong ^ mint;
                     }
-                    cosPhong = iCosPhong;
+                    cosPhong = (float)iCosPhong;
                     cosPhong = (cosPhong * cosPhong); /*-- power := 2*/
                     cosPhong = (cosPhong * cosPhong); /*-- power := 4*/
                     cosPhong = (cosPhong * cosPhong); /*-- power := 8*/
@@ -612,15 +861,13 @@ int pointSample (int **patch, int patchx, int patchy, int x, int y ) {
     if (colour == notRendered) {
         int tx, ty;
         float wx, wy;
-        int iwx = wx;
-        int iwy = wy;
         int treep;
         NODE node;
         tx = (patchx << maxDescend) + x;
         ty = (patchy << maxDescend) + y;
 
-        wx = floor(tx) / floor(descendPower);
-        wy = floor(ty) / floor(descendPower);
+        wx = (float)tx / (float)descendPower;
+        wy = (float)ty / (float)descendPower;
 
         treep = buildShadeTree (wx, wy);
         shade (treep);
@@ -776,7 +1023,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             case c_object:
             {
                 object o;
-                ChanIn(job_in,(char *)&o, sizeof(o));
+                ChanIn(job_in,(char *)&o, (int)sizeof(o));
                 memcpy (po++, &o, sizeof(o));
                 num_objects++;
             }
@@ -784,14 +1031,14 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             case c_light:
             {
                 light l;
-                ChanIn(job_in,(char *)&l, sizeof(l));
+                ChanIn(job_in,(char *)&l, (int)sizeof(l));
                 memcpy (pl++, &l, sizeof(l));
                 num_lights++;
             }
             break;
             case c_runData:
             {
-                ChanIn(job_in,(char *)&rundata, sizeof(rundata));
+                ChanIn(job_in,(char *)&rundata, (int)sizeof(rundata));
             }
             break;
             case c_start:
@@ -815,7 +1062,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             int *pbuf;
             render r;
             patch p;
-            ChanIn(job_in,(char *)&r,sizeof(r));
+            ChanIn(job_in,(char *)&r,(int)sizeof(r));
             pbuf = buf;
             for (y = 0; y < r.h; y++) {
                 for (x = 0; x < r.w; x++)
@@ -829,7 +1076,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             p.patchWidth = r.w;
             p.patchHeight = r.h;
             ChanOutInt(rsl_out,c_patch);
-            ChanOut(rsl_out,(char *)&p,sizeof(p));
+            ChanOut(rsl_out,(char *)&p,(int)sizeof(p));
             ChanOut(rsl_out, buf, p.patchWidth*p.patchHeight*4);
         } else {
             while (1) {lon();}
@@ -850,25 +1097,25 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
             case c_object:
             {
                 object o;
-                ChanIn(buf_in,(char *)&o, sizeof(o));
+                ChanIn(buf_in,(char *)&o, (int)sizeof(o));
                 ChanOutInt(buf_out,type);
-                ChanOut(buf_out,&o,sizeof(o));
+                ChanOut(buf_out,&o,(int)sizeof(o));
             }
             break;
             case c_light:
             {
                 light l;
-                ChanIn(buf_in,(char *)&l, sizeof(l));
+                ChanIn(buf_in,(char *)&l, (int)sizeof(l));
                 ChanOutInt(buf_out,type);
-                ChanOut(buf_out,&l,sizeof(l));
+                ChanOut(buf_out,&l,(int)sizeof(l));
             }
             break;
             case c_runData:
             {
                 _rundata r;
-                ChanIn(buf_in,(char *)&r, sizeof(r));
+                ChanIn(buf_in,(char *)&r, (int)sizeof(r));
                 ChanOutInt(buf_out,type);
-                ChanOut(buf_out,&r,sizeof(r));
+                ChanOut(buf_out,&r,(int)sizeof(r));
             }
             break;
             case c_start:
@@ -888,9 +1135,9 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
         if (type == c_render)
         {
             render r;
-            ChanIn(buf_in,(char *)&r, sizeof(r));
+            ChanIn(buf_in,(char *)&r, (int)sizeof(r));
             ChanOutInt(buf_out, type);
-            ChanOut(buf_out, (char *)&r, sizeof(r));
+            ChanOut(buf_out, (char *)&r, (int)sizeof(r));
         } else {
             while(1) {lon();}
         }
@@ -911,12 +1158,12 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
             {
                 object o;
                 int i;
-                ChanIn(sel_in,(char *)&o, sizeof(o));
+                ChanIn(sel_in,(char *)&o, (int)sizeof(o));
                 /* send the object to each worker */
                 for (i=0; i < 4; i++) {
                     if (dn_out[i]!=(void *)0) {
                         ChanOutInt(dn_out[i],type);
-                        ChanOut(dn_out[i],&o,sizeof(o));
+                        ChanOut(dn_out[i],&o,(int)sizeof(o));
                     }
                 }
             }
@@ -925,12 +1172,12 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
             {
                 light l;
                 int i;
-                ChanIn(sel_in,(char *)&l, sizeof(l));
+                ChanIn(sel_in,(char *)&l, (int)sizeof(l));
                 /* send the object to each worker */
                 for (i=0; i < 4; i++) {
                     if (dn_out[i]!=(void *)0) {
                         ChanOutInt(dn_out[i],type);
-                        ChanOut(dn_out[i],&l,sizeof(l));
+                        ChanOut(dn_out[i],&l,(int)sizeof(l));
                     }
                 }
             }
@@ -939,12 +1186,12 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
             {
                 _rundata r;
                 int i;
-                ChanIn(sel_in,(char *)&r, sizeof(r));
+                ChanIn(sel_in,(char *)&r, (int)sizeof(r));
                 /* send the object to each worker */
                 for (i=0; i < 4; i++) {
                     if (dn_out[i]!=(void *)0) {
                         ChanOutInt(dn_out[i],type);
-                        ChanOut(dn_out[i],&r,sizeof(r));
+                        ChanOut(dn_out[i],&r,(int)sizeof(r));
                     }
                 }
             }
@@ -976,13 +1223,13 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
             {
                 render r;
                 int i;
-                ChanIn(sel_in,(char *)&r,sizeof(r));
+                ChanIn(sel_in,(char *)&r,(int)sizeof(r));
                 /* 2. wait for any worker to become ready */
                 i = ProcPriAltList(req_in,0);
                 ChanInInt(req_in[i]);       /* discard the 0 */
                 /* 3. send the job to the worker */
                 ChanOutInt(dn_out[i],type);
-                ChanOut(dn_out[i],(char *)&r,sizeof(r));
+                ChanOut(dn_out[i],(char *)&r,(int)sizeof(r));
             }
             break;
             default:
@@ -1003,10 +1250,10 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             case c_object:
             {
                 object o;
-                ChanIn(host_in,(char *)&o, sizeof(o));
+                ChanIn(host_in,(char *)&o, (int)sizeof(o));
                 /* pass downstream */
                 ChanOutInt (fd_out, type);
-                ChanOut(fd_out,(char *)&o,sizeof(o));
+                ChanOut(fd_out,(char *)&o,(int)sizeof(o));
                 /* ack to host */
                 ChanOutInt(host_out,c_object_ack);
             }
@@ -1014,18 +1261,18 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             case c_light:
             {
                 light l;
-                ChanIn(host_in,(char *)&l, sizeof(l));
+                ChanIn(host_in,(char *)&l, (int)sizeof(l));
                 ChanOutInt (fd_out, type);
-                ChanOut(fd_out,(char *)&l,sizeof(l));
+                ChanOut(fd_out,(char *)&l,(int)sizeof(l));
                 ChanOutInt(host_out,c_light_ack);
             }
             break;
             case c_runData:
             {
                 _rundata r;
-                ChanIn(host_in,(char *)&r, sizeof(r));
+                ChanIn(host_in,(char *)&r, (int)sizeof(r));
                 ChanOutInt (fd_out, type);
-                ChanOut(fd_out,(char *)&r,sizeof(r));
+                ChanOut(fd_out,(char *)&r,(int)sizeof(r));
                 ChanOutInt(host_out,c_runData_ack);
             }
             break;
@@ -1050,7 +1297,7 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
                         for (r.x = 0; r.x < width; r.x+=block_width)
                         {
                             ChanOutInt (fd_out, c_render);
-                            ChanOut(fd_out,(char *)&r,sizeof(r));
+                            ChanOut(fd_out,(char *)&r,(int)sizeof(r));
                         }
                     }
                 }
