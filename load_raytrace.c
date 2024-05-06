@@ -8,17 +8,60 @@
 #include <stdbool.h>
 #include "lkio.h"
 
+static bool read_from_network(int *cmd) {
+    int rc = word_in(cmd);
+    if (rc==0) {
+        switch (*cmd) {
+            case c_done:
+                printf ("c_done\n");
+            break;
+            case c_stop:
+                printf ("c_stop\n");
+            break;
+            case c_message:
+                {
+                    int size;
+                    char buf[1204];
+                    word_in (&size);
+                    assert (size<sizeof(buf));
+                    chan_in(buf, size);
+                    printf ("message : %s\n", buf);
+                }
+            break;
+            case c_message2:
+                {
+                    int p1,p2,size;
+                    char buf[1204];
+                    word_in (&p1);
+                    word_in (&p2);
+                    word_in (&size);
+                    assert (size<sizeof(buf));
+                    chan_in(buf, size);
+                    printf ("message2 : %d %d %s\n", p1,p2,buf);
+                }
+            break;
+            case c_object_ack:
+            case c_light_ack:
+            case c_runData_ack:
+            case c_start_ack:
+                /* ignore */
+            break;
+            default:
+                printf ("? command (%d)\n", *cmd);
+            break;
+        }
+        return true;
+    }
+    return false;
+}
+
 static bool get_ack (int expected_ack) {
     int ack;
-    if (word_in(&ack) == 0) {
+    while (read_from_network(&ack)) {
         if (ack == expected_ack) {
             printf ("\tack\n");
             return true;
-        } else {
-            printf ("got wrong ack. expecting %d got %d\n", expected_ack, ack);
         }
-    } else {
-        printf ("timed out getting ack\n");
     }
     return false;
 }
@@ -114,7 +157,6 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
             send_object(&sphere);
-            printf ("sent 3 spheres\n");
             rad=102.0;
             y=5.0;
             z=3910.0;
@@ -157,7 +199,6 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
             send_object(&sphere);
-            printf ("sent 3 spheres\n");
             rad=102.0;
             y=210.0;
             z=3910.0;
@@ -197,7 +238,6 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
             send_object(&sphere);
-            printf ("sent 3 spheres\n");
             sphere.type = o_sphere;
             sphere.attr = a_spec | a_frac;
             sphere.kdR = 0;
@@ -215,7 +255,6 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.y = -80;
             sphere.u.sphere.z = 3100;
             send_object(&sphere);
-            printf ("sent glass sphere\n");
         }
         break;
     }
@@ -234,7 +273,6 @@ static void pumpWorldModels(int model, int patchEdge) {
         plane.u.xzplane.sizex = 4000.0;
         plane.u.xzplane.sizez = 3000.0;
         send_object (&plane);
-        printf ("a plane\n");
     };
     // a yellow sun
     light l;
@@ -245,7 +283,6 @@ static void pumpWorldModels(int model, int patchEdge) {
     l.dy = 1.6;
     l.dz = -0.9;
     send_light(&l);
-    printf ("a light\n");
     // a yellow sun
     l.ir = 780.8;
     l.ig = 780.8;
@@ -254,7 +291,6 @@ static void pumpWorldModels(int model, int patchEdge) {
     l.dy = 1.8;
     l.dz = -0.3;
     send_light(&l);
-    printf ("a light\n");
     float cosTheta = 0.93969;
     float sinTheta = 0.34202;
     float sin_256 = sinTheta * 256.0;
@@ -282,7 +318,6 @@ static void pumpWorldModels(int model, int patchEdge) {
     r.pinhole[1] = offY + 0.0;
     r.pinhole[2] = offZ + 1024.0;
     send_rundata (&r);
-    printf ("rundata\n");
 }
 
 #define DEBUG
@@ -342,40 +377,6 @@ void do_raytrace(void) {
 	while (1)
 	{
         int cmd;
-        if (word_in(&cmd) == 0) {
-            switch (cmd) {
-                case c_done:
-                    printf ("c_done\n");
-                break;
-                case c_stop:
-                    printf ("c_stop\n");
-                    break;
-                case c_message:
-                    {
-                        int size;
-                        char buf[1204];
-                        word_in (&size);
-                        assert (size<sizeof(buf));
-                        chan_in(buf, size);
-                        printf ("message : %s\n", buf);
-                    }
-                    break;
-                case c_message2:
-                    {
-                        int p1,p2,size;
-                        char buf[1204];
-                        word_in (&p1);
-                        word_in (&p2);
-                        word_in (&size);
-                        assert (size<sizeof(buf));
-                        chan_in(buf, size);
-                        printf ("message2 : %d %d %s\n", p1,p2,buf);
-                    }
-                    break;
-                default:
-                    printf ("duff command (%d)\n", cmd);
-                    break;
-            }
-        }
+        read_from_network(&cmd);
     }
 }

@@ -1283,7 +1283,7 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
             }
             break;
             default:
-                /*while(1) {lon();}*/
+                while(1) {lon();}
             break;
         }
     }
@@ -1356,6 +1356,11 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             }
             break;
             default:
+                ChanOutInt(host_out,c_message2);
+                ChanOutInt(host_out,type);
+                ChanOutInt(host_out, 0);
+                ChanOutInt(host_out,12);
+                ChanOut(host_out,"FEED BAD CMD",12);
                 while(1) {lon();}
             break;
         }

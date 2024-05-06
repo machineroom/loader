@@ -11,7 +11,6 @@
 
 /*-------------------------- COMMANDS PROTOCOL -----------------------------*/
 
-#define c_invalid  -1
 #define c_stop      0 
 #define c_render    1   /* render; */
 #define c_object    2   /* object; */
@@ -19,8 +18,6 @@
 #define c_patch     4   /* patch;  x; y; patchSize; worker; [ patchSize][patchSize] */
 #define c_runData   5   /* ambient light, rendering mode, screen pos etc. */
 #define c_message   6   /* message; size; [ words ] */
-#define c_map       7 
-#define c_mapAck    8   /* count */
 #define c_message2  9   /* message; p1; p2; size; [ words ] */
 #define c_start     10
 #define c_done      11
