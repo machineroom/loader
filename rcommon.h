@@ -21,6 +21,7 @@
 #define c_message2  9   /* message; p1; p2; size; [ words ] */
 #define c_start     10
 #define c_done      11
+#define c_ready     12
 
 #define c_object_ack 90 + c_object
 #define c_light_ack 90 + c_light

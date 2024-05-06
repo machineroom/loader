@@ -21,7 +21,7 @@ static bool read_from_network(int *cmd) {
             case c_message:
                 {
                     int size;
-                    char buf[1204];
+                    char buf[1024];
                     word_in (&size);
                     assert (size<sizeof(buf));
                     chan_in(buf, size);
@@ -31,7 +31,7 @@ static bool read_from_network(int *cmd) {
             case c_message2:
                 {
                     int p1,p2,size;
-                    char buf[1204];
+                    char buf[1024];
                     word_in (&p1);
                     word_in (&p2);
                     word_in (&size);
@@ -44,6 +44,7 @@ static bool read_from_network(int *cmd) {
             case c_light_ack:
             case c_runData_ack:
             case c_start_ack:
+            case c_ready:
                 /* ignore */
             break;
             default:
@@ -56,7 +57,7 @@ static bool read_from_network(int *cmd) {
 }
 
 static bool get_ack (int expected_ack) {
-    int ack;
+    int ack=-1;
     while (read_from_network(&ack)) {
         if (ack == expected_ack) {
             printf ("\tack\n");
@@ -132,7 +133,6 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.x = x0;
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
-            //out ! c.object; s.size; [ temp FROM 0 FOR s.size ]
             send_object(&sphere);
             sphere.type = o_sphere;
             sphere.attr = a_spec;
@@ -342,6 +342,15 @@ void do_raytrace(void) {
     printf("\nfrom RAYTRACE");
     printf("\n\tnodes found: %d (0x%X)",nnodes, nnodes);
     printf("\n\tFXP: %d (0x%X)\n",fxp, fxp);
+
+    int cmd=-1;
+    read_from_network(&cmd);
+    if (cmd == c_ready) {
+        printf ("Transputer code ready\n");
+    } else {
+        printf ("Urk %d\n", cmd);
+        exit(1);
+    }
 
     int selection;
     while (true) {

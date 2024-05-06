@@ -79,8 +79,9 @@ int arbws[ARBWSZ];
 main(LOADGB *ld)
 {
     int i,fxp;
+    Channel *up_out = ld->up_in-4;
     if (ld->id == 0) {
-        setupGfx(1);
+        setupGfx(1, 1);
     }
 
     /* get num nodes and whether floating point*/
@@ -103,7 +104,7 @@ main(LOADGB *ld)
             ((ld->trantype  > T805L) && (ld->trantype < T805H)) );
         buf[0] = nodes+1;
         buf[1] = fxp;
-        ChanOut(ld->up_in-4,(char *)buf,2*4);
+        ChanOut(up_out,(char *)buf,2*4);
     }
     /* set up par structure*/
     /* host -> feed -> selector -> job
@@ -152,19 +153,20 @@ main(LOADGB *ld)
             /* id!=0 == worker node */
             si = ld->up_in;
             /* arbiter(Channel **arb_in, Channel *arb_out, int root) */
-            PRun(PSetup(arbws,arbiter,ARBWSZ,3,ai,ld->up_in-4,0));
+            PRun(PSetup(arbws,arbiter,ARBWSZ,3,ai,up_out,0));
         }
         else
         {
             /* id=0 == root node */
             si = ChanAlloc();
             /* feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp) */
-            PRun(PSetup(feedws,feed,FEDWSZ,4,ld->up_in,ld->up_in-4,si,fxp));
+            PRun(PSetup(feedws,feed,FEDWSZ,4,ld->up_in,up_out,si,fxp));
             /* arbiter(Channel **arb_in, Channel *arb_out, int root) */
-            PRun(PSetup(arbws,arbiter,ARBWSZ,3,ai,ld->up_in-4,1));
+            PRun(PSetup(arbws,arbiter,ARBWSZ,3,ai,up_out,1));
         }
         /* selector(Channel *sel_in, Channel **req_in, Channel **dn_out) */
         PRun(PSetup(selws,selector,SELWSZ,3,si,sr,so));
+        ChanOutInt(up_out,c_ready);
         PStop();
     }
 }
@@ -185,30 +187,68 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
         i = ProcPriAltList(arb_in,pri);
         pri = (arb_in[pri+1]) ? pri+1 : 0;
         type = ChanInInt(arb_in[i]);
-        if (type == c_patch) {
-            patch p;
-            ChanIn(arb_in[i],(char *)&p,(int)sizeof(p));
-            ChanIn(arb_in[i],buf,p.patchWidth*p.patchHeight*4);
-            if (root) {
-                /* render to B438 */
-                int *a = (int *)0x80400000;
-                int x,y;
-                i = 0;
-                a += (p.y*640)+p.x;
-                for (y=0; y < p.patchHeight; y++) {
-                    for (x=0; x < p.patchWidth; x++) {
-                        a[x] = buf[i++];
+        switch (type) {
+            case c_patch:
+            {
+                patch p;
+                ChanIn(arb_in[i],(char *)&p,(int)sizeof(p));
+                ChanIn(arb_in[i],buf,p.patchWidth*p.patchHeight*4);
+                if (root) {
+                    /* render to B438 */
+                    int *a = (int *)0x80400000;
+                    int x,y;
+                    i = 0;
+                    a += (p.y*640)+p.x;
+                    for (y=0; y < p.patchHeight; y++) {
+                        for (x=0; x < p.patchWidth; x++) {
+                            a[x] = buf[i++];
+                        }
+                        a += 640;
                     }
-                    a += 640;
+                } else {
+                    /* 3. Send result to parent */
+                    ChanOutInt(arb_out,type);
+                    ChanOut(arb_out,(char *)&p,(int)sizeof(p));
+                    ChanOut(arb_out,(char *)buf,p.patchWidth*p.patchHeight*4);
                 }
-            } else {
-                /* 3. Send result to parent */
-                ChanOutInt(arb_out,type);
-                ChanOut(arb_out,(char *)&p,(int)sizeof(p));
-                ChanOut(arb_out,(char *)buf,p.patchWidth*p.patchHeight*4);
             }
-        } else {
-            while(1){lon();}
+            break;
+            /*case c_message:
+            {
+                char buf[1024];
+                int len;
+                len = ChanInInt(arb_in[i]);
+                ChanIn(arb_in[i], buf, len);
+                ChanOutInt (arb_out, c_message);
+                ChanOutInt (arb_out, len);
+                ChanOut (arb_out, buf, len);
+            }
+            break;
+            case c_message2:
+            {
+                char buf[1024];
+                int len;
+                int p1, p2;
+                p1 = ChanInInt(arb_in[i]);
+                p2 = ChanInInt(arb_in[i]);
+                len = ChanInInt(arb_in[i]);
+                ChanIn(arb_in[i], buf, len);
+                ChanOutInt (arb_out, c_message);
+                ChanOutInt (arb_out, p1);
+                ChanOutInt (arb_out, p2);
+                ChanOutInt (arb_out, len);
+                ChanOut (arb_out, buf, len);
+            }
+            break;
+            default:
+                ChanOutInt(arb_out,c_message2);
+                ChanOutInt(arb_out,type);
+                ChanOutInt(arb_out, 0);
+                ChanOutInt(arb_out,11);
+                ChanOut(arb_out,"ARB BAD CMD",11);
+                lon();
+            break;
+            */
         }
     }
 }
@@ -1091,7 +1131,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
                 loading_scene = 0;
             break;
             default:
-                while(1) { lon(); }
+                /*while(1) { lon(); }*/
             break;
         }
     }
@@ -1129,7 +1169,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             ChanOut(rsl_out,(char *)&p,(int)sizeof(p));
             ChanOut(rsl_out, buf, p.patchWidth*p.patchHeight*4);
         } else {
-            while (1) {lon();}
+            /*while (1) {lon();}*/
         }
     }
 }
@@ -1173,7 +1213,7 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
                 loading_scene = 0;
             break;
             default:
-                while(1) {lon();}
+                /*while(1) {lon();}*/
                 break;
         }
     }
@@ -1189,7 +1229,7 @@ void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out)
             ChanOutInt(buf_out, type);
             ChanOut(buf_out, (char *)&r, (int)sizeof(r));
         } else {
-            while(1) {lon();}
+            /*while(1) {lon();}*/
         }
     }
 }
@@ -1259,7 +1299,7 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
             }
             break;
             default:
-                while(1) {lon();}
+                /*while(1) {lon();}*/
             break;
         }
     }
@@ -1283,7 +1323,7 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
             }
             break;
             default:
-                while(1) {lon();}
+                /*while(1) {lon();}*/
             break;
         }
     }
@@ -1302,8 +1342,8 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
                 object o;
                 ChanIn(host_in,(char *)&o, (int)sizeof(o));
                 /* pass downstream */
-                ChanOutInt (fd_out, type);
-                ChanOut(fd_out,(char *)&o,(int)sizeof(o));
+                /*ChanOutInt (fd_out, type);
+                ChanOut(fd_out,(char *)&o,(int)sizeof(o));*/
                 /* ack to host */
                 ChanOutInt(host_out,c_object_ack);
             }
@@ -1312,8 +1352,8 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             {
                 light l;
                 ChanIn(host_in,(char *)&l, (int)sizeof(l));
-                ChanOutInt (fd_out, type);
-                ChanOut(fd_out,(char *)&l,(int)sizeof(l));
+                /*ChanOutInt (fd_out, type);
+                ChanOut(fd_out,(char *)&l,(int)sizeof(l));*/
                 ChanOutInt(host_out,c_light_ack);
             }
             break;
@@ -1321,8 +1361,8 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             {
                 _rundata r;
                 ChanIn(host_in,(char *)&r, (int)sizeof(r));
-                ChanOutInt (fd_out, type);
-                ChanOut(fd_out,(char *)&r,(int)sizeof(r));
+                /*ChanOutInt (fd_out, type);
+                ChanOut(fd_out,(char *)&r,(int)sizeof(r));*/
                 ChanOutInt(host_out,c_runData_ack);
             }
             break;

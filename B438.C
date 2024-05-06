@@ -181,7 +181,7 @@ void set_palette (int index, unsigned char red, unsigned char green, unsigned ch
                 blue);
 }
 
-void setupGfx(int true_colour) {
+void setupGfx(int true_colour, int test_pattern) {
     int i;
     int  r,g,b;
     int c = 0x00000000;
@@ -194,11 +194,13 @@ void setupGfx(int true_colour) {
         {
             set_palette(i,i,i,i);
         }
-        poke_words(0, 640*480, 0);
-        poke_words(0,640*20,0xFF);/*blue*/
-        poke_words(640*20,640*20,0xFF00);/*green*/
-        poke_words(640*40,640*20,0xFF0000);/*red*/
-        poke_words(640*60,640*20,0xFF00FF);/*pink*/
+        if (test_pattern) {
+            poke_words(0, 640*480, 0);
+            poke_words(0,640*20,0xFF);/*blue*/
+            poke_words(640*20,640*20,0xFF00);/*green*/
+            poke_words(640*40,640*20,0xFF0000);/*red*/
+            poke_words(640*60,640*20,0xFF00FF);/*pink*/
+        }
     } else {
         /* a somewhat satisfying, but very ripped off palette */
         for (i = 0; i < 256; i++)
@@ -208,11 +210,13 @@ void setupGfx(int true_colour) {
             b = 11*(256-i) % 256;
             set_palette(i,r,g,b);
         }
-        /* dump palette */
-        for (i=0; i<240; i++) {
-            poke_words(a, 640/2, c);
-            a += 640/2;
-            c += 0x01010101;
+        if (test_pattern){
+            /* dump palette */
+            for (i=0; i<240; i++) {
+                poke_words(a, 640/2, c);
+                a += 640/2;
+                c += 0x01010101;
+            }
         }
     }
 }
