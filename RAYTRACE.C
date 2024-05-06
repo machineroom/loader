@@ -40,6 +40,7 @@
 #define   T414B 0x61
 #pragma define LIGHTS
 
+#ifndef __linux
 #pragma asm
     .T800
     .NOEMULATE
@@ -61,6 +62,7 @@
 #pragma endasm
 #pragma endif
 #pragma endmacro
+#endif
 
 #define JOBWSZ 2048+MAXPIX
 #define FEDWSZ 2048
@@ -249,6 +251,10 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
                 lon();
             break;
             */
+            default:
+                while(1) {lon();}
+            break;
+
         }
     }
 }
@@ -1342,8 +1348,8 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
                 object o;
                 ChanIn(host_in,(char *)&o, (int)sizeof(o));
                 /* pass downstream */
-                /*ChanOutInt (fd_out, type);
-                ChanOut(fd_out,(char *)&o,(int)sizeof(o));*/
+                ChanOutInt (fd_out, type);
+                ChanOut(fd_out,(char *)&o,(int)sizeof(o));
                 /* ack to host */
                 ChanOutInt(host_out,c_object_ack);
             }
@@ -1352,8 +1358,8 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             {
                 light l;
                 ChanIn(host_in,(char *)&l, (int)sizeof(l));
-                /*ChanOutInt (fd_out, type);
-                ChanOut(fd_out,(char *)&l,(int)sizeof(l));*/
+                ChanOutInt (fd_out, type);
+                ChanOut(fd_out,(char *)&l,(int)sizeof(l));
                 ChanOutInt(host_out,c_light_ack);
             }
             break;
@@ -1361,8 +1367,8 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
             {
                 _rundata r;
                 ChanIn(host_in,(char *)&r, (int)sizeof(r));
-                /*ChanOutInt (fd_out, type);
-                ChanOut(fd_out,(char *)&r,(int)sizeof(r));*/
+                ChanOutInt (fd_out, type);
+                ChanOut(fd_out,(char *)&r,(int)sizeof(r));
                 ChanOutInt(host_out,c_runData_ack);
             }
             break;

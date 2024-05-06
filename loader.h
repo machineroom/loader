@@ -1,5 +1,3 @@
-#include <conc.h>
-
 /* struct type def shared with loader and ident asembler code */
 typedef struct {
     int id;
