@@ -69,6 +69,7 @@
 #define SELWSZ 2048
 #define BUFWSZ 2048
 #define ARBWSZ 2048+MAXPIX
+char stack[64*1024];    /* LSC puts stack at 0x80001000 then jobws at same location. Add some padding for real stack */
 
 int jobws[JOBWSZ];
 int bufws[3][BUFWSZ];
@@ -122,6 +123,7 @@ main(LOADGB *ld)
         Channel *si,*so[5],*sr[5],*ai[5];
         extern void job(),buffer(),feed(),arbiter(),selector();
         int list_index;
+        int root;
 
         /* job worker on each node - this does iter() */
         sr[0] = ChanAlloc();    /* sr = selector request (job request channel) */
@@ -154,8 +156,7 @@ main(LOADGB *ld)
         {
             /* id!=0 == worker node */
             si = ld->up_in;
-            /* arbiter(Channel **arb_in, Channel *arb_out, int root) */
-            PRun(PSetup(arbws,arbiter,ARBWSZ,3,ai,up_out,0));
+            root = 0;
         }
         else
         {
@@ -163,9 +164,10 @@ main(LOADGB *ld)
             si = ChanAlloc();
             /* feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp) */
             PRun(PSetup(feedws,feed,FEDWSZ,4,ld->up_in,up_out,si,fxp));
-            /* arbiter(Channel **arb_in, Channel *arb_out, int root) */
-            PRun(PSetup(arbws,arbiter,ARBWSZ,3,ai,up_out,1));
+            root = 1;
         }
+        /* arbiter(Channel **arb_in, Channel *arb_out, int root) */
+        PRun(PSetup(arbws,arbiter,ARBWSZ,3,ai,up_out,root));
         /* selector(Channel *sel_in, Channel **req_in, Channel **dn_out) */
         PRun(PSetup(selws,selector,SELWSZ,3,si,sr,so));
         ChanOutInt(up_out,c_ready);
@@ -186,8 +188,7 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
     loop
     {
         /* 1. Wait for worker to notify result */
-        i = ProcPriAltList(arb_in,pri);
-        pri = (arb_in[pri+1]) ? pri+1 : 0;
+        i = ProcAltList(arb_in);
         type = ChanInInt(arb_in[i]);
         switch (type) {
             case c_patch:
@@ -215,46 +216,14 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
                 }
             }
             break;
-            /*case c_message:
-            {
-                char buf[1024];
-                int len;
-                len = ChanInInt(arb_in[i]);
-                ChanIn(arb_in[i], buf, len);
-                ChanOutInt (arb_out, c_message);
-                ChanOutInt (arb_out, len);
-                ChanOut (arb_out, buf, len);
-            }
-            break;
-            case c_message2:
-            {
-                char buf[1024];
-                int len;
-                int p1, p2;
-                p1 = ChanInInt(arb_in[i]);
-                p2 = ChanInInt(arb_in[i]);
-                len = ChanInInt(arb_in[i]);
-                ChanIn(arb_in[i], buf, len);
-                ChanOutInt (arb_out, c_message);
-                ChanOutInt (arb_out, p1);
-                ChanOutInt (arb_out, p2);
-                ChanOutInt (arb_out, len);
-                ChanOut (arb_out, buf, len);
-            }
-            break;
             default:
-                ChanOutInt(arb_out,c_message2);
+/*                ChanOutInt(arb_out,c_message2);
                 ChanOutInt(arb_out,type);
-                ChanOutInt(arb_out, 0);
+                ChanOutInt(arb_out, i);
                 ChanOutInt(arb_out,11);
-                ChanOut(arb_out,"ARB BAD CMD",11);
+                ChanOut(arb_out,"ARB BAD CMD",11);*/
                 lon();
             break;
-            */
-            default:
-                while(1) {lon();}
-            break;
-
         }
     }
 }
@@ -1094,7 +1063,7 @@ void renderPixels ( int patchx, int patchy,
         }
         *colour = colstack[cp-1];
     } else if (renderingMode == m_test) {
-        *colour = (x0 + (y0 * PATCH_SIZE));
+        *colour = patchx*patchy*640;
     }
 }
 
@@ -1116,7 +1085,8 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             {
                 object o;
                 ChanIn(job_in,(char *)&o, (int)sizeof(o));
-                memcpy (po++, &o, sizeof(o));
+                *po = o;
+                po++;
                 num_objects++;
             }
             break;
@@ -1124,7 +1094,8 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             {
                 light l;
                 ChanIn(job_in,(char *)&l, (int)sizeof(l));
-                memcpy (pl++, &l, sizeof(l));
+                *pl = l;
+                pl++;
                 num_lights++;
             }
             break;
@@ -1159,10 +1130,8 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             for (y = 0; y < r.h; y++) {
                 for (x = 0; x < r.w; x++)
                 {
-                    *pbuf = r.x*r.y*640;
-                    /* ASSUME patch has equal width & height */
                     /*renderPixels (r.x, r.y, x, y, pbuf, rundata.renderingMode, (x==0) && (y==0));*/
-                    /*renderPixels (r.x, r.y, x, y, pbuf, m_test, (x==0) && (y==0));*/
+                    renderPixels (r.x, r.y, x, y, pbuf, m_test, (x==0) && (y==0));
                     pbuf++;
                 }
             }
@@ -1321,7 +1290,7 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
                 int i;
                 ChanIn(sel_in,(char *)&r,(int)sizeof(r));
                 /* 2. wait for any worker to become ready */
-                i = ProcPriAltList(req_in,0);
+                i = ProcAltList(req_in);
                 ChanInInt(req_in[i]);       /* discard the 0 */
                 /* 3. send the job to the worker */
                 ChanOutInt(dn_out[i],type);

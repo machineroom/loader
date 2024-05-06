@@ -21,7 +21,7 @@ static bool read_from_network(int *cmd) {
             case c_message:
                 {
                     int size;
-                    char buf[1024];
+                    char buf[1024]={0};
                     word_in (&size);
                     assert (size<sizeof(buf));
                     chan_in(buf, size);
@@ -31,7 +31,7 @@ static bool read_from_network(int *cmd) {
             case c_message2:
                 {
                     int p1,p2,size;
-                    char buf[1024];
+                    char buf[1024]={0};
                     word_in (&p1);
                     word_in (&p2);
                     word_in (&size);
