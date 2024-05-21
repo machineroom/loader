@@ -1033,6 +1033,9 @@ void renderPixels ( int patchx, int patchy,
                 b = pointSample ( patchx, patchy, x + hop, y      );
                 c = pointSample ( patchx, patchy, x,       y + hop);
                 d = pointSample ( patchx, patchy, x + hop, y + hop);
+                if (a!=0 || b!=0) {
+                    Debug (out, "a,b",a,b);
+                }
 
                 rRange = findRange (a & rMask, b & rMask,
                                     c & rMask, d & rMask);
@@ -1085,6 +1088,7 @@ void renderPixels ( int patchx, int patchy,
                 action = stack [sp].action;
             } else if (action == a_shade) {
                 int a, b, c, d, R, G, B, m;
+                Debug (out, "a_shade",0,0);
                 a  = colstack[0];
                 b  = colstack[-1];
                 c  = colstack[-2];
