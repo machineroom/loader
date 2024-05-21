@@ -264,21 +264,21 @@ void Debug (Channel *out, char *message, int p1, int p2) {
     ChanOut (out, message, l);
 }
 
-object objects[MAX_OBJECTS];
+object objects[MAX_OBJECTS];    /* replaces worldModel in occam */
 light lights[MAX_LIGHTS];
 _rundata rundata;
 int num_objects=0;
 int num_lights=0;
 
-void normalize ( float *vector, float oldHyp ) {
+void normalize ( float *vector, float *oldHyp ) {
     float t;
     t = (vector [0] * vector [0]) +
         ((vector [1] * vector [1]) +
          (vector [2] * vector [2]));
-    oldHyp = sqrtf( t );
-    vector [0] = vector [0] / oldHyp;
-    vector [1] = vector [1] / oldHyp;
-    vector [2] = vector [2] / oldHyp;
+    *oldHyp = sqrtf( t );
+    vector [0] = vector [0] / *oldHyp;
+    vector [1] = vector [1] / *oldHyp;
+    vector [2] = vector [2] / *oldHyp;
 }
 
 float dotProduct (float *a, float *b) {
@@ -333,6 +333,10 @@ void initWORDvec (int *vec, int pattern, int words ) {
 #define mint 0x80000000
 #define notRendered mint
 
+#define rt_root 0   /*-- only first ray is of this type*/
+#define rt_spec 1   /*-- reflected ray*/
+#define rt_frac 2   /*-- transmitted ray*/
+
 typedef struct {
     int reflect;
     int refract;
@@ -360,12 +364,6 @@ NODE cleanTree[maxNodes];
 NODE *tree = cleanTree;
 int freeNode;
 
-int buildShadeTree (float x, float y) {
-    freeNode = 0;
-    /* TODO */
-    return 0;
-}
-
 int claim (int type ) {
     int nodePtr = freeNode;
     tree[nodePtr].reflect = nil;
@@ -377,96 +375,6 @@ int claim (int type ) {
     return nodePtr;
 }
 
-void mixChildren ( int nodePtr ) {
-    /*--
-    -- Total intensity at node is sum of ambient, diffuse, glossy, specular and
-    -- transmitted intensities.
-    --
-    --
-    --                    j=ls _ _
-    -- I = Ia + Ig + kd *   { (N.Lj)
-    --                    j=1
-    --
-    -- Here we attenuate specular and transmitted components
-    -- from the children, and add into the parent node.
-    --*/
-    NODE *node = &tree[nodePtr];
-    object o = objects[node->objPtr];
-    _colour black = {0.0, 0.0, 0.0};
-    _colour xmit;
-    _colour spec;
-    int specPtr = node->reflect;
-    int fracPtr = node->refract;
-    if (specPtr == nil) {
-        spec = black;
-    } else {
-        /*-- specular contribution is independent of colour of surface
-        -- but here we should attenuate according to 't' ( distance
-        -- ray has travelled)*/
-        spec = tree[specPtr].colour;
-        spec.r = spec.r * o.ks;
-        spec.g = spec.g * o.ks;
-        spec.b = spec.b * o.ks;
-    }
-    if (fracPtr == nil) {
-        xmit = black;
-    } else {
-        /* -- colour the transmitted light
-           -- but here we should attenuate according to 't' of ray*/
-        xmit = tree[fracPtr].colour;
-        xmit.r = xmit.r * o.xmitR;
-        xmit.g = xmit.g * o.xmitG;
-        xmit.b = xmit.b * o.xmitB;
-    }
-    node->colour.r = node->colour.r + (spec.r + xmit.r);
-    node->colour.g = node->colour.g + (spec.r + xmit.g);
-    node->colour.b = node->colour.g + (spec.r + xmit.b);
-}
-
-#define a11 0
-#define a12 1
-#define a13 2
-#define a21 3
-#define a22 4
-#define a23 5
-#define a31 6
-#define a32 7
-#define a33 8
-
-#define pxx 0
-#define pyy 1
-#define pzz 2
-
-void TransLocal(float *matrix/*9*/,float *point/*3*/) {
-    float newpoint[3];
-    newpoint[pxx] = (( matrix[a11] * point[pxx] ) +
-                    (( matrix[a12] * point[pyy] ) +
-                        ( matrix[a13] * point[pzz] )));
-    newpoint[pyy] = (( matrix[a21] * point[pxx] ) +
-                    (( matrix[a22] * point[pyy] ) +
-                        ( matrix[a23] * point[pzz] )));
-    newpoint[pzz] = (( matrix[a31] * point[pxx] ) +
-                    (( matrix[a32] * point[pyy] ) +
-                        ( matrix[a33] * point[pzz] )));
-    point[pxx] = newpoint[pxx];
-    point[pyy] = newpoint[pyy];
-    point[pzz] = newpoint[pzz];
-}
-
-void TransGlobal(float *matrix/*9*/,float *point/*3*/ ) {
-    float invers[9];
-    invers[a11]=matrix[a11];
-    invers[a12]=matrix[a21];
-    invers[a13]=matrix[a31];
-    invers[a21]=matrix[a12];
-    invers[a22]=matrix[a22];
-    invers[a23]=matrix[a32];
-    invers[a31]=matrix[a13];
-    invers[a32]=matrix[a23];
-    invers[a33]=matrix[a33];
-    TransLocal(invers,point);
-}
-
 int nrays=0;
 
 int sceneSect ( int nodePtr, int shadowRay ) {
@@ -474,7 +382,7 @@ int sceneSect ( int nodePtr, int shadowRay ) {
     int  ptr, objp, i;
     int proceed;
     NODE closest;
-    nrays ++;
+    nrays++;
     closest = *node;
     proceed = TRUE; /*-- a quick 'get out' clause for shadow checking*/
     objp   = nil;
@@ -662,11 +570,198 @@ void refractRay ( int refracted, int incident,
         frac->dx = t[0] - node->normx;
         frac->dy = t[1] - node->normy;
         frac->dz = t[2] - node->normz;
-        normalize (&node->dx, kf);
+        normalize (&node->dx, &kf);
         frac->startx = node->sectx - node->normx;
         frac->starty = node->secty - node->normy;
         frac->startz = node->sectz - node->normz;
     }
+}
+
+int createRay (int rootRay, float x, float y) {
+    NODE *node = &tree[rootRay];
+    float scrx, scry, hyp=0.0f;
+    scrx = 512.0-x;
+    scry = 512.0-y;
+    node->startx = rundata.screenOrg[0] + scrx * rundata.screenX[0] + scry * rundata.screenY[0];
+    node->starty = rundata.screenOrg[1] + scrx * rundata.screenX[1] + scry * rundata.screenY[1];
+    node->startz = rundata.screenOrg[2] + scrx * rundata.screenX[2] + scry * rundata.screenY[2];
+    node->dx = rundata.pinhole[0] - node->startx;
+    node->dy = rundata.pinhole[1] - node->starty;
+    node->dz = rundata.pinhole[2] - node->startz;
+    normalize (&node->dx, &hyp);
+}
+
+int head;
+
+int evolveNode (int *intoNode, int *outofNode, int nodePtr) {
+    int spawn;
+    NODE *node = &tree[nodePtr];
+    sceneSect (nodePtr, FALSE); /* -- NOT casting shadow rays */
+    if (node->objPtr == nil) {
+        spawn = 0;
+    } else {
+        int objPtr = node->objPtr;
+        int attr = objects[objPtr].attr;
+        float Vprime;
+        float Vvec[3];
+        int flect, signFlip, tIR;
+        int spec;
+        if (attr & a_spec) {
+            spec = claim (rt_spec);
+            node->reflect = spec;
+            *intoNode = spec;
+            reflectRay (spec, nodePtr, &Vprime, Vvec, &signFlip);
+            flect = TRUE;
+        } else {
+            flect = FALSE;
+        }
+        if (flect && attr & a_frac) {
+            int frac;
+            frac = claim(rt_frac);
+            refractRay (frac, nodePtr, &Vprime, Vvec, signFlip, &tIR);
+            if (tIR) {
+                *outofNode = tree[spec].next;
+                spawn = 1;
+            } else {
+                node->refract = frac;
+                tree[spec].next = frac;
+                spawn = 2;
+                *outofNode = tree[frac].next;
+            }
+        } else if (flect) {
+            *outofNode = tree[spec].next;
+            spawn = 1;
+        } else {
+            spawn = 0;
+        }
+    }
+    return spawn;
+}
+
+/* TODO really not sure about the 'C' conversion! */
+int evolveTree (void) {
+    int nodesAdded;
+    int spawn, node, next, prev;
+    node = head;
+    next = tree[node].next;
+    nodesAdded = evolveNode (&head, &next, node);
+    while (tree[node].next != nil) {
+        prev = next;
+        node = tree[node].next;
+        spawn = evolveNode (&prev, &next, node);
+        nodesAdded = nodesAdded + spawn;
+    }
+    return nodesAdded;
+}
+
+int buildShadeTree (float x, float y) {
+    int nodes = 0;
+    int depth = 1;
+    int rootNode;
+    int newNodes;
+    freeNode = 0;
+    rootNode = claim (rt_root);
+    createRay (rootNode,x,y);
+    head = rootNode;
+    tree[rootNode].next = nil;
+    newNodes = evolveTree ();
+    while (depth < maxDepth && newNodes != 0) {
+        nodes = nodes + newNodes;
+        depth = depth + 1;
+        newNodes = evolveTree ();
+    }
+    
+    return rootNode;
+}
+
+void mixChildren ( int nodePtr ) {
+    /*--
+    -- Total intensity at node is sum of ambient, diffuse, glossy, specular and
+    -- transmitted intensities.
+    --
+    --
+    --                    j=ls _ _
+    -- I = Ia + Ig + kd *   { (N.Lj)
+    --                    j=1
+    --
+    -- Here we attenuate specular and transmitted components
+    -- from the children, and add into the parent node.
+    --*/
+    NODE *node = &tree[nodePtr];
+    object o = objects[node->objPtr];
+    _colour black = {0.0, 0.0, 0.0};
+    _colour xmit;
+    _colour spec;
+    int specPtr = node->reflect;
+    int fracPtr = node->refract;
+    if (specPtr == nil) {
+        spec = black;
+    } else {
+        /*-- specular contribution is independent of colour of surface
+        -- but here we should attenuate according to 't' ( distance
+        -- ray has travelled)*/
+        spec = tree[specPtr].colour;
+        spec.r = spec.r * o.ks;
+        spec.g = spec.g * o.ks;
+        spec.b = spec.b * o.ks;
+    }
+    if (fracPtr == nil) {
+        xmit = black;
+    } else {
+        /* -- colour the transmitted light
+           -- but here we should attenuate according to 't' of ray*/
+        xmit = tree[fracPtr].colour;
+        xmit.r = xmit.r * o.xmitR;
+        xmit.g = xmit.g * o.xmitG;
+        xmit.b = xmit.b * o.xmitB;
+    }
+    node->colour.r = node->colour.r + (spec.r + xmit.r);
+    node->colour.g = node->colour.g + (spec.r + xmit.g);
+    node->colour.b = node->colour.g + (spec.r + xmit.b);
+}
+
+#define a11 0
+#define a12 1
+#define a13 2
+#define a21 3
+#define a22 4
+#define a23 5
+#define a31 6
+#define a32 7
+#define a33 8
+
+#define pxx 0
+#define pyy 1
+#define pzz 2
+
+void TransLocal(float *matrix/*9*/,float *point/*3*/) {
+    float newpoint[3];
+    newpoint[pxx] = (( matrix[a11] * point[pxx] ) +
+                    (( matrix[a12] * point[pyy] ) +
+                        ( matrix[a13] * point[pzz] )));
+    newpoint[pyy] = (( matrix[a21] * point[pxx] ) +
+                    (( matrix[a22] * point[pyy] ) +
+                        ( matrix[a23] * point[pzz] )));
+    newpoint[pzz] = (( matrix[a31] * point[pxx] ) +
+                    (( matrix[a32] * point[pyy] ) +
+                        ( matrix[a33] * point[pzz] )));
+    point[pxx] = newpoint[pxx];
+    point[pyy] = newpoint[pyy];
+    point[pzz] = newpoint[pzz];
+}
+
+void TransGlobal(float *matrix/*9*/,float *point/*3*/ ) {
+    float invers[9];
+    invers[a11]=matrix[a11];
+    invers[a12]=matrix[a21];
+    invers[a13]=matrix[a31];
+    invers[a21]=matrix[a12];
+    invers[a22]=matrix[a22];
+    invers[a23]=matrix[a32];
+    invers[a31]=matrix[a13];
+    invers[a32]=matrix[a23];
+    invers[a33]=matrix[a33];
+    TransLocal(invers,point);
 }
 
 void shadeNode ( int nodePtr ) {
@@ -706,9 +801,6 @@ void shadeNode ( int nodePtr ) {
         object o = objects[objPtr];
         float spec = o.kg;
         int attr = o.attr;
-        const int rt_root=0;/*-- only first ray is of this type*/
-        const int rt_spec=1;/*-- reflected ray*/
-        const int rt_frac=2;/*-- transmitted ray*/
 
         int shadow, phong;  /*-- ptr into tree for shadow ray, pseudo light*/
         int lightPtr;
@@ -960,7 +1052,7 @@ int pointSample (int patchx, int patchy, int x, int y ) {
     if (colour == notRendered) {
         int tx, ty;
         float wx, wy;
-        int treep;
+        int treep=0;
         NODE node;
         tx = (patchx << maxDescend) + x;
         ty = (patchy << maxDescend) + y;
@@ -968,8 +1060,8 @@ int pointSample (int patchx, int patchy, int x, int y ) {
         wx = (float)tx / (float)descendPower;
         wy = (float)ty / (float)descendPower;
 
-        treep = buildShadeTree (wx, wy);
-        shade (treep);
+        /*treep = buildShadeTree (wx, wy);
+        shade (treep);*/
         node = tree[treep];
         colour = (int)node.colour.r | (int)node.colour.g << colourBits | (int)node.colour.b << (colourBits + colourBits);
         samples[y][x] = colour;
@@ -1172,7 +1264,14 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             int *pbuf;
             render r;
             patch p;
+
             ChanIn(job_in,(char *)&r,(int)sizeof(r));
+            /* initWORDvec ( rawSamples, notRendered, gridSize * gridSize ) */
+            for (y=0; y < GRID_SIZE; y++) {
+                for (x=0; x < GRID_SIZE; x++) {
+                    samples[y][x] = notRendered;
+                }
+            }
             {
                 static int done=0;
                 if (done==0) {

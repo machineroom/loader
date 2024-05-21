@@ -33,29 +33,6 @@
 #define m_dumb       2
 #define m_test       3
 
-#define n_reflect 0        /* point to children */
-#define n_refract 1
-#define n_next    2        /* maintain linked list of leaf nodes */
-#define n_type    3        /* reflected, refracted or primary ray */
-
-/* Valid ray types for n_type slot */
-
-#define n_t       11       /* distance parameter 't' of intersection */
-
-#define n_startx  12       /* ray origin */
-#define n_starty  13
-#define n_startz  14
-
-#define n_dx      15       /* ray direction */
-#define n_dy      16
-#define n_dz      17
-
-#define n_red   18
-#define n_green 19
-#define n_blue  20
-
-#define nodeSize n_blue + 1
-
 #define maxDepth 6
 #define maxNodes 4 + (2 << maxDepth)  /* traverse tree 5 deep max, */
                                        /* PLUS 4 for good measure */
