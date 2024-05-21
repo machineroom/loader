@@ -1016,6 +1016,7 @@ void renderPixels ( int patchx, int patchy,
         stack[sp].y = y0 << maxDescend;
         stack[sp].x = x0 << maxDescend;  /*-- locations within this patch*/
         while (action != a_stop) {
+            /*Debug (out, "action", action, 0);*/
             if (action == a_render) {
                 int a, b, c, d, rRange, gRange, bRange;
                 int sg = colourBits;
@@ -1100,9 +1101,6 @@ void renderPixels ( int patchx, int patchy,
         }
         *colour = colstack[cp-1];
     } else if (renderingMode == m_test) {
-        if (debug) {
-            Debug (out,"hello",41,42);
-        }
         *colour = patchx*patchy*640;
     }
 }
@@ -1148,7 +1146,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
                 loading_scene = 0;
             break;
             default:
-                /*while(1) { lon(); }*/
+                Debug (rsl_out, "*E* unknown command", type, 0);
             break;
         }
     }
@@ -1166,11 +1164,19 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             render r;
             patch p;
             ChanIn(job_in,(char *)&r,(int)sizeof(r));
+            {
+                static int done=0;
+                if (done==0) {
+                    Debug (rsl_out, "c_render num_objects", num_objects, 0);
+                    Debug (rsl_out, "c_render num_lights", num_lights, 0);
+                    done = 1;
+                }
+            }
             pbuf = buf;
             for (y = 0; y < r.h; y++) {
                 for (x = 0; x < r.w; x++)
                 {
-                    /*renderPixels (r.x, r.y, x, y, pbuf, rundata.renderingMode, out, r.x==0 && r.y==0 && x==0 && y==0);*/
+                    /*renderPixels (r.x, r.y, x, y, pbuf, rundata.renderingMode, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);*/
                     renderPixels (r.x, r.y, x, y, pbuf, m_test, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
                     pbuf++;
                 }
