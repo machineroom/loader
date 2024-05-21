@@ -64,7 +64,7 @@
 #pragma endmacro
 #endif
 
-#define JOBWSZ 2048+MAXPIX
+#define JOBWSZ 8192+MAXPIX
 #define FEDWSZ 2048
 #define SELWSZ 2048
 #define BUFWSZ 2048
@@ -954,6 +954,7 @@ void shade ( int rootNode ) {
     sp++;
     nodePtr = rootNode;
     action  = a_reflect;
+    #if 0
     while (action != a_stop) {
         NODE node;
         int spec;
@@ -999,6 +1000,7 @@ void shade ( int rootNode ) {
             action  = a_reflect;
         }
     }
+    #endif
     {
         NODE *root = &tree[rootNode];
 
@@ -1060,8 +1062,8 @@ int pointSample (int patchx, int patchy, int x, int y ) {
         wx = (float)tx / (float)descendPower;
         wy = (float)ty / (float)descendPower;
 
-        /*treep = buildShadeTree (wx, wy);
-        shade (treep);*/
+        /*treep = buildShadeTree (wx, wy);*/
+        shade (treep);
         node = tree[treep];
         colour = (int)node.colour.r | (int)node.colour.g << colourBits | (int)node.colour.b << (colourBits + colourBits);
         samples[y][x] = colour;
