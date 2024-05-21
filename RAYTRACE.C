@@ -255,6 +255,15 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
     }
 }
 
+void Debug (Channel *out, char *message, int p1, int p2) {
+    int l = strlen(message);
+    ChanOutInt (out, c_message2);
+    ChanOutInt (out, p1);
+    ChanOutInt (out, p2);
+    ChanOutInt (out, l);
+    ChanOut (out, message, l);
+}
+
 object objects[MAX_OBJECTS];
 light lights[MAX_LIGHTS];
 _rundata rundata;
@@ -1092,14 +1101,7 @@ void renderPixels ( int patchx, int patchy,
         *colour = colstack[cp-1];
     } else if (renderingMode == m_test) {
         if (debug) {
-            ChanOutInt (out, c_message);
-            ChanOutInt (out, 5);
-            ChanOut (out, "HELLO", 5);
-            ChanOutInt (out, c_message2);
-            ChanOutInt (out, 41);
-            ChanOutInt (out, 42);
-            ChanOutInt (out, 6);
-            ChanOut (out, "HELLO2", 6);
+            Debug (out,"hello",41,42);
         }
         *colour = patchx*patchy*640;
     }
