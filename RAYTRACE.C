@@ -998,8 +998,8 @@ void renderPixels ( int patchx, int patchy,
                     int renderingMode,
                     Channel *out,
                     int debug) {
-    STACK_ENTRY stack[maxDescend * (4 * 17)];   /* 4 * (render, x, y, hop); shade */
-    int colstack[maxDescend + 1];
+    STACK_ENTRY stack[maxDescend * 4];   /* 4 * (render, x, y, hop); shade */
+    int colstack[(maxDescend + 1) * 4];
     int sp, cp;
     int x, y, hop;
     int action;
@@ -1007,14 +1007,18 @@ void renderPixels ( int patchx, int patchy,
     const int a_shade=1;
     const int a_stop=2;
 
+    if (x0==0 && y0==0) {
+        Debug (out, "renderPixels top-left patch x,y", patchx, patchy);
+    }
     if (renderingMode == m_adaptive) {
-        cp        = 0;                 /*-- empty colour stack */
-        action    = a_render;          /* -- init action */
-        sp = 0;                /*-- pre load stack with render x y hop; stop*/
+        cp        = 0;                      /*-- empty colour stack */
+        action    = a_render;               /* -- init action */
+        sp = 0;
         stack[sp].action = a_stop;
-        stack[sp].hop = descendPower;      /*-- set grid hop value to gross pixel level*/
+        stack[sp].hop = descendPower;       /*-- set grid hop value to gross pixel level*/
         stack[sp].y = y0 << maxDescend;
-        stack[sp].x = x0 << maxDescend;  /*-- locations within this patch*/
+        stack[sp].x = x0 << maxDescend;     /*-- locations within this patch*/
+        sp++;                               /*-- pre load stack with render x y hop; stop*/
         while (action != a_stop) {
             /*Debug (out, "action", action, 0);*/
             if (action == a_render) {
@@ -1040,11 +1044,12 @@ void renderPixels ( int patchx, int patchy,
                                     c >> sb, d >> sb);
 
                 if (hop != 1 &&
-                    ((rRange > threshold) ||
-                    ((gRange > threshold) || (bRange > threshold)))) {
+                    (rRange > threshold ||
+                     gRange > threshold ||
+                     bRange > threshold)) {
+                        hop = hop >> 1;
                         record = stack[sp];
                         record.action = a_shade;
-                        hop = hop >> 1;
                         record.shade[0].hop = hop;
                         record.shade[0].y = y;
                         record.shade[0].x = x;
@@ -1169,6 +1174,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
                 if (done==0) {
                     Debug (rsl_out, "c_render num_objects", num_objects, 0);
                     Debug (rsl_out, "c_render num_lights", num_lights, 0);
+                    Debug (rsl_out, "c_render r.w r.h", r.w, r.h);
                     done = 1;
                 }
             }
@@ -1176,8 +1182,8 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             for (y = 0; y < r.h; y++) {
                 for (x = 0; x < r.w; x++)
                 {
-                    /*renderPixels (r.x, r.y, x, y, pbuf, rundata.renderingMode, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);*/
-                    renderPixels (r.x, r.y, x, y, pbuf, m_test, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
+                    renderPixels (r.x, r.y, x, y, pbuf, rundata.renderingMode, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
+                    /*renderPixels (r.x, r.y, x, y, pbuf, m_test, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);*/
                     pbuf++;
                 }
             }
@@ -1190,7 +1196,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             ChanOut(rsl_out,(char *)&p,(int)sizeof(p));
             ChanOut(rsl_out, buf, p.patchWidth*p.patchHeight*4);
         } else {
-            /*while (1) {lon();}*/
+            Debug (rsl_out, "*E* unknown command", type, 0);
         }
     }
 }
