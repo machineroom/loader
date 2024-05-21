@@ -216,6 +216,33 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
                 }
             }
             break;
+            case c_message:
+                {
+                    int size;
+                    char buf[1024]={0};
+                    size = ChanInInt (arb_in[i]);
+                    ChanIn(arb_in[i], buf, size);
+                    ChanOutInt (arb_out, type);
+                    ChanOutInt (arb_out, size);
+                    ChanOut (arb_out, buf, size);
+                }
+            break;
+            case c_message2:
+                {
+                    int size;
+                    int p1, p2;
+                    char buf[1024]={0};
+                    p1 = ChanInInt (arb_in[i]);
+                    p2 = ChanInInt (arb_in[i]);
+                    size = ChanInInt (arb_in[i]);
+                    ChanIn(arb_in[i], buf, size);
+                    ChanOutInt (arb_out, type);
+                    ChanOutInt (arb_out, p1);
+                    ChanOutInt (arb_out, p2);
+                    ChanOutInt (arb_out, size);
+                    ChanOut (arb_out, buf, size);
+                }
+            break;
             default:
 /*                ChanOutInt(arb_out,c_message2);
                 ChanOutInt(arb_out,type);
@@ -960,6 +987,7 @@ void renderPixels ( int patchx, int patchy,
                     int x0, int y0,
                     int *colour,
                     int renderingMode,
+                    Channel *out,
                     int debug) {
     STACK_ENTRY stack[maxDescend * (4 * 17)];   /* 4 * (render, x, y, hop); shade */
     int colstack[maxDescend + 1];
@@ -1063,6 +1091,16 @@ void renderPixels ( int patchx, int patchy,
         }
         *colour = colstack[cp-1];
     } else if (renderingMode == m_test) {
+        if (debug) {
+            ChanOutInt (out, c_message);
+            ChanOutInt (out, 5);
+            ChanOut (out, "HELLO", 5);
+            ChanOutInt (out, c_message2);
+            ChanOutInt (out, 41);
+            ChanOutInt (out, 42);
+            ChanOutInt (out, 6);
+            ChanOut (out, "HELLO2", 6);
+        }
         *colour = patchx*patchy*640;
     }
 }
@@ -1130,8 +1168,8 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             for (y = 0; y < r.h; y++) {
                 for (x = 0; x < r.w; x++)
                 {
-                    /*renderPixels (r.x, r.y, x, y, pbuf, rundata.renderingMode, (x==0) && (y==0));*/
-                    renderPixels (r.x, r.y, x, y, pbuf, m_test, (x==0) && (y==0));
+                    /*renderPixels (r.x, r.y, x, y, pbuf, rundata.renderingMode, out, r.x==0 && r.y==0 && x==0 && y==0);*/
+                    renderPixels (r.x, r.y, x, y, pbuf, m_test, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
                     pbuf++;
                 }
             }
