@@ -707,12 +707,8 @@ int buildShadeTree (Channel *out, float x, float y) {
     int rootNode=0;
     int newNodes;
     freeNode = 0;
-    /*
-    Debug (out, "buildShadeTree in x,y", x, y);
     rootNode = claim (rt_root);
-    Debug (out, "buildShadeTree x, rootNode", x, rootNode);
     createRay (rootNode,x,y);
-    Debug (out, "buildShadeTree after createRay x,y", x, y);
     head = rootNode;
     tree[rootNode].next = nil;
     newNodes = evolveTree ();
@@ -721,8 +717,6 @@ int buildShadeTree (Channel *out, float x, float y) {
         depth = depth + 1;
         newNodes = evolveTree ();
     }
-    Debug (out, "buildShadeTree exit x,y", x, y);
-    */
     return rootNode;
 }
 
@@ -1102,14 +1096,13 @@ void shade ( int rootNode ) {
 int samples[GRID_SIZE][GRID_SIZE];
 
 int pointSample (Channel *out, int patchx, int patchy, int x, int y ) {
-    int colour;/* = samples[y][x];*/
+    int colour = samples[y][x];
     static int first=0;
     if (first==0) {
         Debug (out, "GRID_SIZE", GRID_SIZE,GRID_SIZE);
         Debug (out, "sizeof(samples)", sizeof(samples),sizeof(samples));
         first=1;
     }
-    colour = notRendered;/*samples[y][x];*/
     if (colour == notRendered) {
         int tx, ty;
         float wx, wy;
@@ -1120,12 +1113,11 @@ int pointSample (Channel *out, int patchx, int patchy, int x, int y ) {
 
         wx = (float)tx / (float)descendPower;
         wy = (float)ty / (float)descendPower;
-        /*treep = buildShadeTree (out, wx, wy);*/
-        /*shade (treep);*/
-        /*Debug (out, "not rendered treep", treep,treep);*
-        /*node = tree[treep];
+        treep = buildShadeTree (out, wx, wy);
+        shade (treep);
+        node = tree[treep];
         colour = (int)node.colour.r | (int)node.colour.g << colourBits | (int)node.colour.b << (colourBits + colourBits);
-        */
+        //colour = 0xFF00FF;  // TESTING!
     } else {
         Debug (out, "point already rendered!", x, y);
     }
@@ -1350,7 +1342,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             for (y = 0; y < r.h; y++) {
                 for (x = 0; x < r.w; x++)
                 {
-#if 0
+#if 1
                     renderPixels (r.x, r.y, x, y, pbuf, rundata.renderingMode, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
 #else
                     renderPixels (r.x, r.y, x, y, pbuf, m_test, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
