@@ -423,6 +423,74 @@ int claim (int type ) {
 }
 
 int nrays=0;
+#define minSect 0.001f
+
+void sphereSect (NODE *node, object *sphere) {
+    float xoff, yoff, zoff,
+           xcomp, ycomp, zcomp,
+           minusb, rootb2m4ac,
+           b2, c;
+    xoff = node->startx - sphere->u.sphere.x;
+    yoff = node->starty - sphere->u.sphere.y;
+    zoff = node->startz - sphere->u.sphere.z;
+
+    xcomp = xoff * node->dx;
+    ycomp = yoff * node->dy;
+    zcomp = zoff * node->dz;
+
+    minusb = -(xcomp + (ycomp + zcomp));
+    b2     = minusb * minusb;
+
+    xcomp = xoff * xoff;
+    ycomp = yoff * yoff;
+    zcomp = zoff * zoff;
+
+    c = (xcomp + (ycomp + zcomp)) - (sphere->u.sphere.rad * sphere->u.sphere.rad);
+    if (b2 > c) {
+        float t1, t2;
+        int proceed, t2ok, t1ok;
+        rootb2m4ac = sqrt (b2 - c );
+        t1 = minusb - rootb2m4ac;
+        t2 = minusb + rootb2m4ac;
+        if (t1 > minSect) {
+            t1ok = TRUE;
+        } else {
+            t1ok = FALSE;
+        }
+        if (t2 > minSect) {
+            t2ok = TRUE;
+        } else {
+            t2ok = FALSE;
+        }
+        if (t1ok && t2ok) {
+            proceed = TRUE;
+            if (t2 > t1) {
+                node->t = t1;
+            } else {
+                node->t = t1;
+            }
+        } else if (t1ok) {
+            node->t = t1;
+            proceed = TRUE;
+        } else if (t2ok) {
+            node->t = t2;
+            proceed = TRUE;
+        } else {
+            proceed = FALSE;
+        }if (proceed) {
+            node->sectx = (node->dx * node->t) + node->startx;
+            node->secty = (node->dy * node->t) + node->starty;
+            node->sectz = (node->dz * node->t) + node->startz;
+            node->normx = node->sectx - sphere->u.sphere.x / sphere->u.sphere.rad;
+            node->normy = node->secty - sphere->u.sphere.y / sphere->u.sphere.rad;
+            node->normz = node->sectz - sphere->u.sphere.z / sphere->u.sphere.rad;
+        } else {
+            node->t = 0;
+        }
+    } else {
+        node->t = 0;
+    }
+}
 
 int sceneSect ( int nodePtr, int shadowRay ) {
     NODE *node = &tree[nodePtr];
@@ -436,11 +504,11 @@ int sceneSect ( int nodePtr, int shadowRay ) {
     ptr    = 0;
     for (i=0; i < num_objects && proceed; i++) {
         object o = objects[i];
-        #if 0
         switch (o.type) {
             case o_sphere:
-                sphereSect ( node, o );
+                sphereSect ( node, &o );
             break;
+            #if 0
             case o_ellipsoid:
                 ellipsoidSect ( node, o );
             break;
@@ -462,6 +530,7 @@ int sceneSect ( int nodePtr, int shadowRay ) {
             case o_xzplane:
                 xzPlaneSect (node, o );
             break;
+            #endif
             default:
             /*
                 writef (pixelsOut, "*N*CGarbage object %I in list at offset %I",
@@ -469,7 +538,6 @@ int sceneSect ( int nodePtr, int shadowRay ) {
                 STOP*/
             break;
         }
-        #endif
         if ((int)node->t == 0) {
             /* SKIP */            
         } else if (shadowRay) {
