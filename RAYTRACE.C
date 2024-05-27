@@ -109,10 +109,10 @@ main(LOADGB *ld)
     Channel *up_out = (Channel *)host_in;
 #else
     Channel *up_out = ld->up_in-4;
+#endif
     if (ld->id == 0) {
         setupGfx(1, 1);
     }
-#endif
 
     /* get num nodes and whether floating point*/
     {
@@ -235,9 +235,16 @@ void arbiter(Channel **arb_in, Channel *arb_out, void *root)
                 ChanIn(arb_in[i],buf,p.patchWidth*p.patchHeight*4);
                 if (root==(void *)1) {
                     #ifdef NATIVE
+                    int *pbuf = buf;
+                    int y;
+                    for (y=0; y < p.patchHeight; y++) {
+                        write_pixels (p.x,p.y+y,8,pbuf);
+                        pbuf+=8;
+                    }
                     #else
                     /* render to B438 */
                     int *a = (int *)0x80400000;
+                    int *pbuf = buf;
                     int x,y;
                     i = 0;
                     a += (p.y*640)+p.x;
@@ -1108,16 +1115,11 @@ int pointSample (Channel *out, int patchx, int patchy, int x, int y ) {
         float wx, wy;
         int treep=0;
         NODE node;
-        /* locking up in here somewhere!
-        Debug (out, "not rendered x,y", y,x);
-        Debug (out, "not rendered px,py", patchx,patchy);
         tx = (patchx << maxDescend) + x;
         ty = (patchy << maxDescend) + y;
-        Debug (out, "not rendered tx,ty", tx,ty);
 
         wx = (float)tx / (float)descendPower;
         wy = (float)ty / (float)descendPower;
-        */
         /*treep = buildShadeTree (out, wx, wy);*/
         /*shade (treep);*/
         /*Debug (out, "not rendered treep", treep,treep);*
@@ -1260,6 +1262,9 @@ void renderPixels ( int patchx, int patchy,
         *colour = colstack[cp-1];
     } else if (renderingMode == m_test) {
         *colour = patchx*patchy*640;
+        #ifdef NATIVE
+        *colour |= 0xFF000000;  // ensure Alpha is set to opaque
+        #endif
     }
     if (x0==0 && y0==0) {
         Debug (out, "finished renderPixels", patchx+x0, patchy+y0);
@@ -1345,8 +1350,11 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             for (y = 0; y < r.h; y++) {
                 for (x = 0; x < r.w; x++)
                 {
+#if 0
                     renderPixels (r.x, r.y, x, y, pbuf, rundata.renderingMode, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
-                    /*renderPixels (r.x, r.y, x, y, pbuf, m_test, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);*/
+#else
+                    renderPixels (r.x, r.y, x, y, pbuf, m_test, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
+#endif
                     pbuf++;
                 }
             }
