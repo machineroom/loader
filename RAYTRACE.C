@@ -90,7 +90,7 @@ char stack5[64*1024];    /* LSC puts stack at 0x80001000 then jobws at same loca
 /* NOTE main() must be first function */
 
 #ifdef NATIVE
-void transputer_main (void *host_channel)
+void transputer_main (void *host_in, void *host_out)
 #else
 main(LOADGB *ld)
 #endif
@@ -104,9 +104,9 @@ main(LOADGB *ld)
     _ld.dn_out[0] = NULL;
     _ld.dn_out[1] = NULL;
     _ld.dn_out[2] = NULL;
-    _ld.up_in = (Channel *)host_channel;
+    _ld.up_in = (Channel *)host_out;
     LOADGB *ld = &_ld;
-    Channel *up_out = (Channel *)host_channel;
+    Channel *up_out = (Channel *)host_in;
 #else
     Channel *up_out = ld->up_in-4;
     if (ld->id == 0) {

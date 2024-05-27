@@ -401,11 +401,11 @@ void do_raytrace(void) {
 #ifdef NATIVE
 #include <unistd.h>
 #include "conc_native.h"
-extern void transputer_main (void *host_channel);
+extern void transputer_main (void *host_in, void *host_out);
  
 int main (int argc, char **argv) {
     init_lkio();
-    PRun(PSetup(malloc(2048),transputer_main, 2048, 1, get_host_channel()));
+    PRun(PSetup(malloc(2048),transputer_main, 2048, 2, get_host_in(), get_host_out()));
     do_raytrace();
 }
 #endif

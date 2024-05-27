@@ -17,4 +17,5 @@ void rst_adpt(void);
 int  init_lkio();
 
 // native builds only
-void *get_host_channel(void);
+void *get_host_in(void);
+void *get_host_out(void);
