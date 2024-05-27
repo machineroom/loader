@@ -1169,11 +1169,6 @@ void renderPixels ( int patchx, int patchy,
                 b = pointSample ( out, patchx, patchy, x + hop, y      );
                 c = pointSample ( out, patchx, patchy, x,       y + hop);
                 d = pointSample ( out, patchx, patchy, x + hop, y + hop);
-                #if 0
-                if (a!=0 || b!=0) {
-                    Debug (out, "a,b",a,b);
-                }
-
                 rRange = findRange (a & rMask, b & rMask,
                                     c & rMask, d & rMask);
 
@@ -1183,7 +1178,7 @@ void renderPixels ( int patchx, int patchy,
                 bRange = findRange ( a >> sb, b >> sb,
                                     c >> sb, d >> sb);
 
-                /*if (hop != 1 &&
+                if (hop != 1 &&
                     (rRange > threshold ||
                      gRange > threshold ||
                      bRange > threshold)) {
@@ -1210,7 +1205,7 @@ void renderPixels ( int patchx, int patchy,
                         stack[sp].x = x+hop;
                         stack[sp].action = a_render;
                         sp++;
-                } else */{
+                } else {
                     int R, G, B, m;
                     m = rMask;
                     R = ((((a & m) + (b & m)) +
@@ -1224,7 +1219,6 @@ void renderPixels ( int patchx, int patchy,
                     colstack[cp] = R | G | B;
                     cp++;
                 }
-                #endif
             } else if (action == a_shade) {
                 int a, b, c, d, R, G, B, m;
                 Debug (out, "a_shade",0,0);
