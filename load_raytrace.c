@@ -6,7 +6,12 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdbool.h>
+
+#ifdef NATIVE
+#include "lkio_native.h"
+#else
 #include "lkio.h"
+#endif
 
 static bool read_from_network(int *cmd) {
     int rc = word_in(cmd);
@@ -321,15 +326,18 @@ static void pumpWorldModels(int model, int patchEdge) {
 }
 
 #define DEBUG
+
 void do_raytrace(void) {
     int patchEdge = 8;
     int fxp, nnodes;
     // BOOT
+#ifndef NATIVE
     if (tbyte_out(0))
     {
         printf("\n -- timeout sending execute");
         exit(1);
     }
+#endif
     //raytrace code sends these back to parent, so these will reach the host
     if (word_in(&nnodes)) {
         printf(" -- timeout getting nnodes (RAYTRACE)\n");
@@ -389,3 +397,15 @@ void do_raytrace(void) {
         read_from_network(&cmd);
     }
 }
+
+#ifdef NATIVE
+#include <unistd.h>
+#include "conc_native.h"
+extern void transputer_main (void *host_channel);
+ 
+int main (int argc, char **argv) {
+    init_lkio();
+    PRun(PSetup(malloc(2048),transputer_main, 2048, 1, get_host_channel()));
+    do_raytrace();
+}
+#endif

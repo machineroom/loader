@@ -7,7 +7,7 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}"
             ],
-            "defines": [],
+            "defines": ["NATIVE"],
             "compilerPath": "/usr/bin/g++",
             "cStandard": "c89",
             "cppStandard": "c++98",

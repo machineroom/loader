@@ -19,6 +19,7 @@
         "cstdint": "cpp",
         "*.tcc": "c",
         "unordered_map": "c",
-        "initializer_list": "c"
+        "initializer_list": "c",
+        "conc_native.h": "c"
     }
 }

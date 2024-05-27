@@ -54,6 +54,9 @@ libgpio.a: $(LIBGPIO)
 loader : main.c load_mandel.c load_raytrace.c mcommon.h rcommon.h lkio_c011.c c011.c libgpio.a
 	g++ -std=c++20 -g -O0 main.c load_mandel.c load_raytrace.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -L. -lgpio -o $@
 
+native_raytrace : RAYTRACE.C conc_native.c lkio_native.c load_raytrace.c
+	g++ -o native_raytrace -std=c++20 -g -O0 -DNATIVE -fpermissive -Wno-write-strings conc_native.c lkio_native.c load_raytrace.c RAYTRACE.C
+
 clean:
 	rm -f *.OBJ
 	rm -f *.BIN

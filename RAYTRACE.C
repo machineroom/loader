@@ -13,13 +13,15 @@
 * And.. oc-ray from Inmos
 ****************************************************************************/
 
-
-#include <conc.h>
+#ifdef NATIVE
+    #include "conc_native.h"
+#else
+    #include <conc.h>
+#endif
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
-#include <conc.h>
 #include "mlibp.h"
 #include "loader.h"
 
@@ -30,62 +32,87 @@
 #define TRUE  1
 #define FALSE 0
 
-#define THRESH 2.0e-7
 #define loop for (;;)
 
-#define   T805  0x0a
-#define   T805L 0x9
-#define   T805H	0x14
-#define   T800D 0x60
-#define   T414B 0x61
-#pragma define LIGHTS
+#ifdef NATIVE
+    void lon(){}
+    void loff(){}
+#else
+    #define   T805  0x0a
+    #define   T805L 0x9
+    #define   T805H	0x14
+    #define   T800D 0x60
+    #define   T414B 0x61
+    #pragma define LIGHTS
 
-#ifndef __linux
-#pragma asm
-    .T800
-    .NOEMULATE
-#pragma endasm
+    #pragma asm
+        .T800
+        .NOEMULATE
+    #pragma endasm
 
-/* lights on whitecross uses error LED on each processor */
-#pragma macro lon()
-#pragma ifdef LIGHTS
-#pragma asm
-    seterr
-#pragma endasm
-#pragma endif
-#pragma endmacro
+    /* lights on whitecross uses error LED on each processor */
+    #pragma macro lon()
+    #pragma ifdef LIGHTS
+    #pragma asm
+        seterr
+    #pragma endasm
+    #pragma endif
+    #pragma endmacro
 
-#pragma macro loff()
-#pragma ifdef LIGHTS
-#pragma asm
-    testerr
-#pragma endasm
-#pragma endif
-#pragma endmacro
+    #pragma macro loff()
+    #pragma ifdef LIGHTS
+    #pragma asm
+        testerr
+    #pragma endasm
+    #pragma endif
+    #pragma endmacro
 #endif
 
+
 #define JOBWSZ 8192+MAXPIX
-#define FEDWSZ 2048
-#define SELWSZ 2048
-#define BUFWSZ 2048
-#define ARBWSZ 2048+MAXPIX
+#define FEDWSZ 4048
+#define SELWSZ 4048
+#define BUFWSZ 4048
+#define ARBWSZ 4048+MAXPIX
 char stack[64*1024];    /* LSC puts stack at 0x80001000 then jobws at same location. Add some padding for real stack */
 
 int jobws[JOBWSZ];
+char stack1[64*1024];    /* LSC puts stack at 0x80001000 then jobws at same location. Add some padding for real stack */
 int bufws[3][BUFWSZ];
+char stack2[64*1024];    /* LSC puts stack at 0x80001000 then jobws at same location. Add some padding for real stack */
 int selws[SELWSZ];
+char stack3[64*1024];    /* LSC puts stack at 0x80001000 then jobws at same location. Add some padding for real stack */
 int feedws[FEDWSZ];
+char stack4[64*1024];    /* LSC puts stack at 0x80001000 then jobws at same location. Add some padding for real stack */
 int arbws[ARBWSZ];
+char stack5[64*1024];    /* LSC puts stack at 0x80001000 then jobws at same location. Add some padding for real stack */
 
 /* NOTE main() must be first function */
 
+#ifdef NATIVE
+void transputer_main (void *host_channel)
+#else
 main(LOADGB *ld)
+#endif
 {
-    int i,fxp;
+    int i,fxp=0;
+#ifdef NATIVE
+    LOADGB _ld;
+    // 0 nodes (just root)
+    _ld.id = 0;
+    _ld.minint = (void *)0x80000000;
+    _ld.dn_out[0] = NULL;
+    _ld.dn_out[1] = NULL;
+    _ld.dn_out[2] = NULL;
+    _ld.up_in = (Channel *)host_channel;
+    LOADGB *ld = &_ld;
+    Channel *up_out = (Channel *)host_channel;
+#else
     Channel *up_out = ld->up_in-4;
     if (ld->id == 0) {
         setupGfx(1, 1);
     }
+#endif
 
     /* get num nodes and whether floating point*/
     {
@@ -93,6 +120,7 @@ main(LOADGB *ld)
         int buf[2];
 
         nodes = fxp = 0;
+#ifndef NATIVE
         /* LSC89 compiler bug? ld->dn_out[1] & ld->dn_out[2] are both set but loop skips these (at least on the root node)
            LSC93 seems to generate very similar code. jumps out of loop if ld->dn_out[0]==0 so link 1&2 are ignored! 
            Suspect that with older FLBOOT code [0] was incorrectly set so this problem was masked */
@@ -105,6 +133,7 @@ main(LOADGB *ld)
         }
         fxp |= !((ld->trantype == T800D) ||
             ((ld->trantype  > T805L) && (ld->trantype < T805H)) );
+#endif
         buf[0] = nodes+1;
         buf[1] = fxp;
         ChanOut(up_out,(char *)buf,2*4);
@@ -121,9 +150,17 @@ main(LOADGB *ld)
     */
     {
         Channel *si,*so[5],*sr[5],*ai[5];
-        extern void job(),buffer(),feed(),arbiter(),selector();
+        #ifdef NATIVE
+            void job(Channel *req_out, Channel *job_in, Channel *rsl_out);
+            void buffer(Channel * req_out, Channel *buf_in, Channel *buf_out);
+            void feed(Channel *host_in, Channel *host_out, Channel *fd_out, void *fxp);
+            void arbiter(Channel **arb_in, Channel *arb_out, void *root);
+            void selector(Channel *sel_in, Channel **req_in, Channel **dn_out);
+        #else
+            extern void job(),buffer(),feed(),arbiter(),selector();
+        #endif
         int list_index;
-        int root;
+        void *root;
 
         /* job worker on each node - this does iter() */
         sr[0] = ChanAlloc();    /* sr = selector request (job request channel) */
@@ -156,17 +193,17 @@ main(LOADGB *ld)
         {
             /* id!=0 == worker node */
             si = ld->up_in;
-            root = 0;
+            root = (void *)0;
         }
         else
         {
             /* id=0 == root node */
             si = ChanAlloc();
             /* feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp) */
-            PRun(PSetup(feedws,feed,FEDWSZ,4,ld->up_in,up_out,si,fxp));
-            root = 1;
+            PRun(PSetup(feedws,feed,FEDWSZ,4,ld->up_in,up_out,si,(void *)fxp));
+            root = (void *)1;
         }
-        /* arbiter(Channel **arb_in, Channel *arb_out, int root) */
+        /* arbiter(Channel **arb_in, Channel *arb_out, void * root) */
         PRun(PSetup(arbws,arbiter,ARBWSZ,3,ai,up_out,root));
         /* selector(Channel *sel_in, Channel **req_in, Channel **dn_out) */
         PRun(PSetup(selws,selector,SELWSZ,3,si,sr,so));
@@ -178,7 +215,7 @@ main(LOADGB *ld)
 /* arb_in is list of channels connected to job or buffer processes */
 /* arb_out is the output side of the parent link */
 /* Receives result from worker (local job or link buffer processes) and passes result to parent */
-void arbiter(Channel **arb_in, Channel *arb_out, int root)
+void arbiter(Channel **arb_in, Channel *arb_out, void *root)
 {
     int i,len,cnt,pri;
     int buf[MAXPIX];
@@ -196,7 +233,9 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
                 patch p;
                 ChanIn(arb_in[i],(char *)&p,(int)sizeof(p));
                 ChanIn(arb_in[i],buf,p.patchWidth*p.patchHeight*4);
-                if (root) {
+                if (root==(void *)1) {
+                    #ifdef NATIVE
+                    #else
                     /* render to B438 */
                     int *a = (int *)0x80400000;
                     int x,y;
@@ -208,6 +247,7 @@ void arbiter(Channel **arb_in, Channel *arb_out, int root)
                         }
                         a += 640;
                     }
+                    #endif
                 } else {
                     /* 3. Send result to parent */
                     ChanOutInt(arb_out,type);
@@ -654,14 +694,18 @@ int evolveTree (void) {
     return nodesAdded;
 }
 
-int buildShadeTree (float x, float y) {
+int buildShadeTree (Channel *out, float x, float y) {
     int nodes = 0;
     int depth = 1;
-    int rootNode;
+    int rootNode=0;
     int newNodes;
     freeNode = 0;
+    /*
+    Debug (out, "buildShadeTree in x,y", x, y);
     rootNode = claim (rt_root);
+    Debug (out, "buildShadeTree x, rootNode", x, rootNode);
     createRay (rootNode,x,y);
+    Debug (out, "buildShadeTree after createRay x,y", x, y);
     head = rootNode;
     tree[rootNode].next = nil;
     newNodes = evolveTree ();
@@ -670,7 +714,8 @@ int buildShadeTree (float x, float y) {
         depth = depth + 1;
         newNodes = evolveTree ();
     }
-    
+    Debug (out, "buildShadeTree exit x,y", x, y);
+    */
     return rootNode;
 }
 
@@ -1049,41 +1094,47 @@ void shade ( int rootNode ) {
 
 int samples[GRID_SIZE][GRID_SIZE];
 
-int pointSample (int patchx, int patchy, int x, int y ) {
-    int colour = samples[y][x];
+int pointSample (Channel *out, int patchx, int patchy, int x, int y ) {
+    int colour;/* = samples[y][x];*/
+    static int first=0;
+    if (first==0) {
+        Debug (out, "GRID_SIZE", GRID_SIZE,GRID_SIZE);
+        Debug (out, "sizeof(samples)", sizeof(samples),sizeof(samples));
+        first=1;
+    }
+    colour = notRendered;/*samples[y][x];*/
     if (colour == notRendered) {
         int tx, ty;
         float wx, wy;
         int treep=0;
         NODE node;
+        /* locking up in here somewhere!
+        Debug (out, "not rendered x,y", y,x);
+        Debug (out, "not rendered px,py", patchx,patchy);
         tx = (patchx << maxDescend) + x;
         ty = (patchy << maxDescend) + y;
+        Debug (out, "not rendered tx,ty", tx,ty);
 
         wx = (float)tx / (float)descendPower;
         wy = (float)ty / (float)descendPower;
-
-        /*treep = buildShadeTree (wx, wy);*/
-        shade (treep);
-        node = tree[treep];
+        */
+        /*treep = buildShadeTree (out, wx, wy);*/
+        /*shade (treep);*/
+        /*Debug (out, "not rendered treep", treep,treep);*
+        /*node = tree[treep];
         colour = (int)node.colour.r | (int)node.colour.g << colourBits | (int)node.colour.b << (colourBits + colourBits);
-        samples[y][x] = colour;
+        */
+    } else {
+        Debug (out, "point already rendered!", x, y);
     }
     return colour;
 }
 
 typedef struct {
-    int hop;
-    int y;
-    int x;
-    int action;
-} SHADE;
-
-typedef struct {
-    int action;
-    int hop;
-    int y;
-    int x;
-    SHADE shade[4];
+    int action; /* a_render, a_shade or a_stop */
+    int hop;    /* if a_render */
+    int y;      /* if a_render */
+    int x;      /* if a_render */
 } STACK_ENTRY;
 
 void renderPixels ( int patchx, int patchy,
@@ -1102,7 +1153,7 @@ void renderPixels ( int patchx, int patchy,
     const int a_stop=2;
 
     if (x0==0 && y0==0) {
-        Debug (out, "renderPixels top-left patch x,y", patchx, patchy);
+        Debug (out, "start renderPixels", patchx+x0, patchy+y0);
     }
     if (renderingMode == m_adaptive) {
         cp        = 0;                      /*-- empty colour stack */
@@ -1112,21 +1163,21 @@ void renderPixels ( int patchx, int patchy,
         stack[sp].hop = descendPower;       /*-- set grid hop value to gross pixel level*/
         stack[sp].y = y0 << maxDescend;
         stack[sp].x = x0 << maxDescend;     /*-- locations within this patch*/
-        sp++;                               /*-- pre load stack with render x y hop; stop*/
+        sp=1;                               /*-- pre load stack with render x y hop; stop*/
         while (action != a_stop) {
-            /*Debug (out, "action", action, 0);*/
             if (action == a_render) {
                 int a, b, c, d, rRange, gRange, bRange;
                 int sg = colourBits;
                 int sb = colourBits + colourBits;
-                STACK_ENTRY record = stack[sp];
-                x   = record.x;
-                y   = record.y;
-                hop = record.hop;
-                a = pointSample ( patchx, patchy, x,       y      );
-                b = pointSample ( patchx, patchy, x + hop, y      );
-                c = pointSample ( patchx, patchy, x,       y + hop);
-                d = pointSample ( patchx, patchy, x + hop, y + hop);
+                x   = stack[sp-1].x;
+                y   = stack[sp-1].y;
+                hop = stack[sp-1].hop;
+                /* a,b are OK but include c = lockup */
+                a = pointSample ( out, patchx, patchy, x,       y      );
+                b = pointSample ( out, patchx, patchy, x + hop, y      );
+                c = pointSample ( out, patchx, patchy, x,       y + hop);
+                d = pointSample ( out, patchx, patchy, x + hop, y + hop);
+                #if 0
                 if (a!=0 || b!=0) {
                     Debug (out, "a,b",a,b);
                 }
@@ -1140,31 +1191,34 @@ void renderPixels ( int patchx, int patchy,
                 bRange = findRange ( a >> sb, b >> sb,
                                     c >> sb, d >> sb);
 
-                if (hop != 1 &&
+                /*if (hop != 1 &&
                     (rRange > threshold ||
                      gRange > threshold ||
                      bRange > threshold)) {
                         hop = hop >> 1;
-                        record = stack[sp];
-                        record.action = a_shade;
-                        record.shade[0].hop = hop;
-                        record.shade[0].y = y;
-                        record.shade[0].x = x;
-                        record.shade[0].action = a_render;
-                        record.shade[1].hop = hop;
-                        record.shade[1].y = y;
-                        record.shade[1].x = x + hop;
-                        record.shade[1].action = a_render;
-                        record.shade[2].hop = hop;
-                        record.shade[2].y = y + hop;
-                        record.shade[2].x = x;
-                        record.shade[2].action = a_render;
-                        record.shade[3].hop = hop;
-                        record.shade[3].y = y + hop;
-                        record.shade[3].x = x + hop;
-                        record.shade[3].action = a_render;
-                    sp = sp + 1;
-                } else {
+                        stack[sp].action = a_shade;
+                        sp++;
+                        stack[sp].hop = hop;
+                        stack[sp].y = y;
+                        stack[sp].x = x;
+                        stack[sp].action = a_render;
+                        sp++;
+                        stack[sp].hop = hop;
+                        stack[sp].y = y;
+                        stack[sp].x = x+hop;
+                        stack[sp].action = a_render;
+                        sp++;
+                        stack[sp].hop = hop;
+                        stack[sp].y = y+hop;
+                        stack[sp].x = x;
+                        stack[sp].action = a_render;
+                        sp++;
+                        stack[sp].hop = hop;
+                        stack[sp].y = y+hop;
+                        stack[sp].x = x+hop;
+                        stack[sp].action = a_render;
+                        sp++;
+                } else */{
                     int R, G, B, m;
                     m = rMask;
                     R = ((((a & m) + (b & m)) +
@@ -1176,10 +1230,9 @@ void renderPixels ( int patchx, int patchy,
                     B = ((((a & m) + (b & m)) +
                             ((c & m) + (d & m))) >> 2) & m;
                     colstack[cp] = R | G | B;
-                    cp = cp + 1;
+                    cp++;
                 }
-                sp     = sp - 1;
-                action = stack [sp].action;
+                #endif
             } else if (action == a_shade) {
                 int a, b, c, d, R, G, B, m;
                 Debug (out, "a_shade",0,0);
@@ -1197,14 +1250,19 @@ void renderPixels ( int patchx, int patchy,
                 B = ((((a & m) + (b & m)) +
                         ((c & m) + (d & m))) >> 2) & m;
                 colstack[0] = R | G | B;
-                cp = cp - 3;
-                sp = sp - 1;
-                action = stack[sp].action;
+                cp-=3;
+            } else {
+                Debug (out, "renderPixels bad action",action,action);
             }
+            sp--;
+            action = stack [sp].action;
         }
         *colour = colstack[cp-1];
     } else if (renderingMode == m_test) {
         *colour = patchx*patchy*640;
+    }
+    if (x0==0 && y0==0) {
+        Debug (out, "finished renderPixels", patchx+x0, patchy+y0);
     }
 }
 
@@ -1212,7 +1270,7 @@ void renderPixels ( int patchx, int patchy,
 /* 1. sends a 0 on req_out to indicate it needs work
    2. receives (on job_in) a DATCOM to setup parameters, then a c_render 
    3. sends (on rsl_out) a c_patch with the pixels
-*/   
+*/
 void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
 {
     object *po = objects;
@@ -1462,7 +1520,7 @@ void selector(Channel *sel_in, Channel **req_in, Channel **dn_out)
 }
 
 /* This runs on the root node only. Split full image into MAXPIX (or less) sized jobs */
-void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
+void feed(Channel *host_in, Channel *host_out, Channel *fd_out, void *fxp)
 {
     loop
     {
@@ -1532,8 +1590,7 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, int fxp)
                 ChanOutInt(host_out,type);
                 ChanOutInt(host_out, 0);
                 ChanOutInt(host_out,12);
-                ChanOut(host_out,"FEED BAD CMD",12);
-                while(1) {lon();}
+                Debug(host_out,"FEED BAD CMD",0,0);
             break;
         }
     }
