@@ -1000,7 +1000,6 @@ void shade ( int rootNode ) {
     sp++;
     nodePtr = rootNode;
     action  = a_reflect;
-    #if 0
     while (action != a_stop) {
         NODE node;
         int spec;
@@ -1030,7 +1029,7 @@ void shade ( int rootNode ) {
             sp--;
             action = stack[sp].action;
             nodePtr = stack[sp].np;
-            while (action = a_mix) {
+            while (action == a_mix) {
                 /* -- all these nodes have had their children shaded, so we can shade nd mix them */
                 shadeNode   ( nodePtr );
                 mixChildren ( nodePtr );
@@ -1046,7 +1045,6 @@ void shade ( int rootNode ) {
             action  = a_reflect;
         }
     }
-    #endif
     {
         NODE *root = &tree[rootNode];
 
