@@ -35,7 +35,7 @@ void ChanOut(Channel *c,void *p,int s) {
 int	ProcAltList(Channel **channels) {
     int rc,i;
     Channel **c = channels;
-    int num_channels;
+    int num_channels=0;
     while (*c != NULL) {
         num_channels++;
         c++;
