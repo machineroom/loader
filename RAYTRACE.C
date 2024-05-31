@@ -539,7 +539,7 @@ int sceneSect ( int nodePtr, int shadowRay ) {
             break;
         }
         if ((int)node->t == 0) {
-            /* SKIP */            
+            /* SKIP */
         } else if (shadowRay) {
             proceed = FALSE;
             node->objPtr = nil;
@@ -1183,7 +1183,6 @@ int pointSample (Channel *out, int patchx, int patchy, int x, int y ) {
         shade (treep);
         node = tree[treep];
         colour = (int)node.colour.r | (int)node.colour.g << colourBits | (int)node.colour.b << (colourBits + colourBits);
-        //colour = 0xFF00FF;  // TESTING!
     } else {
         Debug (out, "point already rendered!", x, y);
     }
@@ -1213,25 +1212,26 @@ void renderPixels ( int patchx, int patchy,
     const int a_stop=2;
 
     if (x0==0 && y0==0) {
-        Debug (out, "start renderPixels", patchx+x0, patchy+y0);
+//        Debug (out, "start renderPixels", patchx+x0, patchy+y0);
     }
     if (renderingMode == m_adaptive) {
         cp        = 0;                      /*-- empty colour stack */
-        action    = a_render;               /* -- init action */
         sp = 0;
         stack[sp].action = a_stop;
+        sp++;                               /*-- pre load stack with render x y hop; stop*/
+        stack[sp].action = a_render;
         stack[sp].hop = descendPower;       /*-- set grid hop value to gross pixel level*/
         stack[sp].y = y0 << maxDescend;
         stack[sp].x = x0 << maxDescend;     /*-- locations within this patch*/
-        sp=1;                               /*-- pre load stack with render x y hop; stop*/
-        while (action != a_stop) {
+        action = a_render;
+        do {
             if (action == a_render) {
                 int a, b, c, d, rRange, gRange, bRange;
                 int sg = colourBits;
                 int sb = colourBits + colourBits;
-                x   = stack[sp-1].x;
-                y   = stack[sp-1].y;
-                hop = stack[sp-1].hop;
+                x   = stack[sp].x;
+                y   = stack[sp].y;
+                hop = stack[sp].hop;
                 /* a,b are OK but include c = lockup */
                 a = pointSample ( out, patchx, patchy, x,       y      );
                 b = pointSample ( out, patchx, patchy, x + hop, y      );
@@ -1251,6 +1251,7 @@ void renderPixels ( int patchx, int patchy,
                      gRange > threshold ||
                      bRange > threshold)) {
                         hop = hop >> 1;
+                        sp++;
                         stack[sp].action = a_shade;
                         sp++;
                         stack[sp].hop = hop;
@@ -1272,7 +1273,6 @@ void renderPixels ( int patchx, int patchy,
                         stack[sp].y = y+hop;
                         stack[sp].x = x+hop;
                         stack[sp].action = a_render;
-                        sp++;
                 } else {
                     int R, G, B, m;
                     m = rMask;
@@ -1303,23 +1303,20 @@ void renderPixels ( int patchx, int patchy,
                 m = bMask;
                 B = ((((a & m) + (b & m)) +
                         ((c & m) + (d & m))) >> 2) & m;
-                colstack[0] = R | G | B;
+                colstack[0] = B | G | R;
                 cp-=3;
             } else {
-                Debug (out, "renderPixels bad action",action,action);
+                Debug (out, "*E* renderPixels bad action",action,action);
             }
             sp--;
-            action = stack [sp].action;
-        }
+            action = stack[sp].action;
+        } while (action != a_stop);
         *colour = colstack[cp-1];
     } else if (renderingMode == m_test) {
         *colour = patchx*patchy*640;
         #ifdef NATIVE
         *colour |= 0xFF000000;  // ensure Alpha is set to opaque
         #endif
-    }
-    if (x0==0 && y0==0) {
-        Debug (out, "finished renderPixels", patchx+x0, patchy+y0);
     }
 }
 

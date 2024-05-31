@@ -37,7 +37,7 @@ void write_pixels (int x, int y, int count, int *pixels)
         sdl_renderer = SDL_CreateRenderer(sdl_window, -1, SDL_RENDERER_ACCELERATED) ;
         assert (sdl_renderer != NULL);
         sdl_layer = SDL_CreateTexture(sdl_renderer,
-                                            SDL_PIXELFORMAT_ARGB8888, 
+                                            SDL_PIXELFORMAT_ABGR8888, 
                                             SDL_TEXTUREACCESS_STREAMING,
                                             640, 480);
         assert (sdl_layer != NULL);

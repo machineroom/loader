@@ -360,8 +360,8 @@ void do_raytrace(void) {
         exit(1);
     }
 
-    int selection;
-    while (true) {
+    int selection=1;
+/*    while (true) {
         printf("                                                           \n");
         printf("               RayTracer Image Selection                   \n");
         printf("               =========================                   \n");
@@ -378,7 +378,7 @@ void do_raytrace(void) {
         if (selection >= 1 && selection <= 5) {
             break;
         }
-    }
+    }*/
     pumpWorldModels (selection, patchEdge);
     printf ("send c_start\n");
     if (word_out(c_start) != 0) {
