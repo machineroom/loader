@@ -1223,8 +1223,10 @@ void renderPixels ( int patchx, int patchy,
         stack[sp].hop = descendPower;       /*-- set grid hop value to gross pixel level*/
         stack[sp].y = y0 << maxDescend;
         stack[sp].x = x0 << maxDescend;     /*-- locations within this patch*/
-        action = a_render;
+        sp++;
         do {
+            sp--;
+            action = stack[sp].action;
             if (action == a_render) {
                 int a, b, c, d, rRange, gRange, bRange;
                 int sg = colourBits;
@@ -1232,7 +1234,6 @@ void renderPixels ( int patchx, int patchy,
                 x   = stack[sp].x;
                 y   = stack[sp].y;
                 hop = stack[sp].hop;
-                /* a,b are OK but include c = lockup */
                 a = pointSample ( out, patchx, patchy, x,       y      );
                 b = pointSample ( out, patchx, patchy, x + hop, y      );
                 c = pointSample ( out, patchx, patchy, x,       y + hop);
@@ -1245,13 +1246,14 @@ void renderPixels ( int patchx, int patchy,
 
                 bRange = findRange ( a >> sb, b >> sb,
                                     c >> sb, d >> sb);
-
-                if (hop != 1 &&
+                //TODO work out why gets stuck in shade/render loop. with FALSE here it proceeds and renders something!
+                if (FALSE && hop != 1 &&
                     (rRange > threshold ||
                      gRange > threshold ||
                      bRange > threshold)) {
                         hop = hop >> 1;
                         sp++;
+                        Debug (out, "push shade",x,y);
                         stack[sp].action = a_shade;
                         sp++;
                         stack[sp].hop = hop;
@@ -1289,7 +1291,7 @@ void renderPixels ( int patchx, int patchy,
                 }
             } else if (action == a_shade) {
                 int a, b, c, d, R, G, B, m;
-                Debug (out, "a_shade",0,0);
+                Debug (out, "a_shade",x,y);
                 a  = colstack[0];
                 b  = colstack[-1];
                 c  = colstack[-2];
@@ -1305,11 +1307,10 @@ void renderPixels ( int patchx, int patchy,
                         ((c & m) + (d & m))) >> 2) & m;
                 colstack[0] = B | G | R;
                 cp-=3;
+            } else if (action == a_stop) {
             } else {
                 Debug (out, "*E* renderPixels bad action",action,action);
             }
-            sp--;
-            action = stack[sp].action;
         } while (action != a_stop);
         *colour = colstack[cp-1];
     } else if (renderingMode == m_test) {
