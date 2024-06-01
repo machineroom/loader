@@ -1223,9 +1223,7 @@ void renderPixels ( int patchx, int patchy,
         stack[sp].hop = descendPower;       /*-- set grid hop value to gross pixel level*/
         stack[sp].y = y0 << maxDescend;
         stack[sp].x = x0 << maxDescend;     /*-- locations within this patch*/
-        sp++;
         do {
-            sp--;
             action = stack[sp].action;
             if (action == a_render) {
                 int a, b, c, d, rRange, gRange, bRange;
@@ -1311,6 +1309,7 @@ void renderPixels ( int patchx, int patchy,
             } else {
                 Debug (out, "*E* renderPixels bad action",action,action);
             }
+            sp--;
         } while (action != a_stop);
         *colour = colstack[cp-1];
     } else if (renderingMode == m_test) {

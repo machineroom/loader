@@ -52,7 +52,15 @@ void write_pixels (int x, int y, int count, int *pixels)
     SDL_LockTexture( sdl_layer, &rect, (void**)&sdl_pixels, &pitch );
     int i;
     for (i=0; i < count; i++) {
-        sdl_pixels[i] = pixels[i];
+        // Convert 10bpp to 8bpp
+        int r,g,b;
+        r = pixels[i]>>2;
+        r &= 0xFF;
+        g = pixels[i]>>12;
+        g &= 0xFF;
+        b = pixels[i]>>22;
+        b &= 0xFF;
+        sdl_pixels[i] = b<<16|g<<8|r;
     }
     SDL_UnlockTexture( sdl_layer );
     SDL_RenderCopy(sdl_renderer, sdl_layer, NULL, NULL);
