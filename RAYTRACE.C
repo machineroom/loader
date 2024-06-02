@@ -501,7 +501,6 @@ int sceneSect ( int nodePtr, int shadowRay ) {
     closest = *node;
     proceed = TRUE; /*-- a quick 'get out' clause for shadow checking*/
     objp   = nil;
-    ptr    = 0;
     for (i=0; i < num_objects && proceed; i++) {
         object o = objects[i];
         switch (o.type) {
@@ -544,11 +543,11 @@ int sceneSect ( int nodePtr, int shadowRay ) {
             proceed = FALSE;
             node->objPtr = nil;
         } else if (objp == nil) {
-            objp = ptr;   /*-- pointer to type slot in world model*/
+            objp = i;   /*-- pointer to type slot in world model*/
             node->objPtr = objp;
             closest = *node;
         } else if (node->t < closest.t) {
-            objp = ptr;   /*-- pointer to size slot in world model*/
+            objp = i;   /*-- pointer to size slot in world model*/
             node->objPtr = objp;
             closest = *node;
         }
