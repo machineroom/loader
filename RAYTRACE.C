@@ -467,7 +467,7 @@ void sphereSect (NODE *node, object *sphere) {
             if (t2 > t1) {
                 node->t = t1;
             } else {
-                node->t = t1;
+                node->t = t2;
             }
         } else if (t1ok) {
             node->t = t1;
@@ -477,7 +477,8 @@ void sphereSect (NODE *node, object *sphere) {
             proceed = TRUE;
         } else {
             proceed = FALSE;
-        }if (proceed) {
+        }
+        if (proceed) {
             node->sectx = (node->dx * node->t) + node->startx;
             node->secty = (node->dy * node->t) + node->starty;
             node->sectz = (node->dz * node->t) + node->startz;
@@ -485,7 +486,7 @@ void sphereSect (NODE *node, object *sphere) {
             node->normy = node->secty - sphere->u.sphere.y / sphere->u.sphere.rad;
             node->normz = node->sectz - sphere->u.sphere.z / sphere->u.sphere.rad;
         } else {
-            node->t = 0;
+            node->t = 0;    /* -- no intersection */
         }
     } else {
         node->t = 0;
@@ -950,6 +951,7 @@ void shadeNode ( int nodePtr ) {
                 int iLambert;
                 lambert = dotProduct (&l.dx, &node->normx);
                 iLambert = (int)lambert;
+                // ignoring this -ve check does create a multi-colour shading!
                 if ((iLambert & 0x80000000) != 0) { /*-- -ve !*/
                 } else {
                     colour->r = colour->r + (lambert * (o.kdR * l.ir));
