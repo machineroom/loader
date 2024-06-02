@@ -560,9 +560,11 @@ int sceneSect ( int nodePtr, int shadowRay ) {
     }
 }
 
+/* TODO probably wrong Occam->C */
 float invert(float a) {
     int b = (int)a;
-    b = b ^ mint;
+    //b = b ^ mint;
+    b = -a;
     return (float)b;
 }
 
@@ -997,7 +999,7 @@ void shadeNode ( int nodePtr ) {
                     cosPhong = dotProduct (flipNode, &phongNode->dx);
                     iCosPhong = (int)cosPhong;
                     if (iCosPhong & mint != 0) {
-                        iCosPhong = iCosPhong ^ mint;
+                        iCosPhong = invert(iCosPhong);
                     }
                     cosPhong = (float)iCosPhong;
                     cosPhong = (cosPhong * cosPhong); /*-- power := 2*/
