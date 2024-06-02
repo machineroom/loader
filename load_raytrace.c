@@ -139,7 +139,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
             send_object(&sphere);
-            sphere.type = o_sphere;
+/*            sphere.type = o_sphere;
             sphere.attr = a_spec;
             sphere.kdR = 0.2;
             sphere.kdG = 0.3;
@@ -205,6 +205,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.z = z;
             send_object(&sphere);
             rad=102.0;
+            */
             y=210.0;
             z=3910.0;
             x0=-210.0;
@@ -221,6 +222,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
             send_object(&sphere);
+            /*
             sphere.type = o_sphere;
             sphere.attr = a_spec;
             sphere.kdR = 0.4;
@@ -259,7 +261,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.x = -90;
             sphere.u.sphere.y = -80;
             sphere.u.sphere.z = 3100;
-            send_object(&sphere);
+            send_object(&sphere);*/
         }
         break;
     }

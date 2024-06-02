@@ -371,8 +371,8 @@ void initWORDvec (int *vec, int pattern, int words ) {
 
 #define PATCH_SIZE 16
 #define GRID_SIZE ((PATCH_SIZE + 1) * descendPower) + 1
-#define threshold  10 << 2 /* this is 10 on a scale of 256, but we */
-#define colourBits 10 /* generate 10 bits */
+#define threshold  10 << 2 /* -- this is 10 on a scale of 256, but we generate 10 bits */
+#define colourBits 10 /* xxbbbbbbbbbbggggggggggrrrrrrrrrr */
 #define rMask (1<<colourBits)-1
 #define gMask rMask<<colourBits
 #define bMask gMask<<colourBits
@@ -830,8 +830,8 @@ void mixChildren ( int nodePtr ) {
         xmit.b = xmit.b * o.xmitB;
     }
     node->colour.r = node->colour.r + (spec.r + xmit.r);
-    node->colour.g = node->colour.g + (spec.r + xmit.g);
-    node->colour.b = node->colour.g + (spec.r + xmit.b);
+    node->colour.g = node->colour.g + (spec.g + xmit.g);
+    node->colour.b = node->colour.g + (spec.b + xmit.b);
 }
 
 #define a11 0
@@ -1012,10 +1012,16 @@ void shadeNode ( int nodePtr ) {
     }
 }
 
+typedef enum {
+    a_stop,
+    a_refract,
+    a_mix,
+    a_reflect
+} SHADE_ACTION;
 
 typedef struct {
     int np;
-    int action;
+    SHADE_ACTION action;
 } SHADE_STACK_ENTRY;
 
 void shade ( int rootNode ) {
@@ -1053,10 +1059,6 @@ void shade ( int rootNode ) {
     --        surface transmission / reflectance properties
     --
     */
-    const int a_stop = 0;
-    const int a_refract = 1;
-    const int a_mix = 2;
-    const int a_reflect = 3;
     SHADE_STACK_ENTRY stack[(maxDepth + 2)];
     int sp;
 
@@ -1232,10 +1234,19 @@ void renderPixels ( int patchx, int patchy,
                 x   = stack[sp].x;
                 y   = stack[sp].y;
                 hop = stack[sp].hop;
+                // a,b,c,d will be BGR samples (10bpp)
                 a = pointSample ( out, patchx, patchy, x,       y      );
                 b = pointSample ( out, patchx, patchy, x + hop, y      );
                 c = pointSample ( out, patchx, patchy, x,       y + hop);
                 d = pointSample ( out, patchx, patchy, x + hop, y + hop);
+                {
+                    int blue = (a>>22)&0xff;
+                    int green = (a>>12)&0xff;
+                    int red = (a>>2)&0xff;
+                    if (blue != 70 || green != 66 || red != 66) {
+                        printf ("a(BGR) %d %d %d\n", blue,green,red);
+                    }
+                }
                 rRange = findRange (a & rMask, b & rMask,
                                     c & rMask, d & rMask);
 
@@ -1284,7 +1295,7 @@ void renderPixels ( int patchx, int patchy,
                     m = bMask;
                     B = ((((a & m) + (b & m)) +
                             ((c & m) + (d & m))) >> 2) & m;
-                    colstack[cp] = R | G | B;
+                    colstack[cp] = B | G | R;
                     cp++;
                 }
             } else if (action == a_shade) {
@@ -1312,6 +1323,21 @@ void renderPixels ( int patchx, int patchy,
             sp--;
         } while (action != a_stop);
         *colour = colstack[cp-1];
+    } else if (renderingMode == m_dumb) {
+        int   tx, ty;
+        float wx, wy;
+        int treep=0;
+        NODE node;
+        tx = ((patchx + x0) << maxDescend);
+        ty = ((patchy + y0) << maxDescend);
+
+        wx = (float)tx / (float)descendPower;
+        wy = (float)ty / (float)descendPower;
+
+        treep = buildShadeTree ( out, wx, wy );
+        shade ( treep );
+        node = tree[treep];
+        *colour = (int)node.colour.r | (int)node.colour.g << colourBits | (int)node.colour.b << (colourBits + colourBits);
     } else if (renderingMode == m_test) {
         *colour = patchx*patchy*640;
         #ifdef NATIVE
@@ -1399,10 +1425,11 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             for (y = 0; y < r.h; y++) {
                 for (x = 0; x < r.w; x++)
                 {
-#if 1
+#if 0
                     renderPixels (r.x, r.y, x, y, pbuf, rundata.renderingMode, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
 #else
-                    renderPixels (r.x, r.y, x, y, pbuf, m_test, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
+                    renderPixels (r.x, r.y, x, y, pbuf, m_dumb, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
+/*                    renderPixels (r.x, r.y, x, y, pbuf, m_test, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);*/
 #endif
                     pbuf++;
                 }
