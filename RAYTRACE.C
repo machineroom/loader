@@ -380,15 +380,17 @@ void initWORDvec (int *vec, int pattern, int words ) {
 #define mint 0x80000000
 #define notRendered mint
 
-#define rt_root 0   /*-- only first ray is of this type*/
-#define rt_spec 1   /*-- reflected ray*/
-#define rt_frac 2   /*-- transmitted ray*/
+typedef enum { 
+    rt_root,    /*-- only first ray is of this type*/
+    rt_spec,    /*-- reflected ray*/
+    rt_frac     /*-- transmitted ray*/
+} NODE_TYPE;
 
 typedef struct {
     int reflect;
     int refract;
     int next;
-    int type;
+    NODE_TYPE type;
     int objPtr;
     float sectx;
     float secty;
@@ -712,8 +714,9 @@ int head;
 
 int evolveNode (int *intoNode, int *outofNode, int nodePtr) {
     int spawn;
-    NODE *node = &tree[nodePtr];
+    NODE *node;
     sceneSect (nodePtr, FALSE); /* -- NOT casting shadow rays */
+    node = &tree[nodePtr];
     if (node->objPtr == nil) {
         spawn = 0;
     } else {
@@ -737,16 +740,16 @@ int evolveNode (int *intoNode, int *outofNode, int nodePtr) {
             frac = claim(rt_frac);
             refractRay (frac, nodePtr, &Vprime, Vvec, signFlip, &tIR);
             if (tIR) {
-                *outofNode = tree[spec].next;
+                *outofNode = spec;
                 spawn = 1;
             } else {
                 node->refract = frac;
                 tree[spec].next = frac;
                 spawn = 2;
-                *outofNode = tree[frac].next;
+                *outofNode = frac;
             }
         } else if (flect) {
-            *outofNode = tree[spec].next;
+            *outofNode = spec;
             spawn = 1;
         } else {
             spawn = 0;
@@ -758,16 +761,16 @@ int evolveNode (int *intoNode, int *outofNode, int nodePtr) {
 /* TODO really not sure about the 'C' conversion! */
 int evolveTree (void) {
     int nodesAdded;
-    int spawn, node, next, prev;
+    int node, next=0, prev=0;
     node = head;
-    next = tree[node].next;
     nodesAdded = evolveNode (&head, &next, node);
     while (tree[node].next != nil) {
         prev = next;
         node = tree[node].next;
-        spawn = evolveNode (&prev, &next, node);
-        nodesAdded = nodesAdded + spawn;
+        nodesAdded += evolveNode (&prev, &next, node);
+        tree[prev].next = prev;
     }
+    tree[next].next = nil;
     return nodesAdded;
 }
 
