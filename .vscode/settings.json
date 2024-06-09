@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.swigcxx": "swig",
         "*.C": "c",
         "MANDEL.C": "cpp",
         "LKIO.H": "cpp",
@@ -20,6 +21,7 @@
         "*.tcc": "c",
         "unordered_map": "c",
         "initializer_list": "c",
-        "conc_native.h": "c"
+        "conc_native.h": "c",
+        "math.h": "c"
     }
 }

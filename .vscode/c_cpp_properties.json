@@ -4,6 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${HOME}/lsc-V93/include",
+                "/opt/homebrew/include/SDL2"
                 "${workspaceFolder}/**",
                 "${workspaceFolder}"
             ],

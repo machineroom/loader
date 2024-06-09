@@ -1,6 +1,6 @@
 #include <math.h>
 #include <assert.h>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include "conc_native.h"
 
 static SDL_Renderer *sdl_renderer;
