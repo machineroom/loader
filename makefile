@@ -55,7 +55,7 @@ loader : main.c load_mandel.c load_raytrace.c mcommon.h rcommon.h lkio_c011.c c0
 	g++ -std=c++20 -g -O0 main.c load_mandel.c load_raytrace.c lkio_c011.c c011.c -lm -lbcm2835 -lgflags -L. -lgpio -o $@
 
 native_raytrace : RAYTRACE.C conc_native.c lkio_native.c load_raytrace.c B438_native.c
-	gcc -o native_raytrace -std=c11 -g -x c -O0 -DNATIVE=1 `sdl2-config --cflags --libs` -lm B438_native.c conc_native.c lkio_native.c load_raytrace.c RAYTRACE.C
+	gcc -o native_raytrace -std=c11 -g -x c -O0 -DNATIVE=1 B438_native.c conc_native.c lkio_native.c load_raytrace.c RAYTRACE.C `sdl2-config --cflags --libs` -lm
 
 clean:
 	rm -f *.OBJ
