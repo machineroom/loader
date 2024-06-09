@@ -1012,17 +1012,23 @@ void shadeNode ( int nodePtr ) {
                     flipNode[1] = invert(node->dy);
                     flipNode[2] = invert(node->dz);
                     cosPhong = dotProduct (flipNode, &phongNode->dx);
+                    /*TODO possibly wrong Occam->C though the simple invert seems to prouce better results
                     iCosPhong = (int)cosPhong;
                     if (iCosPhong & mint != 0) {
                         iCosPhong = invert(iCosPhong);
                     }
-                    cosPhong = (float)iCosPhong;
-                    cosPhong = (cosPhong * cosPhong); /*-- power := 2*/
-                    cosPhong = (cosPhong * cosPhong); /*-- power := 4*/
-                    cosPhong = (cosPhong * cosPhong); /*-- power := 8*/
-                    colour->r = colour->r + (spec * (cosPhong * l.ir));
-                    colour->g = colour->g + (spec * (cosPhong * l.ig));
-                    colour->b = colour->b + (spec * (cosPhong * l.ib));
+                    cosPhong = (float)iCosPhong;*/
+                    if (cosPhong<0) {
+                        // TODO not sure why the Occam version is so complex!
+                        cosPhong = -cosPhong;
+                    } else {
+                        cosPhong = (cosPhong * cosPhong); /*-- power := 2*/
+                        cosPhong = (cosPhong * cosPhong); /*-- power := 4*/
+                        cosPhong = (cosPhong * cosPhong); /*-- power := 8*/
+                        colour->r = colour->r + (spec * (cosPhong * l.ir));
+                        colour->g = colour->g + (spec * (cosPhong * l.ig));
+                        colour->b = colour->b + (spec * (cosPhong * l.ib));
+                    }
                 } else {
                 }
             }
