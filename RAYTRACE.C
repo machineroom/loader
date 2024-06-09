@@ -694,7 +694,7 @@ void refractRay ( int refracted, int incident,
         frac->dx = t[0] - node->normx;
         frac->dy = t[1] - node->normy;
         frac->dz = t[2] - node->normz;
-        normalize (&node->dx, &kf);
+        normalize (&frac->dx, &kf);
         frac->startx = node->sectx - node->normx;
         frac->starty = node->secty - node->normy;
         frac->startz = node->sectz - node->normz;
