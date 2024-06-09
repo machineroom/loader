@@ -706,9 +706,9 @@ int createRay (int rootRay, float x, float y) {
     float scrx, scry, hyp=0.0f;
     scrx = 512.0-x;
     scry = 512.0-y;
-    node->startx = rundata.screenOrg[0] + scrx * rundata.screenX[0] + scry * rundata.screenY[0];
-    node->starty = rundata.screenOrg[1] + scrx * rundata.screenX[1] + scry * rundata.screenY[1];
-    node->startz = rundata.screenOrg[2] + scrx * rundata.screenX[2] + scry * rundata.screenY[2];
+    node->startx = rundata.screenOrg[0] + ((scrx * rundata.screenX[0]) + (scry * rundata.screenY[0]));
+    node->starty = rundata.screenOrg[1] + ((scrx * rundata.screenX[1]) + (scry * rundata.screenY[1]));
+    node->startz = rundata.screenOrg[2] + ((scrx * rundata.screenX[2]) + (scry * rundata.screenY[2]));
     node->dx = rundata.pinhole[0] - node->startx;
     node->dy = rundata.pinhole[1] - node->starty;
     node->dz = rundata.pinhole[2] - node->startz;
@@ -1261,9 +1261,6 @@ void renderPixels ( int patchx, int patchy,
                     int blue = (a>>22)&0xff;
                     int green = (a>>12)&0xff;
                     int red = (a>>2)&0xff;
-                    if (blue != 70 || green != 66 || red != 66) {
-                        printf ("a(BGR) %d %d %d\n", blue,green,red);
-                    }
                 }
                 rRange = findRange (a & rMask, b & rMask,
                                     c & rMask, d & rMask);
@@ -1443,7 +1440,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             for (y = 0; y < r.h; y++) {
                 for (x = 0; x < r.w; x++)
                 {
-#if 0
+#if 1
                     renderPixels (r.x, r.y, x, y, pbuf, rundata.renderingMode, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
 #else
                     renderPixels (r.x, r.y, x, y, pbuf, m_dumb, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
