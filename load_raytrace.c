@@ -9,6 +9,7 @@
 
 #ifdef NATIVE
 #include "lkio_native.h"
+#include "B438.h"
 #else
 #include "lkio.h"
 #endif
@@ -393,17 +394,23 @@ void do_raytrace(void) {
     // wait for finish
 	while (1)
 	{
+#ifdef NATIVE
+        sdl_input();
+#else
         int cmd;
         read_from_network(&cmd);
+#endif
     }
 }
 
 #ifdef NATIVE
 #include <unistd.h>
 #include "conc_native.h"
+#include "B438.h"
 extern void transputer_main (void *host_in, void *host_out);
  
 int main (int argc, char **argv) {
+    setupGfx(1,1);
     init_lkio();
     PRun(PSetup(malloc(2048),transputer_main, 2048, 2, get_host_in(), get_host_out()));
     do_raytrace();

@@ -109,10 +109,10 @@ main(LOADGB *ld)
     Channel *up_out = (Channel *)host_in;
 #else
     Channel *up_out = ld->up_in-4;
-#endif
     if (ld->id == 0) {
         setupGfx(1, 1);
     }
+#endif
 
     /* get num nodes and whether floating point*/
     {
