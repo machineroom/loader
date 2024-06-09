@@ -452,7 +452,7 @@ void sphereSect (NODE *node, object *sphere) {
     if (b2 > c) {
         float t1, t2;
         int proceed, t2ok, t1ok;
-        rootb2m4ac = sqrt (b2 - c );
+        rootb2m4ac = sqrtf (b2 - c );
         t1 = minusb - rootb2m4ac;
         t2 = minusb + rootb2m4ac;
         if (t1 > minSect) {
@@ -485,9 +485,9 @@ void sphereSect (NODE *node, object *sphere) {
             node->sectx = (node->dx * node->t) + node->startx;
             node->secty = (node->dy * node->t) + node->starty;
             node->sectz = (node->dz * node->t) + node->startz;
-            node->normx = node->sectx - sphere->u.sphere.x / sphere->u.sphere.rad;
-            node->normy = node->secty - sphere->u.sphere.y / sphere->u.sphere.rad;
-            node->normz = node->sectz - sphere->u.sphere.z / sphere->u.sphere.rad;
+            node->normx = (node->sectx - sphere->u.sphere.x) / sphere->u.sphere.rad;
+            node->normy = (node->secty - sphere->u.sphere.y) / sphere->u.sphere.rad;
+            node->normz = (node->sectz - sphere->u.sphere.z) / sphere->u.sphere.rad;
         } else {
             node->t = 0;    /* -- no intersection */
         }
@@ -496,7 +496,11 @@ void sphereSect (NODE *node, object *sphere) {
     }
 }
 
-int sceneSect ( int nodePtr, int shadowRay ) {
+void sceneSect ( int nodePtr, int shadowRay ) {
+    if (nodePtr > maxNodes) {
+        printf ("INVALID node %d\n", nodePtr);
+        return;
+    }
     NODE *node = &tree[nodePtr];
     int  ptr, objp, i;
     int proceed;
@@ -764,12 +768,15 @@ int evolveTree (void) {
     int nodesAdded;
     int node, next=0, prev=0;
     node = head;
+    next = node;    /* overwritten by evolveNode */
     nodesAdded = evolveNode (&head, &next, node);
     while (tree[node].next != nil) {
+        int prev_temp=nil;
         prev = next;
+        next = node;
         node = tree[node].next;
-        nodesAdded += evolveNode (&prev, &next, node);
-        tree[prev].next = prev;
+        nodesAdded += evolveNode (&prev_temp, &next, node);
+        tree[prev].next = prev_temp;
     }
     tree[next].next = nil;
     return nodesAdded;
@@ -781,6 +788,9 @@ int buildShadeTree (Channel *out, float x, float y) {
     int rootNode=0;
     int newNodes;
     freeNode = 0;
+    if (x==190 && y==172) {
+        printf ("problematic node begins!\n");
+    }
     rootNode = claim (rt_root);
     createRay (rootNode,x,y);
     head = rootNode;
@@ -955,6 +965,7 @@ void shadeNode ( int nodePtr ) {
             } else {
                 float lambert;
                 int iLambert;
+                // node->normx when nodePtr!=0 = -inf => lambert = nan
                 lambert = dotProduct (&l.dx, &node->normx);
                 iLambert = (int)lambert;
                 // ignoring this -ve check does create a multi-colour shading!
