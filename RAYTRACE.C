@@ -14,6 +14,7 @@
 ****************************************************************************/
 
 #ifdef NATIVE
+    #include <stdio.h>
     #include "conc_native.h"
 #else
     #include <conc.h>

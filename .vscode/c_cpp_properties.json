@@ -5,6 +5,7 @@
             "includePath": [
                 "${HOME}/lsc-V93/include",
                 "/opt/homebrew/include/SDL2",
+                "/usr/include/SDL2",
                 "${workspaceFolder}/**",
                 "${workspaceFolder}"
             ],

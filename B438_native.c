@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <SDL.h>
 #include "conc_native.h"
+#include "B438.h"
 
 static SDL_Renderer *sdl_renderer;
 static SDL_Texture *sdl_layer;
@@ -21,8 +22,22 @@ void sdl_input(void) {
     }
 }
 
+void sdl_input_thread(void *p) {
+    while (1) {
+        sdl_input();
+    }
+}
+
 void write_pixels (int x, int y, int count, int *pixels)
 {
+    #ifdef __linux__
+    static int done=0;
+    if (done==0) {
+        setupGfx(1,1);
+        done = 1;
+    }
+    #endif
+
     unsigned int* sdl_pixels;
     int pitch;
     SDL_Rect rect = {x,y,count,1};
@@ -62,4 +77,5 @@ void setupGfx(int true_colour, int test_pattern) {
                                         SDL_TEXTUREACCESS_STREAMING,
                                         640, 480);
     assert (sdl_layer != NULL);
+    PRun(PSetup(NULL,sdl_input_thread,0,1,NULL));
 }

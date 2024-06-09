@@ -8,10 +8,12 @@
 #include <stdbool.h>
 
 #ifdef NATIVE
-#include "lkio_native.h"
-#include "B438.h"
+    #include <unistd.h>
+    #include "lkio_native.h"
+    #include "conc_native.h"
+    #include "B438.h"
 #else
-#include "lkio.h"
+    #include "lkio.h"
 #endif
 
 static bool read_from_network(int *cmd) {
@@ -328,6 +330,13 @@ static void pumpWorldModels(int model, int patchEdge) {
 
 #define DEBUG
 
+void service_network(void *p) {
+    int cmd;
+    while (1) {
+        read_from_network(&cmd);
+    }
+}
+
 void do_raytrace(void) {
     int patchEdge = 8;
     int fxp, nnodes;
@@ -390,27 +399,26 @@ void do_raytrace(void) {
         exit(1);
     }
     printf ("The inmos ray tracer is GO\n");
-
+    
     // wait for finish
+#if defined NATIVE && !defined __linux__
+    PRun(PSetup(NULL,service_network,0,1,NULL));
 	while (1)
 	{
-#ifdef NATIVE
         sdl_input();
-#else
-        int cmd;
-        read_from_network(&cmd);
-#endif
     }
+#else
+    service_network (NULL);
+#endif
 }
 
 #ifdef NATIVE
-#include <unistd.h>
-#include "conc_native.h"
-#include "B438.h"
 extern void transputer_main (void *host_in, void *host_out);
  
 int main (int argc, char **argv) {
+    #ifndef __linux__
     setupGfx(1,1);
+    #endif
     init_lkio();
     PRun(PSetup(malloc(2048),transputer_main, 2048, 2, get_host_in(), get_host_out()));
     do_raytrace();
