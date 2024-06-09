@@ -139,7 +139,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.x = x0;
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
-            send_object(&sphere);
+            send_object(&sphere);   /* 0 */
             sphere.type = o_sphere;
             sphere.attr = a_spec;
             sphere.kdR = 0.2;
@@ -151,7 +151,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.x = x1;
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
-            send_object(&sphere);
+            send_object(&sphere);   /* 1 */
             sphere.type = o_sphere;
             sphere.attr = 0;
             sphere.kdR = 0.1;
@@ -162,7 +162,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.x = x2;
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
-            send_object(&sphere);
+            send_object(&sphere);   /* 2 */
             rad=102.0;
             y=5.0;
             z=3910.0;
@@ -180,7 +180,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.x = x0;
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
-            send_object(&sphere);
+            send_object(&sphere);   /* 3 */
             sphere.type = o_sphere;
             sphere.attr = a_spec;
             sphere.kdR = 0.3;
@@ -192,7 +192,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.x = x1;
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
-            send_object(&sphere);
+            send_object(&sphere);   /* 4 */
             sphere.type = o_sphere;
             sphere.attr = a_spec;
             sphere.kdR = 0.3;
@@ -204,7 +204,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.x = x2;
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
-            send_object(&sphere);
+            send_object(&sphere);   /* 5 */
             rad=102.0;
             y=210.0;
             z=3910.0;
@@ -221,7 +221,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.x = x0;
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
-            send_object(&sphere);
+            send_object(&sphere);   /* 6 */
             sphere.type = o_sphere;
             sphere.attr = a_spec;
             sphere.kdR = 0.4;
@@ -233,7 +233,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.x = x1;
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
-            send_object(&sphere);
+            send_object(&sphere);   /* 7 */
             sphere.type = o_sphere;
             sphere.kdR = 0.1;
             sphere.kdG = 0.1;
@@ -243,7 +243,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.x = x2;
             sphere.u.sphere.y = y;
             sphere.u.sphere.z = z;
-            send_object(&sphere);
+            send_object(&sphere);   /* 8 */
             sphere.type = o_sphere;
             sphere.attr = a_spec | a_frac;
             sphere.kdR = 0;
@@ -260,7 +260,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.x = -90;
             sphere.u.sphere.y = -80;
             sphere.u.sphere.z = 3100;
-            send_object(&sphere);
+            send_object(&sphere);   /* 9 */
         }
         break;
     }
