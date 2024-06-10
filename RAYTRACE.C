@@ -768,15 +768,11 @@ int evolveTree (void) {
     int nodesAdded;
     int node, next=0, prev=0;
     node = head;
-    next = node;    /* overwritten by evolveNode */
     nodesAdded = evolveNode (&head, &next, node);
     while (tree[node].next != nil) {
-        int prev_temp=nil;
         prev = next;
-        next = node;
         node = tree[node].next;
-        nodesAdded += evolveNode (&prev_temp, &next, node);
-        tree[prev].next = prev_temp;
+        nodesAdded += evolveNode (&tree[prev].next, &next, node);
     }
     tree[next].next = nil;
     return nodesAdded;
