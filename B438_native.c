@@ -40,7 +40,7 @@ void write_pixels (int x, int y, int count, int *pixels)
 
     unsigned int* sdl_pixels;
     int pitch;
-    SDL_Rect rect = {x,y,count,1};
+    SDL_Rect rect = {x,480-y,count,1};
     SDL_LockTexture( sdl_layer, &rect, (void**)&sdl_pixels, &pitch );
     int i;
     for (i=0; i < count; i++) {
