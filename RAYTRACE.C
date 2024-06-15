@@ -1097,8 +1097,7 @@ void shade ( int rootNode ) {
                 sp++;
                 nodePtr = spec;
             }
-        }
-        else if (frac == nil) {
+        } else if (frac == nil) {
             shadeNode ( nodePtr );      /* -- shade leaf node */
             sp--;
             action = stack[sp].action;
@@ -1169,12 +1168,6 @@ int samples[GRID_SIZE][GRID_SIZE];
 
 int pointSample (Channel *out, int patchx, int patchy, int x, int y ) {
     int colour = samples[y][x];
-    static int first=0;
-    if (first==0) {
-        Debug (out, "GRID_SIZE", GRID_SIZE,GRID_SIZE);
-        Debug (out, "sizeof(samples)", sizeof(samples),sizeof(samples));
-        first=1;
-    }
     if (colour == notRendered) {
         int tx, ty;
         float wx, wy;
@@ -1189,8 +1182,8 @@ int pointSample (Channel *out, int patchx, int patchy, int x, int y ) {
         shade (treep);
         node = tree[treep];
         colour = (int)node.colour.r | (int)node.colour.g << colourBits | (int)node.colour.b << (colourBits + colourBits);
+        samples[y][x] = colour;
     } else {
-        Debug (out, "point already rendered!", x, y);
     }
     return colour;
 }
