@@ -737,7 +737,7 @@ int evolveNode (int *intoNode, int *outofNode, int nodePtr) {
         } else {
             flect = FALSE;
         }
-        if (flect && attr & a_frac) {
+        if (flect && (attr & a_frac)) {
             int frac;
             frac = claim(rt_frac);
             refractRay (frac, nodePtr, &Vprime, Vvec, signFlip, &tIR);
@@ -776,14 +776,11 @@ int evolveTree (void) {
 }
 
 int buildShadeTree (Channel *out, float x, float y) {
+    int rootNode = 0;
     int nodes = 0;
     int depth = 1;
-    int rootNode=0;
     int newNodes;
     freeNode = 0;
-    if (x==190 && y==172) {
-        printf ("problematic node begins!\n");
-    }
     rootNode = claim (rt_root);
     createRay (rootNode,x,y);
     head = rootNode;
@@ -960,9 +957,8 @@ void shadeNode ( int nodePtr ) {
                 int iLambert;
                 // node->normx when nodePtr!=0 = -inf => lambert = nan
                 lambert = dotProduct (&l.dx, &node->normx);
-                iLambert = (int)lambert;
                 // ignoring this -ve check does create a multi-colour shading!
-                if ((iLambert & 0x80000000) != 0) { /*-- -ve !*/
+                if (lambert < 0.0) {
                 } else {
                     colour->r = colour->r + (lambert * (o.kdR * l.ir));
                     colour->g = colour->g + (lambert * (o.kdG * l.ig));
@@ -974,7 +970,6 @@ void shadeNode ( int nodePtr ) {
                 --*/
                 if (attr & a_spec != 0) {
                     float cosPhong;
-                    int iCosPhong;
                     float Vprime;   /*-- to keep reflect ray happy */
                     float Vvec[3];
                     int signFlip;
@@ -991,7 +986,6 @@ void shadeNode ( int nodePtr ) {
                     --  a nasty sign inversion due to the light direction being optimized
                     --  for shadow spotting
                     --*/
-                    /* TODO check this! */
                     shadowNode->dx = invert(shadowNode->dx);
                     shadowNode->dy = invert(shadowNode->dy);
                     shadowNode->dz = invert(shadowNode->dz);
@@ -1005,14 +999,7 @@ void shadeNode ( int nodePtr ) {
                     flipNode[1] = invert(node->dy);
                     flipNode[2] = invert(node->dz);
                     cosPhong = dotProduct (flipNode, &phongNode->dx);
-                    /*TODO possibly wrong Occam->C though the simple invert seems to prouce better results
-                    iCosPhong = (int)cosPhong;
-                    if (iCosPhong & mint != 0) {
-                        iCosPhong = invert(iCosPhong);
-                    }
-                    cosPhong = (float)iCosPhong;*/
                     if (cosPhong<0) {
-                        // TODO not sure why the Occam version is so complex!
                         cosPhong = -cosPhong;
                     } else {
                         cosPhong = (cosPhong * cosPhong); /*-- power := 2*/
