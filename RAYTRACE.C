@@ -955,9 +955,7 @@ void shadeNode ( int nodePtr ) {
             } else {
                 float lambert;
                 int iLambert;
-                // node->normx when nodePtr!=0 = -inf => lambert = nan
                 lambert = dotProduct (&l.dx, &node->normx);
-                // ignoring this -ve check does create a multi-colour shading!
                 if (lambert < 0.0) {
                 } else {
                     colour->r = colour->r + (lambert * (o.kdR * l.ir));
@@ -1236,21 +1234,16 @@ void renderPixels ( int patchx, int patchy,
                 b = pointSample ( out, patchx, patchy, x + hop, y      );
                 c = pointSample ( out, patchx, patchy, x,       y + hop);
                 d = pointSample ( out, patchx, patchy, x + hop, y + hop);
-                {
-                    int blue = (a>>22)&0xff;
-                    int green = (a>>12)&0xff;
-                    int red = (a>>2)&0xff;
-                }
                 rRange = findRange (a & rMask, b & rMask,
                                     c & rMask, d & rMask);
 
                 gRange = findRange ( (a & gMask) >> sg, (b & gMask) >> sg,
                                     (c & gMask) >> sg, (d & gMask) >> sg);
 
-                bRange = findRange ( a >> sb, b >> sb,
-                                    c >> sb, d >> sb);
+                bRange = findRange ( (a * bMask) >> sb, (b & bMask) >> sb,
+                                    (c & bMask) >> sb, (d & bMask) >> sb);
                 //TODO work out why gets stuck in shade/render loop. with FALSE here it proceeds and renders something!
-                if (FALSE && hop != 1 &&
+                if (hop != 1 &&
                     (rRange > threshold ||
                      gRange > threshold ||
                      bRange > threshold)) {
@@ -1419,11 +1412,10 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             for (y = 0; y < r.h; y++) {
                 for (x = 0; x < r.w; x++)
                 {
-#if 1
+#if 0
                     renderPixels (r.x, r.y, x, y, pbuf, rundata.renderingMode, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
 #else
                     renderPixels (r.x, r.y, x, y, pbuf, m_dumb, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);
-/*                    renderPixels (r.x, r.y, x, y, pbuf, m_test, rsl_out, r.x==0 && r.y==0 && x==0 && y==0);*/
 #endif
                     pbuf++;
                 }
