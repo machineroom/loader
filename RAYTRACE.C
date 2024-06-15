@@ -569,10 +569,7 @@ void sceneSect ( int nodePtr, int shadowRay ) {
 
 /* TODO probably wrong Occam->C */
 float invert(float a) {
-    int b = (int)a;
-    //b = b ^ mint;
-    b = -a;
-    return (float)b;
+    return -a;
 }
 
 void reflectRay ( int reflected, int incident, float *Vprime, float *Vvec, int *flip) {
@@ -624,11 +621,11 @@ void reflectRay ( int reflected, int incident, float *Vprime, float *Vvec, int *
 
     twoN     = node->normy * 2.0;
     Vvec[1]  = node->dy * *Vprime;
-    spec->dx = Vvec[1]  + twoN;
+    spec->dy = Vvec[1]  + twoN;
 
     twoN     = node->normz * 2.0;
     Vvec[2]  = node->dz * *Vprime;
-    spec->dx = Vvec[2]  + twoN;
+    spec->dz = Vvec[2]  + twoN;
 
     spec->dx = spec->dx / *Vprime;
     spec->dy = spec->dy / *Vprime;
