@@ -845,9 +845,17 @@ void mixChildren ( int nodePtr ) {
         xmit.g = xmit.g * o.xmitG;
         xmit.b = xmit.b * o.xmitB;
     }
+    if (debug) {
+        printf ("mixChildren node RGB = %f %f %f\n", node->colour.r, node->colour.g, node->colour.b);
+        printf ("mixChildren spec RGB = %f %f %f\n", spec.r, spec.g, spec.b);
+        printf ("mixChildren xmit RGB = %f %f %f\n", xmit.r, xmit.g, xmit.b);
+    }
     node->colour.r = node->colour.r + (spec.r + xmit.r);
     node->colour.g = node->colour.g + (spec.g + xmit.g);
-    node->colour.b = node->colour.g + (spec.b + xmit.b);
+    node->colour.b = node->colour.b + (spec.b + xmit.b);
+    if (debug) {
+        printf ("mixChildren result RGB = %f %f %f\n", node->colour.r, node->colour.g, node->colour.b);
+    }
 }
 
 #define a11 0
