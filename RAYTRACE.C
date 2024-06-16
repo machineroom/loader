@@ -724,9 +724,6 @@ int evolveNode (int *intoNode, int *outofNode, int nodePtr) {
     NODE *node;
     sceneSect (nodePtr, FALSE); /* -- NOT casting shadow rays */
     node = &tree[nodePtr];
-    if (debug) {
-        printf ("evolveNode x %d y %d n.objptr %d\n", (int)x, (int)y, node->objPtr);
-    }
     if (node->objPtr == nil) {
         spawn = 0;
     } else {
