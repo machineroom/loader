@@ -746,7 +746,7 @@ int evolveNode (int *intoNode, int *outofNode, int nodePtr) {
             int frac;
             frac = claim(rt_frac);
             refractRay (frac, nodePtr, &Vprime, Vvec, signFlip, &tIR);
-            if (tIR) {
+            if (tIR) {  /* -- total internal reflection*/
                 *outofNode = spec;
                 spawn = 1;
             } else {
@@ -769,9 +769,10 @@ int evolveTree (void) {
     int nodesAdded;
     int node, next=0, prev=0;
     node = head;
-    nodesAdded = evolveNode (&head, &next, node);
+    nodesAdded = evolveNode (&head, &tree[node].next, node);
     while (tree[node].next != nil) {
-        prev = next;
+        prev = node;
+        next = node;
         node = tree[node].next;
         nodesAdded += evolveNode (&tree[prev].next, &next, node);
     }
