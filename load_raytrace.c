@@ -237,6 +237,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.z = z;
             send_object(&sphere);   /* 7 */
             sphere.type = o_sphere;
+            sphere.attr = 0;
             sphere.kdR = 0.1;
             sphere.kdG = 0.1;
             sphere.kdB = 0.7;
