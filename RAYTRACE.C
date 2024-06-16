@@ -1201,9 +1201,9 @@ void renderPixels ( int patchx, int patchy,
     const int a_shade=1;
     const int a_stop=2;
 
-    if (x0==0 && y0==0) {
-//        Debug (out, "start renderPixels", patchx+x0, patchy+y0);
-    }
+    /*if (x0==0 && y0==0) {
+        Debug (out, "start renderPixels", patchx+x0, patchy+y0);
+    }*/
     if (renderingMode == m_adaptive) {
         cp        = 0;                      /*-- empty colour stack */
         sp = 0;
@@ -1222,7 +1222,7 @@ void renderPixels ( int patchx, int patchy,
                 x   = stack[sp].x;
                 y   = stack[sp].y;
                 hop = stack[sp].hop;
-                // a,b,c,d will be BGR samples (10bpp)
+                /* a,b,c,d will be BGR samples (10bpp) */
                 a = pointSample ( out, patchx, patchy, x,       y      );
                 b = pointSample ( out, patchx, patchy, x + hop, y      );
                 c = pointSample ( out, patchx, patchy, x,       y + hop);
@@ -1235,7 +1235,7 @@ void renderPixels ( int patchx, int patchy,
 
                 bRange = findRange ( (a * bMask) >> sb, (b & bMask) >> sb,
                                     (c & bMask) >> sb, (d & bMask) >> sb);
-                //TODO work out why gets stuck in shade/render loop. with FALSE here it proceeds and renders something!
+                /*TODO work out why gets stuck in shade/render loop. with FALSE here it proceeds and renders something!*/
                 if (hop != 1 &&
                     (rRange > threshold ||
                      gRange > threshold ||
@@ -1321,7 +1321,7 @@ void renderPixels ( int patchx, int patchy,
     } else if (renderingMode == m_test) {
         *colour = patchx*patchy*640;
         #ifdef NATIVE
-        *colour |= 0xFF000000;  // ensure Alpha is set to opaque
+        *colour |= 0xFF000000;  /* ensure Alpha is set to opaque */
         #endif
     }
 }
