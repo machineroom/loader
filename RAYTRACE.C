@@ -28,6 +28,7 @@
 
 #include "rcommon.h"
 #include "B438.h"
+#include <stdbool.h>
 
 /*  define constants*/
 #define TRUE  1
@@ -303,6 +304,8 @@ void arbiter(Channel **arb_in, Channel *arb_out, void *root)
     }
 }
 
+bool debug = false;
+
 void Debug (Channel *out, char *message, int p1, int p2) {
     int l = strlen(message);
     ChanOutInt (out, c_message2);
@@ -539,10 +542,6 @@ void sceneSect ( int nodePtr, int shadowRay ) {
             break;
             #endif
             default:
-            /*
-                writef (pixelsOut, "*N*CGarbage object %I in list at offset %I",
-                    object [o.type], ptr, 0, 0 )
-                STOP*/
             break;
         }
         if ((int)node->t == 0) {
@@ -709,7 +708,13 @@ int createRay (int rootRay, float x, float y) {
     node->dx = rundata.pinhole[0] - node->startx;
     node->dy = rundata.pinhole[1] - node->starty;
     node->dz = rundata.pinhole[2] - node->startz;
+    if (debug) {
+        printf ("createRay pre node->dx = %f\n", node->dx);
+    }
     normalize (&node->dx, &hyp);
+    if (debug) {
+        printf ("createRay post node->dx = %f\n", node->dx);
+    }
 }
 
 int head;
@@ -719,6 +724,9 @@ int evolveNode (int *intoNode, int *outofNode, int nodePtr) {
     NODE *node;
     sceneSect (nodePtr, FALSE); /* -- NOT casting shadow rays */
     node = &tree[nodePtr];
+    if (debug) {
+        printf ("evolveNode x %d y %d n.objptr %d\n", (int)x, (int)y, node->objPtr);
+    }
     if (node->objPtr == nil) {
         spawn = 0;
     } else {
@@ -760,7 +768,6 @@ int evolveNode (int *intoNode, int *outofNode, int nodePtr) {
     return spawn;
 }
 
-/* TODO really not sure about the 'C' conversion! */
 int evolveTree (void) {
     int nodesAdded;
     int node, next=0, prev=0;
@@ -790,6 +797,12 @@ int buildShadeTree (Channel *out, float x, float y) {
         nodes = nodes + newNodes;
         depth = depth + 1;
         newNodes = evolveTree ();
+    }
+    if ((int)x == 146 && (int)y == 251) {
+        debug = true;
+        printf ("buildShadeTree x %d y %d nodes %d\n", (int)x, (int)y, nodes);
+    } else {
+        debug = false;
     }
     return rootNode;
 }
@@ -930,6 +943,9 @@ void shadeNode ( int nodePtr ) {
             colour->r = ambient.r * o.kdR;
             colour->g = ambient.g * o.kdG;
             colour->b = ambient.b * o.kdB;
+            if (debug) {
+                printf ("shadeNode spec=0 R %f G %f B %f\n", o.kdR, o.kdG, o.kdB);
+            }
         } else {
             *colour = black;
         }
@@ -953,14 +969,23 @@ void shadeNode ( int nodePtr ) {
             if (shadowNode->t != 0.0) {
 
             } else {
+                if (debug) {
+                    printf ("shadeNode calculate lambert\n");
+                }
                 float lambert;
                 int iLambert;
                 lambert = dotProduct (&l.dx, &node->normx);
                 if (lambert < 0.0) {
                 } else {
+                    if (debug) {
+                        printf ("shadeNode before lambert o.kdR %f o.kdG %f o.kdB %f\n", o.kdR, o.kdG, o.kdB);
+                    }
                     colour->r = colour->r + (lambert * (o.kdR * l.ir));
                     colour->g = colour->g + (lambert * (o.kdG * l.ig));
                     colour->b = colour->b + (lambert * (o.kdB * l.ib));
+                    if (debug) {
+                        printf ("shadeNode after lambert color R %f G %f B %f\n", colour->r, colour->g, colour->b);
+                    }
                 }
                 /*--
                 -- the phong shader is a mite messy at the moment, with lots of
@@ -1076,6 +1101,9 @@ void shade ( int rootNode ) {
         NODE node;
         int spec;
         int frac;
+        if (debug) {
+            printf ("shade action = %d\n", action);
+        }
         node = tree[nodePtr];
         spec = node.reflect;
         frac = node.refract;
@@ -1126,6 +1154,10 @@ void shade ( int rootNode ) {
         int ired = (int)root->colour.r;
         int igreen = (int)root->colour.g;
         int iblue = (int)root->colour.b;
+        if (debug) {
+            printf ("shade RGB %d %d %d\n", ired, igreen, iblue);
+            printf ("shade object RGB %f %f %f\n", objects[root->objPtr].kdR, objects[root->objPtr].kdG, objects[root->objPtr].kdB);
+        }
 
         float maxC = 1022.99; /*-- just under 10 bits*/
         float maxP, fudge;
@@ -1325,6 +1357,9 @@ void renderPixels ( int patchx, int patchy,
         shade ( treep );
         node = tree[treep];
         *colour = (int)node.colour.r | (int)node.colour.g << colourBits | (int)node.colour.b << (colourBits + colourBits);
+        if ((int)patchx+x0 == 146 && (int)patchy+y0 == 251) {
+            printf ("buildShadeTree R %d G %d B %d\n", (int)node.colour.r, (int)node.colour.g, (int)node.colour.b);
+        }
     } else if (renderingMode == m_test) {
         *colour = patchx*patchy*640;
         #ifdef NATIVE
@@ -1359,7 +1394,9 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             case c_light:
             {
                 light l;
+                float hyp;
                 ChanIn(job_in,(char *)&l, (int)sizeof(l));
+                normalize ( &l.dx, &hyp );
                 *pl = l;
                 pl++;
                 num_lights++;
@@ -1428,6 +1465,7 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             ChanOutInt(rsl_out,c_patch);
             ChanOut(rsl_out,(char *)&p,(int)sizeof(p));
             ChanOut(rsl_out, buf, p.patchWidth*p.patchHeight*4);
+            //printf ("nrays = %d\n", nrays);
         } else {
             Debug (rsl_out, "*E* unknown command", type, 0);
         }
@@ -1642,9 +1680,9 @@ void feed(Channel *host_in, Channel *host_out, Channel *fd_out, void *fxp)
                     r.w = block_width;
                     r.h = block_height;
                     /* Dispatch render messages for each slice to the selector. The selector distributes the work */
-                    for (r.y = 0; r.y < height; r.y+=block_height)
+                    for (r.x = 0; r.x < width; r.x+=block_width)
                     {
-                        for (r.x = 0; r.x < width; r.x+=block_width)
+                        for (r.y = 0; r.y < height; r.y+=block_height)
                         {
                             ChanOutInt (fd_out, c_render);
                             ChanOut(fd_out,(char *)&r,(int)sizeof(r));
