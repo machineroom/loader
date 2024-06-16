@@ -28,7 +28,6 @@
 
 #include "rcommon.h"
 #include "B438.h"
-#include <stdbool.h>
 
 /*  define constants*/
 #define TRUE  1
@@ -304,8 +303,6 @@ void arbiter(Channel **arb_in, Channel *arb_out, void *root)
     }
 }
 
-bool debug = false;
-
 void Debug (Channel *out, char *message, int p1, int p2) {
     int l = strlen(message);
     ChanOutInt (out, c_message2);
@@ -500,10 +497,6 @@ void sphereSect (NODE *node, object *sphere) {
 }
 
 void sceneSect ( int nodePtr, int shadowRay ) {
-    if (nodePtr > maxNodes) {
-        printf ("INVALID node %d\n", nodePtr);
-        return;
-    }
     NODE *node = &tree[nodePtr];
     int  ptr, objp, i;
     int proceed;
@@ -708,13 +701,7 @@ int createRay (int rootRay, float x, float y) {
     node->dx = rundata.pinhole[0] - node->startx;
     node->dy = rundata.pinhole[1] - node->starty;
     node->dz = rundata.pinhole[2] - node->startz;
-    if (debug) {
-        printf ("createRay pre node->dx = %f\n", node->dx);
-    }
     normalize (&node->dx, &hyp);
-    if (debug) {
-        printf ("createRay post node->dx = %f\n", node->dx);
-    }
 }
 
 int head;
@@ -797,12 +784,6 @@ int buildShadeTree (Channel *out, float x, float y) {
         depth = depth + 1;
         newNodes = evolveTree ();
     }
-    if ((int)x == 146 && (int)y == 251) {
-        debug = true;
-        printf ("buildShadeTree x %d y %d nodes %d\n", (int)x, (int)y, nodes);
-    } else {
-        debug = false;
-    }
     return rootNode;
 }
 
@@ -847,17 +828,9 @@ void mixChildren ( int nodePtr ) {
         xmit.g = xmit.g * o.xmitG;
         xmit.b = xmit.b * o.xmitB;
     }
-    if (debug) {
-        printf ("mixChildren node RGB = %f %f %f\n", node->colour.r, node->colour.g, node->colour.b);
-        printf ("mixChildren spec RGB = %f %f %f\n", spec.r, spec.g, spec.b);
-        printf ("mixChildren xmit RGB = %f %f %f\n", xmit.r, xmit.g, xmit.b);
-    }
     node->colour.r = node->colour.r + (spec.r + xmit.r);
     node->colour.g = node->colour.g + (spec.g + xmit.g);
     node->colour.b = node->colour.b + (spec.b + xmit.b);
-    if (debug) {
-        printf ("mixChildren result RGB = %f %f %f\n", node->colour.r, node->colour.g, node->colour.b);
-    }
 }
 
 #define a11 0
@@ -950,9 +923,6 @@ void shadeNode ( int nodePtr ) {
             colour->r = ambient.r * o.kdR;
             colour->g = ambient.g * o.kdG;
             colour->b = ambient.b * o.kdB;
-            if (debug) {
-                printf ("shadeNode spec=0 R %f G %f B %f\n", o.kdR, o.kdG, o.kdB);
-            }
         } else {
             *colour = black;
         }
@@ -976,23 +946,14 @@ void shadeNode ( int nodePtr ) {
             if (shadowNode->t != 0.0) {
 
             } else {
-                if (debug) {
-                    printf ("shadeNode calculate lambert\n");
-                }
                 float lambert;
                 int iLambert;
                 lambert = dotProduct (&l.dx, &node->normx);
                 if (lambert < 0.0) {
                 } else {
-                    if (debug) {
-                        printf ("shadeNode before lambert o.kdR %f o.kdG %f o.kdB %f\n", o.kdR, o.kdG, o.kdB);
-                    }
                     colour->r = colour->r + (lambert * (o.kdR * l.ir));
                     colour->g = colour->g + (lambert * (o.kdG * l.ig));
                     colour->b = colour->b + (lambert * (o.kdB * l.ib));
-                    if (debug) {
-                        printf ("shadeNode after lambert color R %f G %f B %f\n", colour->r, colour->g, colour->b);
-                    }
                 }
                 /*--
                 -- the phong shader is a mite messy at the moment, with lots of
@@ -1108,9 +1069,6 @@ void shade ( int rootNode ) {
         NODE node;
         int spec;
         int frac;
-        if (debug) {
-            printf ("shade action = %d\n", action);
-        }
         node = tree[nodePtr];
         spec = node.reflect;
         frac = node.refract;
@@ -1161,10 +1119,6 @@ void shade ( int rootNode ) {
         int ired = (int)root->colour.r;
         int igreen = (int)root->colour.g;
         int iblue = (int)root->colour.b;
-        if (debug) {
-            printf ("shade RGB %d %d %d\n", ired, igreen, iblue);
-            printf ("shade object RGB %f %f %f\n", objects[root->objPtr].kdR, objects[root->objPtr].kdG, objects[root->objPtr].kdB);
-        }
 
         float maxC = 1022.99; /*-- just under 10 bits*/
         float maxP, fudge;
@@ -1364,9 +1318,6 @@ void renderPixels ( int patchx, int patchy,
         shade ( treep );
         node = tree[treep];
         *colour = (int)node.colour.r | (int)node.colour.g << colourBits | (int)node.colour.b << (colourBits + colourBits);
-        if ((int)patchx+x0 == 146 && (int)patchy+y0 == 251) {
-            printf ("buildShadeTree R %d G %d B %d\n", (int)node.colour.r, (int)node.colour.g, (int)node.colour.b);
-        }
     } else if (renderingMode == m_test) {
         *colour = patchx*patchy*640;
         #ifdef NATIVE
@@ -1437,7 +1388,6 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             patch p;
 
             ChanIn(job_in,(char *)&r,(int)sizeof(r));
-            /* initWORDvec ( rawSamples, notRendered, gridSize * gridSize ) */
             for (y=0; y < GRID_SIZE; y++) {
                 for (x=0; x < GRID_SIZE; x++) {
                     samples[y][x] = notRendered;
@@ -1472,7 +1422,6 @@ void job(Channel *req_out, Channel *job_in, Channel *rsl_out)
             ChanOutInt(rsl_out,c_patch);
             ChanOut(rsl_out,(char *)&p,(int)sizeof(p));
             ChanOut(rsl_out, buf, p.patchWidth*p.patchHeight*4);
-            //printf ("nrays = %d\n", nrays);
         } else {
             Debug (rsl_out, "*E* unknown command", type, 0);
         }
