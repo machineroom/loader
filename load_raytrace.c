@@ -263,7 +263,7 @@ static void pumpWorldModels(int model, int patchEdge) {
             sphere.u.sphere.x = -90;
             sphere.u.sphere.y = -80;
             sphere.u.sphere.z = 3100;
-            send_object(&sphere);   /* 9 */
+            send_object(&sphere);   /* glass */
         }
         break;
     }

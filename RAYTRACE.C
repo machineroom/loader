@@ -769,9 +769,10 @@ int evolveTree (void) {
     int nodesAdded;
     int node, next=0, prev=0;
     node = head;
-    nodesAdded = evolveNode (&head, &tree[node].next, node);
+    next = node;
+    nodesAdded = evolveNode (&head, &next, node);
     while (tree[node].next != nil) {
-        prev = node;
+        prev = next;
         next = node;
         node = tree[node].next;
         nodesAdded += evolveNode (&tree[prev].next, &next, node);
